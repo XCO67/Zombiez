@@ -909,7 +909,7 @@ function pushToGame() {
 
   const payload = { mapW, mapH, tiles: gameTiles, torches, playerStart };
   try {
-    localStorage.setItem('zombiez_map', JSON.stringify(payload));
+    localStorage.setItem('deadsurge_map', JSON.stringify(payload));
     showToast('Map pushed to game! Refresh index.html to play.', 'success');
     const btn = document.getElementById('push-btn');
     const orig = btn.textContent;
@@ -921,7 +921,7 @@ function pushToGame() {
 }
 
 function clearGameMap() {
-  localStorage.removeItem('zombiez_map');
+  localStorage.removeItem('deadsurge_map');
   showToast('Game map reset to default. Refresh index.html to play.', 'info');
 }
 
@@ -943,7 +943,7 @@ buildToolbar();
 // Check if a custom map is already saved and offer to load it
 (function checkSaved() {
   try {
-    const raw = localStorage.getItem('zombiez_map');
+    const raw = localStorage.getItem('deadsurge_map');
     if (raw) {
       const d = JSON.parse(raw);
       const btn = document.getElementById('push-btn');

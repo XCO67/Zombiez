@@ -255,7 +255,7 @@ function unlockDoor(door) {
 // Called AFTER DOORS is defined so we can safely unlock them.
 (function loadEditorMap() {
   try {
-    const raw = localStorage.getItem('deadsurge_map');
+    const raw = localStorage.getItem('deadsurge_map') || localStorage.getItem('zombiez_map');
     if (!raw) return;
     const data = JSON.parse(raw);
     // Update map dimensions to match editor
@@ -2526,10 +2526,16 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke) {
 // ─── RENDER LOOP ──────────────────────────────────────────────────────────────
 let t = 0;
 let gameStarted = false; // true once player clicks PLAY
+const TARGET_FPS = 60;
+const FRAME_MS = 1000 / TARGET_FPS;
+let lastFrameTime = 0;
 
-function render() {
+function render(now) {
+  requestAnimationFrame(render);
+  if (now - lastFrameTime < FRAME_MS) return;
+  lastFrameTime = now - ((now - lastFrameTime) % FRAME_MS);
   t += 0.04;
-  if (!gameStarted) { requestAnimationFrame(render); return; }
+  if (!gameStarted) { return; }
 
   // ── Logic ────────────────────────────────────────────────────────────────────
   updateCamera();
@@ -2600,10 +2606,9 @@ function render() {
   drawShopUI();
   drawCursor();
 
-  requestAnimationFrame(render);
 }
 
-render();
+render(0);
 
 // ─── MENU SYSTEM ──────────────────────────────────────────────────────────────
 
