@@ -1099,6 +1099,13 @@ let clickIndicator = null; // {x, y, life} screen pixel coords for visual feedba
 
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
+  // ESC toggles pause (single-player only)
+  if (e.key === 'Escape' && !mp.active && gameStarted && (game.state === 'playing' || game.state === 'wave_clear' || game.state === 'paused')) {
+    game.state = game.state === 'paused' ? game._prevState || 'playing' : (game._prevState = game.state, 'paused');
+    shopOpen = false;
+    return;
+  }
+  if (game.state === 'paused') return; // block all other keys while paused
   if (e.key.toLowerCase() === 'r' && game.state === 'game_over') {
     if (mp.active) { mp.socket.emit('restart_game'); } else { restartGame(); }
   }
@@ -3089,7 +3096,7 @@ function render(now) {
     }
     updateCamera();
     mpAnimate();
-  } else {
+  } else if (game.state !== 'paused') {
     updateCamera();
     updatePlayer();
     tryShoot();
@@ -3104,6 +3111,8 @@ function render(now) {
     updateBox();
     updateEffects();
     updateWave();
+  } else {
+    updateCamera(); // keep camera steady while paused
   }
 
   // ── Fill background ───────────────────────────────────────────────────────────
@@ -3160,8 +3169,36 @@ function render(now) {
   drawShopUI();
   drawDownedHUD();
   drawPingHUD();
+  if (game.state === 'paused') drawPauseScreen();
   drawCursor();
 
+}
+
+function drawPauseScreen() {
+  const W = canvas.width, H = canvas.height;
+  // Dim overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, W, H);
+  // Card
+  const cw = Math.round(W * 0.36), ch = Math.round(H * 0.28);
+  const cx2 = W/2, cy2 = H/2;
+  ctx.save();
+  ctx.shadowColor = '#00ffaa'; ctx.shadowBlur = 32;
+  ctx.fillStyle = 'rgba(8,4,20,0.92)';
+  roundRect(ctx, cx2-cw/2, cy2-ch/2, cw, ch, 18, true, false);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,255,170,0.35)'; ctx.lineWidth = 2;
+  roundRect(ctx, cx2-cw/2, cy2-ch/2, cw, ch, 18, false, true);
+  // Title
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#00ffaa'; ctx.font = `bold ${Math.round(W*0.038)}px Segoe UI`;
+  ctx.fillText('PAUSED', cx2, cy2 - ch*0.18);
+  // Divider
+  ctx.strokeStyle = 'rgba(0,255,170,0.2)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx2-cw*.38, cy2+ch*0.02); ctx.lineTo(cx2+cw*.38, cy2+ch*0.02); ctx.stroke();
+  // Hint
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = `${Math.round(W*0.018)}px Segoe UI`;
+  ctx.fillText('Press  ESC  to resume', cx2, cy2 + ch*0.22);
 }
 
 render(0);
