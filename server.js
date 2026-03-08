@@ -465,7 +465,7 @@ class GameRoom {
             if (fired.length) io.to(this.code).emit('bullet_fired', fired);
           }
           if (ps.weaponKey === 'pistol') {
-            ps.heat = Math.min(100, ps.heat + 15);
+            ps.heat = Math.min(100, ps.heat + 8);
             if (ps.heat >= 100) ps.overheated = true;
           }
         }

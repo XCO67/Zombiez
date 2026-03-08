@@ -1240,8 +1240,8 @@ function updatePlayer() {
   }
   // Pistol heat cooldown
   if (player.heat > 0) {
-    // overheated: drain 100→0 in exactly 5s (300 frames); idle: slow passive bleed
-    const coolRate = player.overheated ? 100 / 300 : 0.4;
+    // overheated: drain 100→0 in exactly 5s (300 frames); idle: faster passive bleed
+    const coolRate = player.overheated ? 100 / 300 : 0.7;
     player.heat = Math.max(0, player.heat - coolRate);
     if (player.overheated && player.heat <= 0) {
       player.overheated = false;
@@ -1318,7 +1318,7 @@ function tryShoot() {
 
   if(player.weaponKey==='pistol') {
     playPistolSound();
-    player.heat = Math.min(100, player.heat + 15);
+    player.heat = Math.min(100, player.heat + 8);
     if (player.heat >= 100) {
       player.overheated = true;
       playOverheatSound();
