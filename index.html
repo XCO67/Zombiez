@@ -589,6 +589,7 @@ const SHOP_ITEMS = [
     price: l => (l+1)*175, maxLevel:5 },
 ];
 let shopOpen = false;
+let weaponInfoOpen = false;
 
 // ─── COINS ────────────────────────────────────────────────────────────────────
 const COINS = [];
@@ -1228,7 +1229,7 @@ document.addEventListener('keydown', e => {
   // ESC toggles pause (single-player only)
   if (e.key === 'Escape' && !mp.active && gameStarted && (game.state === 'playing' || game.state === 'wave_clear' || game.state === 'paused')) {
     game.state = game.state === 'paused' ? game._prevState || 'playing' : (game._prevState = game.state, 'paused');
-    shopOpen = false;
+    shopOpen = false; weaponInfoOpen = false;
     return;
   }
   if (game.state === 'paused') return; // block all other keys while paused
@@ -1237,6 +1238,8 @@ document.addEventListener('keydown', e => {
   }
   if (e.key.toLowerCase() === 'm' && game.state === 'game_over') goToMenu();
   if (e.key.toLowerCase() === 'q' && game.state === 'playing' && !shopOpen) swapWeapon();
+  if (e.key.toLowerCase() === 'i' && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
+    weaponInfoOpen = !weaponInfoOpen;
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
     clickTarget = null;
@@ -2443,6 +2446,136 @@ function drawMinimap() {
   ctx.restore();
 }
 
+// ─── WEAPON INFO CARD ─────────────────────────────────────────────────────────
+function drawWeaponInfo() {
+  if (!weaponInfoOpen) return;
+  const W = canvas.width, H = canvas.height;
+  const wkey = player.weaponKey;
+  const w = WEAPONS[wkey];
+  const isPapped = player.packedWeapons && player.packedWeapons.has(wkey);
+
+  // Computed stats
+  const dmgMult  = 1 + player.upgrades.damage * 0.20;
+  const papMult  = isPapped ? 3 : 1;
+  const baseDmg  = Math.round(w.baseDmg * dmgMult * papMult);
+  const critDmg  = baseDmg * 2;
+  const critPct  = player.upgrades.crit * 10;
+  const rawFR    = w.fireRate;
+  const upgFR    = Math.max(Math.round(rawFR * 0.4), Math.round(rawFR * Math.pow(0.85, player.upgrades.atkSpeed)));
+  const shotsPerSec = (60 / upgFR).toFixed(1);
+  const ammo     = wkey === 'pistol' ? '∞' : `${player.ammo === Infinity ? '∞' : player.ammo} / ${w.ammoMax}`;
+
+  // Stat rows
+  const rows = [];
+  if (w.wave) {
+    rows.push({ icon:'💥', label:'Damage (AoE)', val: `${baseDmg}  (crit: ${critDmg})`, col:'#ffe044' });
+    rows.push({ icon:'🌪', label:'Type',         val: 'Wind Wave  •  AoE cone',          col:'#60e8ff' });
+  } else {
+    rows.push({ icon:'⚔', label:'Damage',        val: `${baseDmg}  (crit: ${critDmg})`, col:'#ff7744' });
+    if (w.pellets > 1)
+      rows.push({ icon:'💢', label:'Pellets',     val: `${w.pellets} per shot`,           col:'#ffcc44' });
+    const spreadLabel = w.spread === 0 ? 'None' : w.spread < 0.15 ? 'Low' : w.spread < 0.28 ? 'Medium' : 'High';
+    rows.push({ icon:'🎯', label:'Spread',        val: spreadLabel,                       col:'#88ccff' });
+    rows.push({ icon:'🔁', label:'Pierce',        val: w.pierce ? 'Yes' : 'No',           col: w.pierce ? '#44ffaa' : '#888' });
+  }
+  rows.push({ icon:'⚡', label:'Fire Rate',       val: `${shotsPerSec} shots/sec`,        col:'#ffdd44' });
+  rows.push({ icon:'★',  label:'Crit Chance',    val: critPct > 0 ? `${critPct}%  (×2 dmg)` : '0%', col:'#bb44ff' });
+  rows.push({ icon:'🔋', label:'Ammo',            val: ammo,                              col:'#66ddff' });
+  if (wkey === 'pistol')
+    rows.push({ icon:'🌡', label:'Heat / shot',   val: '8  (100 = overheat)',             col:'#ff6633' });
+  if (isPapped)
+    rows.push({ icon:'✊', label:'Pack-a-Punch',  val: '×3 Damage  •  Rainbow bullets',  col:`hsl(${(performance.now()/4)%360},100%,65%)` });
+
+  const cw = 300, rowH = 22, headerH = 52, footerH = 26;
+  const ch = headerH + rows.length * rowH + footerH + 12;
+  const cx2 = W / 2, cy2 = H / 2 - ch / 2 - 20; // slightly above center
+
+  ctx.save();
+
+  // Backdrop blur shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  roundRect(ctx, cx2 - cw/2 - 2, cy2 - 2, cw + 4, ch + 4, 12, true, false);
+
+  // Card bg
+  ctx.fillStyle = '#09071a';
+  roundRect(ctx, cx2 - cw/2, cy2, cw, ch, 10, true, false);
+
+  // Colored top strip
+  ctx.fillStyle = w.color + '44';
+  roundRect(ctx, cx2 - cw/2, cy2, cw, headerH, 10, true, false);
+  ctx.fillStyle = 'rgba(0,0,0,0)'; // clear below strip overlap (just cosmetic)
+
+  // Border
+  ctx.strokeStyle = w.color + 'aa';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, cx2 - cw/2, cy2, cw, ch, 10, false, true);
+
+  // PaP rainbow border override
+  if (isPapped) {
+    const rh = (performance.now() / 4) % 360;
+    ctx.strokeStyle = `hsl(${rh},100%,65%)`;
+    ctx.lineWidth = 2;
+    roundRect(ctx, cx2 - cw/2, cy2, cw, ch, 10, false, true);
+  }
+
+  // Header — weapon name
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `bold ${Math.round(cw * 0.085)}px Segoe UI`;
+  ctx.fillStyle = w.color;
+  ctx.shadowColor = w.color; ctx.shadowBlur = 10;
+  ctx.fillText(w.name.toUpperCase(), cx2, cy2 + headerH * 0.42);
+  ctx.shadowBlur = 0;
+
+  // Sub-label
+  ctx.font = `10px Segoe UI`;
+  ctx.fillStyle = 'rgba(200,190,230,0.5)';
+  ctx.fillText('WEAPON STATS  —  [I] to close', cx2, cy2 + headerH * 0.78);
+
+  // Divider
+  ctx.fillStyle = w.color + '55';
+  ctx.fillRect(cx2 - cw/2 + 14, cy2 + headerH, cw - 28, 1);
+
+  // Stat rows
+  rows.forEach((r, i) => {
+    const ry = cy2 + headerH + 8 + i * rowH + rowH / 2;
+    const lx = cx2 - cw/2 + 14;
+
+    // Icon
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '13px Segoe UI';
+    ctx.fillStyle = r.col;
+    ctx.fillText(r.icon, lx, ry);
+
+    // Label
+    ctx.font = '11px Segoe UI';
+    ctx.fillStyle = 'rgba(180,170,210,0.65)';
+    ctx.fillText(r.label, lx + 22, ry);
+
+    // Value (right-aligned)
+    ctx.textAlign = 'right';
+    ctx.font = `bold 11px Segoe UI`;
+    ctx.fillStyle = r.col;
+    ctx.fillText(r.val, cx2 + cw/2 - 14, ry);
+
+    // Row separator
+    if (i < rows.length - 1) {
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(lx, ry + rowH/2, cw - 28, 1);
+    }
+  });
+
+  // Footer hint
+  const footerY = cy2 + ch - footerH / 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillRect(cx2 - cw/2 + 14, cy2 + ch - footerH - 2, cw - 28, 1);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '9px Segoe UI';
+  ctx.fillStyle = 'rgba(180,160,220,0.4)';
+  ctx.fillText('Stats include current upgrades & Pack-a-Punch', cx2, footerY);
+
+  ctx.restore();
+}
+
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 const HUD_H = 72; // bottom bar height — used by minimap positioning too
 
@@ -2620,16 +2753,16 @@ function drawHUD() {
         ctx.fillText(`${ammo} / ${sw.ammoMax}`, slotX+slotW/2, BY+47);
       }
 
-      // [Q] swap hint on inactive secondary
+      // hints row at bottom of slot
+      ctx.font='8px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='bottom';
       if (!isActive && wkey !== 'pistol') {
-        ctx.fillStyle='rgba(180,180,180,0.4)'; ctx.font='8px Segoe UI';
-        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillStyle='rgba(180,180,180,0.4)';
         ctx.fillText('[Q] swap', slotX+slotW/2, BY+HUD_H-4);
       }
       if (isActive) {
-        ctx.fillStyle='rgba(180,180,180,0.35)'; ctx.font='8px Segoe UI';
-        ctx.textAlign='center'; ctx.textBaseline='bottom';
-        ctx.fillText(wkey==='pistol'?'[Q] swap':' [Q] pistol', slotX+slotW/2, BY+HUD_H-4);
+        ctx.fillStyle='rgba(180,180,180,0.35)';
+        const swapHint = wkey==='pistol' ? '[Q] swap' : '[Q] pistol';
+        ctx.fillText(`${swapHint}  [I] info`, slotX+slotW/2, BY+HUD_H-4);
       }
       ctx.restore();
     }
@@ -3390,6 +3523,7 @@ function render(now) {
   applyLighting(flickers);
   drawDmgNums();
   drawHUD();
+  drawWeaponInfo();
   drawMinimap();
   drawShopUI();
   drawDownedHUD();
