@@ -2582,7 +2582,7 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke) {
 
 // ─── MULTIPLAYER ──────────────────────────────────────────────────────────────
 const PLAYER_COLORS = ['#60c0ff','#ff6b6b','#6bff6b','#ffcc44'];
-const mp = { socket:null, mode:null, room:null, slot:0, players:[] };
+const mp = { socket:null, mode:null, room:null, slot:0, players:[], firstState:false };
 const REMOTE_PLAYERS = []; // up to 3 extra player objects (host-controlled on host, display-only on guest)
 const guestInputs = {};    // host: slot -> latest input from that guest
 let mpStateFrame = 0;
@@ -2747,6 +2747,7 @@ function serializeGameState() {
 // Apply host state on guest client
 function applyHostState(state) {
   hostState = state;
+  mp.firstState = true;
   // Update all remote players display
   REMOTE_PLAYERS.length = 0;
   state.p.forEach((pd, i) => {
@@ -2966,7 +2967,7 @@ function mpClose() {
   document.getElementById('mpLobbyRoom').style.display='none';
   document.getElementById('mpMsg').textContent='';
   if (mp.socket) { mp.socket.disconnect(); mp.socket=null; }
-  mp.mode=null; mp.room=null; mp.slot=0; mp.players=[];
+  mp.mode=null; mp.room=null; mp.slot=0; mp.players=[]; mp.firstState=false;
   REMOTE_PLAYERS.length=0;
   closeModal('mpModal');
 }
@@ -3026,9 +3027,18 @@ function render(now) {
 
   // ── Logic ────────────────────────────────────────────────────────────────────
   if (mp.mode === 'guest') {
-    // Send input every frame for responsive feel
     sendGuestInput();
-    // Run local physics between host state corrections (dead reckoning)
+    if (!mp.firstState) {
+      // Show connecting screen until first host state arrives
+      ctx.fillStyle = '#060410';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#00ffaa'; ctx.font = `bold ${Math.round(canvas.width * 0.025)}px Segoe UI`;
+      ctx.fillText('Connecting to host...', canvas.width / 2, canvas.height / 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = `${Math.round(canvas.width * 0.014)}px Segoe UI`;
+      ctx.fillText('Room: ' + mp.room, canvas.width / 2, canvas.height / 2 + 40);
+      return;
+    }
     updateCamera();
     guestLocalPhysics();
     updateDmgNums();
@@ -3156,7 +3166,10 @@ function startGame() {
   resumeAudio();
   document.getElementById('menu').style.display = 'none';
   document.body.style.cursor = 'none';
-  if (!gameStarted) { gameStarted = true; startWave(1); }
+  if (!gameStarted) {
+    gameStarted = true;
+    if (mp.mode !== 'guest') startWave(1); // guests wait for host state
+  }
 }
 
 function goToMenu() {
