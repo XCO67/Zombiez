@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Zombiez — Map Editor</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:       #0d0d14;
+      --panel:    #12121e;
+      --border:   #1e1e32;
+      --border2:  #2a2a44;
+      --text:     #b0b0cc;
+      --text-dim: #484868;
+      --accent:   #7060c8;
+      --accent-hi:#a090f8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── LEFT SIDEBAR ── */
+    #sidebar {
+      width: 200px;
+      min-width: 200px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #sidebar-header {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-hi);
+      font-weight: 600;
+    }
+
+    .s-section {
+      padding: 10px 14px 6px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Tile tool buttons */
+    #tool-list { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+
+    .tool-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 9px;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.1s, border-color 0.1s;
+      user-select: none;
+    }
+    .tool-btn:hover   { background: #1c1c30; border-color: #3a3a5a; }
+    .tool-btn.active  { background: #1e1840; border-color: var(--accent); color: #fff; }
+
+    .swatch {
+      width: 16px; height: 16px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+
+    .tool-key {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-dim);
+      background: #1a1a2c;
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    /* Map size */
+    #size-area { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .size-row { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
+    .size-row input {
+      width: 58px;
+      background: #0e0e1a;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 4px 7px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Action buttons */
+    #actions { padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+
+    .act-btn {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      background: #141424;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-align: left;
+      transition: background 0.1s;
+    }
+    .act-btn:hover { background: #1c1c34; color: #fff; }
+    .act-btn.danger { border-color: #5a2020; color: #c06060; }
+    .act-btn.danger:hover { background: #2a1010; }
+    .act-btn.export { border-color: var(--accent); color: var(--accent-hi); background: #16143a; }
+    .act-btn.export:hover { background: #201c50; }
+
+    /* Shortcuts hint */
+    #hints {
+      margin-top: auto;
+      padding: 10px 14px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--text-dim);
+      line-height: 1.9;
+    }
+
+    /* ── MAIN ── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    #topbar {
+      height: 38px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .zoom-btn {
+      width: 26px; height: 26px;
+      background: #1a1a2e;
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: #22223a; }
+
+    #zoom-label { font-size: 11px; color: var(--text-dim); min-width: 38px; text-align: center; }
+
+    #grid-toggle {
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+    }
+    #grid-toggle input { cursor: pointer; }
+
+    #canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      background: #09090f;
+      padding: 20px;
+    }
+
+    #c { cursor: crosshair; display: block; image-rendering: pixelated; }
+    #canvas-wrap.panning { cursor: grabbing; }
+    #canvas-wrap.panning #c { cursor: grabbing; }
+
+    /* ── STATUS BAR ── */
+    #statusbar {
+      height: 26px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 24px;
+      font-size: 11px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    #statusbar span b { color: var(--text); font-weight: 500; }
+
+    /* ── EXPORT MODAL ── */
+    #overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    #overlay.open { display: flex; }
+
+    #export-modal {
+      background: var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 20px;
+      width: 660px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #export-modal h2 {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent-hi);
+    }
+    #export-tabs { display: flex; gap: 6px; }
+    .etab {
+      padding: 5px 12px;
+      font-size: 11px;
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      cursor: pointer;
+      background: #141424;
+      color: var(--text-dim);
+    }
+    .etab.active { background: #1e1840; color: var(--accent-hi); border-color: var(--accent); }
+    textarea#export-text {
+      flex: 1;
+      min-height: 280px;
+      background: #0a0a14;
+      border: 1px solid var(--border2);
+      color: #90c890;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 12px;
+      padding: 12px;
+      border-radius: 4px;
+      resize: none;
+      overflow: auto;
+    }
+    #export-actions { display: flex; gap: 8px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+      padding: 10px 22px; border-radius: 7px;
+      font-size: 13px; font-weight: 500; z-index: 9999;
+      pointer-events: none; animation: toast-in 0.18s ease;
+    }
+    .toast.success { background:#0e2018; border:1px solid #40c870; color:#60e890; }
+    .toast.error   { background:#200e0e; border:1px solid #c84040; color:#e86060; }
+    .toast.info    { background:#0e0e20; border:1px solid var(--accent); color:var(--accent-hi); }
+    @keyframes toast-in { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div id="sidebar-header">Map Editor</div>
+
+  <div class="s-section">Tiles</div>
+  <div id="tool-list"></div>
+
+  <div class="s-section">Map Size</div>
+  <div id="size-area">
+    <div class="size-row">Width  <input type="number" id="inp-w" value="40" min="8" max="500"></div>
+    <div class="size-row">Height <input type="number" id="inp-h" value="28" min="8" max="500"></div>
+    <button class="act-btn" onclick="applySize()">Apply Size</button>
+  </div>
+
+  <div class="s-section">Actions</div>
+  <div id="actions">
+    <button class="act-btn" onclick="loadDefault()">↺ Load Game Map</button>
+    <button class="act-btn" onclick="fillBorder()">⬛ Fill Border Walls</button>
+    <button class="act-btn" onclick="fillAll(1)">⬜ Fill All Floor</button>
+    <button class="act-btn" onclick="fillAll(0)">Fill All Walls</button>
+    <button class="act-btn" onclick="undo()">↩ Undo  (Ctrl+Z)</button>
+    <button class="act-btn danger" onclick="clearAll()">✕ Clear All</button>
+    <button class="act-btn export" onclick="openExport()">⬆ Export Code</button>
+    <button class="act-btn" id="push-btn" onclick="pushToGame()" style="border-color:#40c870;color:#60e890;background:#0e1e14;">🎮 Push to Game</button>
+    <button class="act-btn" onclick="clearGameMap()" style="font-size:10px;color:var(--text-dim);">↺ Reset Game to Default</button>
+  </div>
+
+  <div id="hints">
+    Left-click — paint<br>
+    Right-click — erase (wall)<br>
+    Drag — paint continuously<br>
+    Middle-drag — pan map<br>
+    Space+drag — pan map<br>
+    Scroll wheel — zoom<br>
+    Ctrl+Z — undo<br>
+    1–7 — select tile<br>
+    G — toggle grid<br>
+    +/- — zoom
+  </div>
+</div>
+
+<!-- ── MAIN AREA ── -->
+<div id="main">
+  <div id="topbar">
+    <button class="zoom-btn" onclick="setZoom(zoom - 0.25)">−</button>
+    <span id="zoom-label">100%</span>
+    <button class="zoom-btn" onclick="setZoom(zoom + 0.25)">+</button>
+    <button class="zoom-btn" onclick="setZoom(1)" style="width:auto;padding:0 8px;font-size:11px">Reset</button>
+
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+
+    <label id="grid-toggle">
+      <input type="checkbox" id="grid-check" checked onchange="redraw()"> Grid lines
+    </label>
+
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+
+    <span style="font-size:11px;color:var(--text-dim)">
+      Map: <b id="map-size-label" style="color:var(--text)">40 × 28</b>
+    </span>
+
+    <span id="hover-label" style="font-size:11px;color:var(--text-dim);margin-left:auto"></span>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+  </div>
+
+  <div id="statusbar">
+    <span>Tool: <b id="st-tool">Wall</b></span>
+    <span>Cursor: <b id="st-pos">—</b></span>
+    <span style="margin-left:auto">Right-click = erase to Wall</span>
+  </div>
+</div>
+
+<!-- ── EXPORT MODAL ── -->
+<div id="overlay" onclick="if(event.target===this)closeExport()">
+  <div id="export-modal">
+    <h2>Export Map</h2>
+    <div id="export-tabs">
+      <div class="etab active" onclick="switchTab(0)">JS Array</div>
+      <div class="etab" onclick="switchTab(1)">fill() Calls</div>
+      <div class="etab" onclick="switchTab(2)">ASCII</div>
+    </div>
+    <textarea id="export-text" readonly spellcheck="false"></textarea>
+    <div id="export-actions">
+      <button class="act-btn export" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="act-btn" onclick="closeExport()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── TILE DEFINITIONS ──────────────────────────────────────────────────────────
+// id maps directly to export value except: 4 (PlayerStart) → game FLOOR, 5 (Torch) → game WALL+torch, 6 (Door) → game DOOR
+const TILES = [
+  { id: 0, name: 'Wall',         key: '1', fill: '#16122a', hi: '#2e274a', label: '#',  text: '#b0a0e0' },
+  { id: 1, name: 'Floor',        key: '2', fill: '#353048', hi: '#4e4870', label: '.',  text: '#8880b0' },
+  { id: 2, name: 'Pillar',       key: '3', fill: '#3b3054', hi: '#5c4a7e', label: 'P',  text: '#b090f0' },
+  { id: 3, name: 'Spawn Zone',   key: '4', fill: '#4a1818', hi: '#8a2020', label: 'S',  text: '#e06060' },
+  { id: 4, name: 'Player Start', key: '5', fill: '#2e2810', hi: '#c8a030', label: '@',  text: '#f0c040' },
+  { id: 5, name: 'Torch (Wall)', key: '6', fill: '#1a1228', hi: '#c87020', label: 'T',  text: '#e09040' },
+  { id: 6, name: 'Door',         key: '7', fill: '#3d1f0a', hi: '#8b5e28', label: 'D',  text: '#ffd700' },
+];
+
+// ─── STATE ─────────────────────────────────────────────────────────────────────
+let mapW = 40, mapH = 28;
+let mapData = [];
+let currentTile = 0;
+let painting = false;
+let erasing  = false;
+let zoom     = 1;
+let showGrid = true;
+let undoStack = [];
+let exportTab = 0;
+
+// Panning state
+let panning    = false;
+let spaceDown  = false;
+let panStart   = { x: 0, y: 0, sl: 0, st: 0 };
+
+const BASE_TS = 24; // base tile size in px
+function TS() { return Math.round(BASE_TS * zoom); }
+
+const canvas    = document.getElementById('c');
+const ctx       = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvas-wrap');
+
+// ─── MAP INIT ──────────────────────────────────────────────────────────────────
+function newMap(w, h, defaultTile = 0) {
+  mapW = w; mapH = h;
+  mapData = Array.from({ length: h }, (_, r) =>
+    Array.from({ length: w }, (_, c) =>
+      (r === 0 || r === h - 1 || c === 0 || c === w - 1) ? 0 : defaultTile
+    )
+  );
+}
+
+function loadDefault() {
+  saveUndo();
+  newMap(40, 28, 0);
+  function fill(r1, r2, c1, c2, v) {
+    for (let r = r1; r <= r2; r++)
+      for (let c = c1; c <= c2; c++)
+        mapData[r][c] = v;
+  }
+  // ── Existing rooms ──────────────────────────────────────────────────────────
+  fill(8,  19, 10, 29, 1);  fill(1,  7,  17, 22, 1);
+  fill(20, 26, 17, 22, 1);  fill(12, 15,  1,  9, 1);
+  fill(12, 15, 30, 38, 1);
+  fill(10, 11, 13, 14, 2);  fill(10, 11, 25, 26, 2);
+  fill(16, 17, 13, 14, 2);  fill(16, 17, 25, 26, 2);
+  fill(1,  2,  17, 22, 3);  fill(25, 26, 17, 22, 3);
+  fill(12, 15,  1,  2, 3);  fill(12, 15, 37, 38, 3);
+  // ── East Wing (top-right unlockable room) ───────────────────────────────────
+  fill(2, 6, 24, 38, 1);
+  fill(3, 5, 23, 23, 6);   // Door tiles
+  // ── West Cellar (bottom-left unlockable room) ───────────────────────────────
+  fill(21, 25, 1, 15, 1);
+  fill(22, 24, 16, 16, 6); // Door tiles
+  // ── Torches ─────────────────────────────────────────────────────────────────
+  // Main arena torches (on wall tiles)
+  [[7,16],[7,23],[20,16],[20,23],[11,9],[16,9],[11,30],[16,30],
+   [8,9],[8,30],[19,9],[19,30],[4,16],[4,23],[23,16],[23,23]]
+    .forEach(([r,c]) => mapData[r][c] = 5);
+  // East Wing room torches (placed on wall tiles bordering the room)
+  [[1,26],[1,33],[7,26],[7,33]]
+    .forEach(([r,c]) => mapData[r][c] = 5);
+  // West Cellar room torches (placed on wall tiles bordering the room)
+  [[20,3],[20,11],[26,3],[26,11]]
+    .forEach(([r,c]) => mapData[r][c] = 5);
+  // Player start
+  mapData[13][19] = 4;
+  syncSizeInputs();
+  redraw();
+}
+
+// ─── BUILD TOOLBAR ─────────────────────────────────────────────────────────────
+function buildToolbar() {
+  const list = document.getElementById('tool-list');
+  list.innerHTML = '';
+  TILES.forEach(tile => {
+    const btn = document.createElement('button');
+    btn.className = 'tool-btn' + (tile.id === currentTile ? ' active' : '');
+    btn.id = `tbtn-${tile.id}`;
+    btn.innerHTML = `
+      <div class="swatch" style="background:${tile.fill};border-color:${tile.hi}"></div>
+      <span>${tile.name}</span>
+      <span class="tool-key">${tile.key}</span>`;
+    btn.onclick = () => selectTile(tile.id);
+    list.appendChild(btn);
+  });
+}
+
+function selectTile(id) {
+  currentTile = id;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tbtn-${id}`)?.classList.add('active');
+  document.getElementById('st-tool').textContent = TILES[id].name;
+}
+
+// ─── UNDO ──────────────────────────────────────────────────────────────────────
+function saveUndo() {
+  undoStack.push(mapData.map(row => [...row]));
+  if (undoStack.length > 50) undoStack.shift();
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  mapData = undoStack.pop();
+  mapW = mapData[0].length;
+  mapH = mapData.length;
+  syncSizeInputs();
+  redraw();
+}
+
+// ─── PAINT ─────────────────────────────────────────────────────────────────────
+function tileAt(e) {
+  const rect = canvas.getBoundingClientRect();
+  const ts = TS();
+  const c = Math.floor((e.clientX - rect.left)  / ts);
+  const r = Math.floor((e.clientY - rect.top)   / ts);
+  return { r, c };
+}
+
+function paintAt(r, c, erase) {
+  if (r < 0 || r >= mapH || c < 0 || c >= mapW) return;
+  // Only 1 player start allowed
+  if (!erase && currentTile === 4) {
+    for (let row of mapData)
+      for (let i = 0; i < row.length; i++)
+        if (row[i] === 4) row[i] = 1;
+  }
+  mapData[r][c] = erase ? 0 : currentTile;
+  drawTile(r, c);
+}
+
+// ─── DRAW ──────────────────────────────────────────────────────────────────────
+function redraw() {
+  const ts = TS();
+  canvas.width  = mapW * ts;
+  canvas.height = mapH * ts;
+  document.getElementById('map-size-label').textContent = `${mapW} × ${mapH}`;
+
+  for (let r = 0; r < mapH; r++)
+    for (let c = 0; c < mapW; c++)
+      drawTile(r, c);
+}
+
+function drawTile(r, c) {
+  const ts  = TS();
+  const x   = c * ts, y = r * ts;
+  const tid = mapData[r][c];
+  const tile = TILES[tid] || TILES[0];
+
+  // Background fill
+  ctx.fillStyle = tile.fill;
+  ctx.fillRect(x, y, ts, ts);
+
+  // Inner highlight — top-left edge
+  ctx.fillStyle = tile.hi;
+  ctx.fillRect(x, y, ts, 1);
+  ctx.fillRect(x, y, 1, ts);
+
+  // Inner shadow — bottom-right edge
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(x, y + ts - 1, ts, 1);
+  ctx.fillRect(x + ts - 1, y, 1, ts);
+
+  // Label character (visible above certain tile size)
+  if (ts >= 14) {
+    ctx.fillStyle = tile.text;
+    ctx.font = `bold ${Math.round(ts * 0.42)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tile.label, x + ts / 2, y + ts / 2);
+  }
+
+  // Torch: draw a small flame dot
+  if (tid === 5 && ts >= 10) {
+    const cx = x + ts / 2, cy = y + ts / 2;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, ts * 0.3);
+    g.addColorStop(0, 'rgba(255,220,100,0.9)');
+    g.addColorStop(1, 'rgba(200,80,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ts * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Door: golden X brace
+  if (tid === 6 && ts >= 10) {
+    ctx.save();
+    ctx.strokeStyle = '#8b5e28';
+    ctx.lineWidth = Math.max(1, ts * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + ts - 2, y + ts - 2);
+    ctx.moveTo(x + ts - 2, y + 2); ctx.lineTo(x + 2, y + ts - 2);
+    ctx.stroke();
+    // Gold bolt dots
+    ctx.fillStyle = '#ffd700';
+    [[.2,.2],[.8,.2],[.2,.8],[.8,.8]].forEach(([ox,oy])=>{
+      ctx.beginPath(); ctx.arc(x+ox*ts, y+oy*ts, ts*.07, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  // Player start: gold ring
+  if (tid === 4 && ts >= 10) {
+    const cx = x + ts / 2, cy = y + ts / 2;
+    ctx.strokeStyle = '#c8a030';
+    ctx.lineWidth = Math.max(1, ts * 0.07);
+    ctx.beginPath();
+    ctx.arc(cx, cy, ts * 0.32, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Grid lines
+  if (showGrid) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x + 0.5, y + 0.5, ts - 1, ts - 1);
+  }
+}
+
+function drawHover(r, c) {
+  if (r < 0 || r >= mapH || c < 0 || c >= mapW) return;
+  const ts = TS();
+  const x = c * ts, y = r * ts;
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 1, y + 1, ts - 2, ts - 2);
+}
+
+// ─── MOUSE EVENTS ──────────────────────────────────────────────────────────────
+let lastPainted = { r: -1, c: -1 };
+
+function startPan(e) {
+  panning = true;
+  panStart = { x: e.clientX, y: e.clientY, sl: canvasWrap.scrollLeft, st: canvasWrap.scrollTop };
+  canvasWrap.classList.add('panning');
+}
+function doPan(e) {
+  if (!panning) return;
+  canvasWrap.scrollLeft = panStart.sl - (e.clientX - panStart.x);
+  canvasWrap.scrollTop  = panStart.st - (e.clientY - panStart.y);
+}
+function endPan() {
+  panning = false;
+  canvasWrap.classList.remove('panning');
+}
+
+canvas.addEventListener('mousedown', e => {
+  e.preventDefault();
+  if (e.button === 1 || (e.button === 0 && spaceDown)) { startPan(e); return; }
+  if (panning) return;
+  saveUndo();
+  painting = true;
+  erasing  = e.button === 2;
+  const { r, c } = tileAt(e);
+  paintAt(r, c, erasing);
+  lastPainted = { r, c };
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (panning) { doPan(e); return; }
+  const { r, c } = tileAt(e);
+
+  // Update status
+  if (r >= 0 && r < mapH && c >= 0 && c < mapW) {
+    document.getElementById('st-pos').textContent      = `col ${c}, row ${r}`;
+    document.getElementById('hover-label').textContent = `[${c}, ${r}]  tile: ${TILES[mapData[r][c]]?.name}`;
+  }
+
+  if (painting && (r !== lastPainted.r || c !== lastPainted.c)) {
+    paintAt(r, c, erasing);
+    lastPainted = { r, c };
+  } else {
+    redraw();
+    drawHover(r, c);
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (e.button === 1 || panning) { endPan(); return; }
+  painting = false;
+});
+canvas.addEventListener('mouseleave', () => {
+  if (!panning) { painting = false; redraw(); document.getElementById('hover-label').textContent = ''; }
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// Scroll-wheel zoom on the canvas area
+canvasWrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  // Zoom toward mouse position
+  const rect = canvasWrap.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left + canvasWrap.scrollLeft;
+  const mouseY = e.clientY - rect.top  + canvasWrap.scrollTop;
+  const oldTS  = TS();
+  setZoom(zoom + (e.deltaY < 0 ? 0.25 : -0.25));
+  const newTS  = TS();
+  // Re-center scroll so the tile under cursor stays put
+  canvasWrap.scrollLeft = mouseX * (newTS / oldTS) - (e.clientX - rect.left);
+  canvasWrap.scrollTop  = mouseY * (newTS / oldTS) - (e.clientY - rect.top);
+}, { passive: false });
+
+// ─── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    if (!spaceDown) { spaceDown = true; canvas.style.cursor = 'grab'; }
+    e.preventDefault(); return;
+  }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  if (e.ctrlKey && e.key === 'z') { undo(); return; }
+
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= TILES.length) { selectTile(num - 1); return; }
+
+  if (e.key === 'g' || e.key === 'G') {
+    const cb = document.getElementById('grid-check');
+    cb.checked = !cb.checked;
+    showGrid = cb.checked;
+    redraw();
+  }
+  if (e.key === '+' || e.key === '=') setZoom(zoom + 0.25);
+  if (e.key === '-')                  setZoom(zoom - 0.25);
+});
+document.addEventListener('keyup', e => {
+  if (e.key === ' ') {
+    spaceDown = false;
+    if (!panning) canvas.style.cursor = 'crosshair';
+    endPan();
+  }
+});
+
+// ─── ZOOM ──────────────────────────────────────────────────────────────────────
+function setZoom(z) {
+  zoom = Math.max(0.15, Math.min(6, Math.round(z * 4) / 4));
+  document.getElementById('zoom-label').textContent = Math.round(zoom * 100) + '%';
+  redraw();
+}
+
+// ─── MAP ACTIONS ───────────────────────────────────────────────────────────────
+function applySize() {
+  const w = parseInt(document.getElementById('inp-w').value);
+  const h = parseInt(document.getElementById('inp-h').value);
+  if (!w || !h) return;
+  saveUndo();
+  // Resize: preserve existing content, pad with walls
+  const newData = Array.from({ length: h }, (_, r) =>
+    Array.from({ length: w }, (_, c) =>
+      (r < mapH && c < mapW) ? mapData[r][c] : 0
+    )
+  );
+  mapData = newData; mapW = w; mapH = h;
+  redraw();
+}
+
+function fillAll(v) {
+  saveUndo();
+  for (let r = 0; r < mapH; r++)
+    for (let c = 0; c < mapW; c++)
+      mapData[r][c] = v;
+  redraw();
+}
+
+function fillBorder() {
+  saveUndo();
+  for (let c = 0; c < mapW; c++) { mapData[0][c] = 0; mapData[mapH-1][c] = 0; }
+  for (let r = 0; r < mapH; r++) { mapData[r][0] = 0; mapData[r][mapW-1] = 0; }
+  redraw();
+}
+
+function clearAll() {
+  if (!confirm('Clear entire map?')) return;
+  saveUndo();
+  newMap(mapW, mapH, 0);
+  redraw();
+}
+
+function syncSizeInputs() {
+  document.getElementById('inp-w').value = mapW;
+  document.getElementById('inp-h').value = mapH;
+  document.getElementById('map-size-label').textContent = `${mapW} × ${mapH}`;
+}
+
+// ─── EXPORT ────────────────────────────────────────────────────────────────────
+function openExport() {
+  document.getElementById('overlay').classList.add('open');
+  renderExportTab();
+}
+function closeExport() { document.getElementById('overlay').classList.remove('open'); }
+
+function switchTab(i) {
+  exportTab = i;
+  document.querySelectorAll('.etab').forEach((t, idx) =>
+    t.classList.toggle('active', idx === i)
+  );
+  renderExportTab();
+}
+
+function renderExportTab() {
+  let code = '';
+  if (exportTab === 0) code = exportArray();
+  if (exportTab === 1) code = exportFillCalls();
+  if (exportTab === 2) code = exportASCII();
+  document.getElementById('export-text').value = code;
+}
+
+function exportArray() {
+  const T_NAMES = ['T.WALL','T.FLOOR','T.PILLAR','T.SPAWN','T.PLAYER','T.TORCH','T.DOOR'];
+  let out = `// Map: ${mapW} × ${mapH}\n`;
+  out += `const MAP_W = ${mapW}, MAP_H = ${mapH};\n\n`;
+  out += `const MAP_RAW = [\n`;
+  for (let r = 0; r < mapH; r++) {
+    out += '  [' + mapData[r].join(',') + ']';
+    if (r < mapH - 1) out += ',';
+    out += '\n';
+  }
+  out += `];\n\n`;
+
+  // Torches array
+  const torches = [];
+  for (let r = 0; r < mapH; r++)
+    for (let c = 0; c < mapW; c++)
+      if (mapData[r][c] === 5) torches.push(`[${r},${c}]`);
+  if (torches.length)
+    out += `const TORCHES = [\n  ${torches.join(',\n  ')}\n];\n`;
+  return out;
+}
+
+function exportFillCalls() {
+  // Build fill() calls by scanning for rectangular runs of same tile type
+  // Simple row-by-row run encoding
+  const T_NAMES = ['T.WALL','T.FLOOR','T.PILLAR','T.SPAWN','T.PLAYER','T.TORCH','T.DOOR'];
+  let lines = [`const MAP_W = ${mapW}, MAP_H = ${mapH};\n`];
+  lines.push(`function buildMap() {`);
+  lines.push(`  const m = Array.from({length:MAP_H},()=>new Uint8Array(MAP_W));`);
+  lines.push(`  function fill(r1,r2,c1,c2,v){`);
+  lines.push(`    for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) m[r][c]=v;`);
+  lines.push(`  }`);
+  lines.push(``);
+
+  // Non-wall tiles only (wall is default = 0)
+  const seen = Array.from({length:mapH},()=>new Uint8Array(mapW));
+  for (let r = 0; r < mapH; r++) {
+    for (let c = 0; c < mapW; c++) {
+      const v = mapData[r][c];
+      if (v === 0 || seen[r][c]) continue;
+      // Expand rectangle rightward, then downward
+      let c2 = c;
+      while (c2 + 1 < mapW && mapData[r][c2+1] === v && !seen[r][c2+1]) c2++;
+      let r2 = r;
+      outer: while (r2 + 1 < mapH) {
+        for (let ci = c; ci <= c2; ci++)
+          if (mapData[r2+1][ci] !== v || seen[r2+1][ci]) break outer;
+        r2++;
+      }
+      for (let ri = r; ri <= r2; ri++)
+        for (let ci = c; ci <= c2; ci++)
+          seen[ri][ci] = 1;
+      const tname = T_NAMES[v] || v;
+      lines.push(`  fill(${r},${r2},${c},${c2}, ${tname});`);
+    }
+  }
+
+  lines.push(``);
+  lines.push(`  return m;`);
+  lines.push(`}`);
+  lines.push(`const MAP = buildMap();`);
+
+  // Torches
+  const torches = [];
+  for (let r = 0; r < mapH; r++)
+    for (let c = 0; c < mapW; c++)
+      if (mapData[r][c] === 5) torches.push(`  [${r},${c}]`);
+  if (torches.length) {
+    lines.push(``);
+    lines.push(`const TORCHES = [`);
+    lines.push(torches.join(',\n'));
+    lines.push(`];`);
+  }
+
+  return lines.join('\n');
+}
+
+function exportASCII() {
+  const CHARS = ['#', '.', 'P', 'S', '@', 'T'];
+  let out = `// ${mapW} × ${mapH}\n`;
+  for (let r = 0; r < mapH; r++) {
+    out += mapData[r].map(v => CHARS[v] || '#').join('') + '\n';
+  }
+  return out;
+}
+
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById('export-text').value)
+    .then(() => {
+      const btn = document.querySelector('#export-actions .act-btn.export');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = 'Copy to Clipboard', 1800);
+    });
+}
+
+// ─── PUSH TO GAME ──────────────────────────────────────────────────────────────
+// Editor tile → game tile mapping:
+//   0 (Wall)        → 0  (T.WALL)
+//   1 (Floor)       → 1  (T.FLOOR)
+//   2 (Pillar)      → 2  (T.PILLAR)
+//   3 (Spawn)       → 3  (T.SPAWN)
+//   4 (PlayerStart) → 1  (T.FLOOR) + record start pos
+//   5 (Torch)       → 0  (T.WALL)  + record torch pos
+//   6 (Door)        → 4  (T.DOOR)
+const EDITOR_TO_GAME = [0, 1, 2, 3, 1, 0, 4];
+
+function pushToGame() {
+  const gameTiles = [];
+  const torches   = [];
+  let   playerStart = [19.5, 13.5];
+
+  for (let r = 0; r < mapH; r++) {
+    const row = [];
+    for (let c = 0; c < mapW; c++) {
+      const t = mapData[r][c];
+      if (t === 4) { playerStart = [c + 0.5, r + 0.5]; }
+      if (t === 5) { torches.push([r, c]); }
+      row.push(EDITOR_TO_GAME[t] ?? 0);
+    }
+    gameTiles.push(row);
+  }
+
+  const payload = { mapW, mapH, tiles: gameTiles, torches, playerStart };
+  try {
+    localStorage.setItem('zombiez_map', JSON.stringify(payload));
+    showToast('Map pushed to game! Refresh index.html to play.', 'success');
+    const btn = document.getElementById('push-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Pushed!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch(e) {
+    showToast('Error saving map: ' + e.message, 'error');
+  }
+}
+
+function clearGameMap() {
+  localStorage.removeItem('zombiez_map');
+  showToast('Game map reset to default. Refresh index.html to play.', 'info');
+}
+
+function showToast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 320);
+  }, 2800);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+buildToolbar();
+
+// Check if a custom map is already saved and offer to load it
+(function checkSaved() {
+  try {
+    const raw = localStorage.getItem('zombiez_map');
+    if (raw) {
+      const d = JSON.parse(raw);
+      const btn = document.getElementById('push-btn');
+      btn.title = `Game is using a custom ${d.mapW}×${d.mapH} map`;
+      showToast(`Custom map active in game (${d.mapW}×${d.mapH}). Loading default editor view.`, 'info');
+    }
+  } catch(e) {}
+})();
+
+loadDefault();
+</script>
+</body>
+</html>
