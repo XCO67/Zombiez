@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zombiez</title>
+  <title>Dead Surge</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { overflow: hidden; background: #0c0b12; cursor: none; }
@@ -114,7 +114,7 @@
   <button class="login-corner" id="loginCornerBtn" onclick="openModal('loginModal')">👤 <span id="loginLabel">Login</span></button>
   <div class="menu-inner">
     <div class="menu-logo">
-      <h1>ZOMBIEZ</h1>
+      <h1>DEAD SURGE</h1>
       <p>Survive the Horde</p>
     </div>
     <div class="menu-btns">
@@ -123,7 +123,7 @@
       <button class="mbtn cfg"  onclick="openModal('settingsModal')">⚙&nbsp;&nbsp;Settings</button>
     </div>
   </div>
-  <span class="menu-ver">ZOMBIEZ v1.0</span>
+  <span class="menu-ver">DEAD SURGE v1.0</span>
 
   <!-- Leaderboard -->
   <div id="lbModal" class="modal-ov" style="display:none">
@@ -255,7 +255,7 @@ function unlockDoor(door) {
 // Called AFTER DOORS is defined so we can safely unlock them.
 (function loadEditorMap() {
   try {
-    const raw = localStorage.getItem('zombiez_map');
+    const raw = localStorage.getItem('deadsurge_map');
     if (!raw) return;
     const data = JSON.parse(raw);
     // Update map dimensions to match editor
@@ -276,8 +276,8 @@ function unlockDoor(door) {
     }
     // Unlock all default doors — they may not exist in the editor map
     DOORS.forEach(d => { d.unlocked = true; });
-    console.log('[Zombiez] Loaded editor map:', MAP_W + '×' + MAP_H);
-  } catch(e) { console.warn('[Zombiez] Failed to load editor map:', e); }
+    console.log('[Dead Surge] Loaded editor map:', MAP_W + '×' + MAP_H);
+  } catch(e) { console.warn('[Dead Surge] Failed to load editor map:', e); }
 })();
 
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
@@ -2614,15 +2614,15 @@ const API_URL = (window.location.hostname === 'localhost' || window.location.hos
   : 'https://zombiez-production.up.railway.app';
 
 // ── Core helpers ──────────────────────────────────────────────────────────────
-function getToken()  { return localStorage.getItem('zombiez_token'); }
-function getUser()   { try { return JSON.parse(localStorage.getItem('zombiez_authuser')); } catch { return null; } }
+function getToken()  { return localStorage.getItem('deadsurge_token'); }
+function getUser()   { try { return JSON.parse(localStorage.getItem('deadsurge_authuser')); } catch { return null; } }
 function setSession(token, user) {
-  localStorage.setItem('zombiez_token', token);
-  localStorage.setItem('zombiez_authuser', JSON.stringify(user));
+  localStorage.setItem('deadsurge_token', token);
+  localStorage.setItem('deadsurge_authuser', JSON.stringify(user));
 }
 function clearSession() {
-  localStorage.removeItem('zombiez_token');
-  localStorage.removeItem('zombiez_authuser');
+  localStorage.removeItem('deadsurge_token');
+  localStorage.removeItem('deadsurge_authuser');
 }
 
 async function apiPost(path, body, token) {
@@ -2744,11 +2744,11 @@ async function saveScore() {
     gold:  player.goldEarned || 0, score: game.score
   };
   // Always save to localStorage as fallback
-  let lb = JSON.parse(localStorage.getItem('zombiez_lb_local') || '[]');
+  let lb = JSON.parse(localStorage.getItem('deadsurge_lb_local') || '[]');
   const u = getUser();
   lb.push({ name: u ? u.username : 'Guest', ...payload, date: new Date().toLocaleDateString() });
   lb.sort((a,b) => b.round - a.round || b.kills - a.kills || b.score - a.score);
-  localStorage.setItem('zombiez_lb_local', JSON.stringify(lb.slice(0,20)));
+  localStorage.setItem('deadsurge_lb_local', JSON.stringify(lb.slice(0,20)));
   // Also post to API if logged in
   if (token) {
     try { await apiPost('/api/scores', payload, token); } catch {}
@@ -2766,7 +2766,7 @@ async function refreshLeaderboard() {
     if (ok && Array.isArray(data)) rows = data;
   } catch {
     // Fallback to local storage
-    rows = (JSON.parse(localStorage.getItem('zombiez_lb_local') || '[]'))
+    rows = (JSON.parse(localStorage.getItem('deadsurge_lb_local') || '[]'))
       .map(e => ({ username: e.name, round: e.round, kills: e.kills, gold: e.gold, score: e.score, date: e.date }));
   }
 
@@ -2787,7 +2787,7 @@ async function refreshLeaderboard() {
 function setMasterVol(v) {
   masterGain.gain.value = v / 100;
   document.getElementById('volVal').textContent = v + '%';
-  localStorage.setItem('zombiez_vol', v);
+  localStorage.setItem('deadsurge_vol', v);
 }
 function toggleFS() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
@@ -2829,7 +2829,7 @@ function menuBgLoop() {
 // ── Boot ─────────────────────────────────────────────────────────────────────
 (function boot() {
   updateLoginLabel();
-  const sv = localStorage.getItem('zombiez_vol');
+  const sv = localStorage.getItem('deadsurge_vol');
   if (sv !== null) { document.getElementById('volSlider').value=sv; setMasterVol(sv); }
   menuBgLoop();
 })();
