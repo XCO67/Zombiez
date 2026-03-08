@@ -2658,13 +2658,13 @@ function applyServerSnapshot(st) {
       if (pd.sa !== undefined) player.secondaryAmmo = pd.sa === -1 ? Infinity : pd.sa;
       player.heat = pd.ht || 0;
       player.overheated = !!pd.oh;
-      // Position reconciliation
+      // Position reconciliation — only snap/correct when idle to avoid fighting prediction
       if (!player._snapped) { player.cx = pd.cx; player.cy = pd.cy; player._snapped = true; }
       else {
         const ex = pd.cx - player.cx, ey = pd.cy - player.cy;
         const d = Math.hypot(ex, ey);
-        if (d > 5) { player.cx = pd.cx; player.cy = pd.cy; }
-        else if (d > 0.05) { player.cx += ex * 0.1; player.cy += ey * 0.1; }
+        if (d > 4) { player.cx = pd.cx; player.cy = pd.cy; }                         // large gap: snap
+        else if (!player.moving && d > 0.05) { player.cx += ex * 0.25; player.cy += ey * 0.25; } // idle drift correction only
       }
     } else {
       let rp = REMOTE_PLAYERS_MAP.get(pd.sl);
@@ -2697,7 +2697,13 @@ function applyServerSnapshot(st) {
     remote.forEach((rd, i) => {
       if (!local[i]) { local[i] = factory(rd); return; }
       local[i]._tx = rd[0]; local[i]._ty = rd[1];
+      const prevHp = local[i].hp;
       local[i].hp = rd[2]; local[i].dead = rd[rd.length-1] === 1;
+      // Client-side hit feedback: detect HP drops and show damage number + hit flash
+      if (rd[2] < prevHp && !local[i].dead) {
+        local[i].hitFlash = 8;
+        spawnDmgNum(rd[0]*TW, rd[1]*TH - TH*0.35, prevHp - rd[2], '#ff4444');
+      }
     });
   }
   syncEnts(ZOMBIES, st.z,
@@ -2773,14 +2779,13 @@ function mpAnimate() {
     if (keys['s']||keys['arrowdown'])  dy += 1;
     if (keys['a']||keys['arrowleft'])  dx -= 1;
     if (keys['d']||keys['arrowright']) dx += 1;
-    // Right-click move (when no WASD)
+    // Right-click move (when no WASD) — identical logic to solo updatePlayer()
     if (dx===0 && dy===0 && clickTarget) {
       const cdx=clickTarget.cx-player.cx, cdy=clickTarget.cy-player.cy;
       const dist=Math.hypot(cdx,cdy);
       if (dist<0.12) { clickTarget=null; }
       else { dx=cdx/dist; dy=cdy/dist; }
-    }
-    if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
+    } else if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
     player.moving = dx !== 0 || dy !== 0;
     player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.10);
     if (player.moving) {
@@ -2823,7 +2828,6 @@ function mpAnimate() {
         }
       }
     }
-    if (muzzleFlash > 0) muzzleFlash--;
   }
 
   // Lerp remote players

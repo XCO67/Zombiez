@@ -399,8 +399,7 @@ class GameRoom {
         const cdx = inp.ctx - ps.cx, cdy = inp.cty - ps.cy;
         const dist = Math.hypot(cdx, cdy);
         if (dist > 0.12) { dx = cdx / dist; dy = cdy / dist; }
-      }
-      if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
+      } else if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
       ps.moving = dx !== 0 || dy !== 0;
       const sp = PLAYER_SPEED_S * (1 + Math.min(ps.upgrades.moveSpeed, 5) * 0.10);
       ps.speed = sp;
