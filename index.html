@@ -948,20 +948,17 @@ function drawPapMachine() {
   // [E] prompt when near and has a secondary weapon to upgrade
   const dist = Math.hypot(player.cx - PAP_POS.cx, player.cy - PAP_POS.cy);
   if (dist < PAP_RADIUS) {
-    const wk = player.weaponKey !== 'pistol' ? player.weaponKey : player.secondaryKey;
+    const wk = player.weaponKey;
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
-    if (wk && wk !== 'pistol' && !player.packedWeapons.has(wk)) {
+    if (!player.packedWeapons.has(wk)) {
       const label = `[E] Pack ${WEAPONS[wk].name}  $${PAP_COST}`;
       const canAfford = player.money >= PAP_COST;
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz * 1.5 + 1);
       ctx.fillStyle = canAfford ? `hsl(${hue},100%,72%)` : '#888'; ctx.fillText(label, px, py - sz * 1.5);
-    } else if (wk && player.packedWeapons.has(wk)) {
+    } else {
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText('Already Packed!', px+1, py - sz*1.5+1);
       ctx.fillStyle = `hsl(${hue},100%,70%)`; ctx.fillText('Already Packed!', px, py - sz*1.5);
-    } else {
-      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText('Need a weapon first', px+1, py - sz*1.5+1);
-      ctx.fillStyle = '#aaa'; ctx.fillText('Need a weapon first', px, py - sz*1.5);
     }
     ctx.restore();
   }
@@ -1259,9 +1256,8 @@ document.addEventListener('keydown', e => {
       }
       const distPap = Math.hypot(player.cx-PAP_POS.cx, player.cy-PAP_POS.cy);
       if (distPap < PAP_RADIUS) {
-        const wk = player.weaponKey !== 'pistol' ? player.weaponKey : player.secondaryKey;
-        if (wk && wk !== 'pistol') {
-          if (player.packedWeapons.has(wk)) return; // already packed
+        const wk = player.weaponKey;
+        if (!player.packedWeapons.has(wk)) {
           if (player.money < PAP_COST) return;
           player.money -= PAP_COST;
           player.packedWeapons.add(wk);
