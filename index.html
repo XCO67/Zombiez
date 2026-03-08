@@ -2751,19 +2751,28 @@ function applyHostState(st) {
       player.weaponKey=pd.wk;player.ammo=pd.am===-1?Infinity:pd.am;
     } else {
       const rp=createRemotePlayer(pd.nm,pd.sl);
-      Object.assign(rp,{cx:pd.cx,cy:pd.cy,hp:pd.hp,maxHp:pd.mhp,
+      Object.assign(rp,{_tx:pd.cx,_ty:pd.cy,hp:pd.hp,maxHp:pd.mhp,
         facing:pd.f,frame:pd.fr,moving:!!pd.mv,dead:!!pd.dead,downed:!!pd.dn,
         downedTimer:pd.dt,reviveProgress:(pd.rvp||0)*240,
         weaponKey:pd.wk,ammo:pd.am===-1?Infinity:pd.am});
+      // First time seeing this player: snap to position instead of lerp
+      if(!rp.cx) { rp.cx=pd.cx; rp.cy=pd.cy; }
       REMOTE_PLAYERS.push(rp);
     }
   });
-  ZOMBIES.length=0;
-  st.z.forEach(z=>ZOMBIES.push({cx:z.cx,cy:z.cy,hp:z.hp,maxHp:z.mhp||100,facing:z.f,frame:z.fr,dead:false,hitFlash:0,deathTimer:0}));
-  SKELETONS.length=0;
-  st.sk.forEach(s=>SKELETONS.push({cx:s.cx,cy:s.cy,hp:s.hp,maxHp:110,facing:s.f,frame:s.fr,dead:false,hitFlash:0,deathTimer:0}));
-  DRAGONS.length=0;
-  st.dr.forEach(d=>DRAGONS.push({cx:d.cx,cy:d.cy,hp:d.hp,maxHp:200,facing:d.f,frame:d.fr,dead:false,hitFlash:0,deathTimer:0,fireTimer:0}));
+  // Enemies: interpolate positions (don't hard-replace so they move smoothly)
+  function syncEnemies(local, remote, factory) {
+    // Trim extras
+    while(local.length > remote.length) local.pop();
+    remote.forEach((rd,i)=>{
+      if(!local[i]) { local[i]=factory(rd); return; }
+      local[i]._tx=rd.cx; local[i]._ty=rd.cy; // store target
+      local[i].hp=rd.hp; local[i].facing=rd.f; local[i].dead=false;
+    });
+  }
+  syncEnemies(ZOMBIES,   st.z,  z=>({cx:z.cx,cy:z.cy,_tx:z.cx,_ty:z.cy,hp:z.hp,maxHp:z.mhp||100,facing:z.f,frame:z.fr,dead:false,hitFlash:0,deathTimer:0}));
+  syncEnemies(SKELETONS, st.sk, s=>({cx:s.cx,cy:s.cy,_tx:s.cx,_ty:s.cy,hp:s.hp,maxHp:110,facing:s.f,frame:s.fr,dead:false,hitFlash:0,deathTimer:0}));
+  syncEnemies(DRAGONS,   st.dr, d=>({cx:d.cx,cy:d.cy,_tx:d.cx,_ty:d.cy,hp:d.hp,maxHp:200,facing:d.f,frame:d.fr,dead:false,hitFlash:0,deathTimer:0,fireTimer:0}));
   projectiles.length=0;
   st.pr.forEach(p=>projectiles.push({x:p.x,y:p.y,vx:p.vx,vy:p.vy,color:p.c,trail:p.t,life:p.l,prevX:p.x,prevY:p.y,dmg:0,pierce:false}));
   FLAMES.length=0;
@@ -2778,7 +2787,30 @@ function applyHostState(st) {
 
 // ── Guest: local animation between state packets ──────────────────────────────
 function guestAnimate() {
-  // Keep projectiles moving locally so they look smooth between 30fps state updates
+  const L = 0.35; // lerp factor — higher = snappier, lower = smoother
+
+  // Lerp enemies toward server-authoritative target positions
+  ZOMBIES.forEach(z=>{
+    if(z._tx!==undefined){ z.cx+=(z._tx-z.cx)*L; z.cy+=(z._ty-z.cy)*L; }
+    z._ft=(z._ft||0)+1/60; if(z._ft>=.11){z._ft=0;z.frame=(z.frame+1)%8;}
+    if(z.hitFlash>0)z.hitFlash--;
+  });
+  SKELETONS.forEach(s=>{
+    if(s._tx!==undefined){ s.cx+=(s._tx-s.cx)*L; s.cy+=(s._ty-s.cy)*L; }
+    s._ft=(s._ft||0)+1/60; if(s._ft>=.09){s._ft=0;s.frame=(s.frame+1)%4;}
+    if(s.hitFlash>0)s.hitFlash--;
+  });
+  DRAGONS.forEach(d=>{
+    if(d._tx!==undefined){ d.cx+=(d._tx-d.cx)*L; d.cy+=(d._ty-d.cy)*L; }
+    d._ft=(d._ft||0)+1/60; if(d._ft>=.11){d._ft=0;d.frame=(d.frame+1)%8;}
+    if(d.hitFlash>0)d.hitFlash--;
+  });
+  // Lerp remote players
+  REMOTE_PLAYERS.forEach(rp=>{
+    if(rp._tx!==undefined){ rp.cx+=(rp._tx-rp.cx)*L; rp.cy+=(rp._ty-rp.cy)*L; }
+    if(rp.moving){ rp._ft=(rp._ft||0)+1; if(rp._ft>=8){rp._ft=0;rp.frame=(rp.frame+1)%6;} }
+  });
+  // Projectiles move at full speed locally
   for(let i=projectiles.length-1;i>=0;i--){
     const p=projectiles[i];
     p.prevX=p.x;p.prevY=p.y;p.x+=p.vx;p.y+=p.vy;p.life--;
@@ -2789,6 +2821,8 @@ function guestAnimate() {
   FLAMES.forEach(f=>{f.x+=f.vx;f.y+=f.vy;f.life--;});
   for(let i=FLAMES.length-1;i>=0;i--){if(FLAMES[i].life<=0)FLAMES.splice(i,1);}
   COINS.forEach(c=>{c.bob=(c.bob||0)+0.08;});
+  updateDmgNums();
+  updateEffects();
 }
 
 // ── Draw remote players ───────────────────────────────────────────────────────
@@ -2988,8 +3022,6 @@ function render(now) {
     }
     updateCamera();
     guestAnimate();
-    updateDmgNums();
-    updateEffects();
   } else {
     updateCamera();
     updatePlayer();
@@ -3008,7 +3040,7 @@ function render(now) {
     updateEffects();
     updateWave();
     if (mp.mode==='host') {
-      if(++mpStateFrame>=2){ mpStateFrame=0; mp.socket.emit('game_state',serializeState()); }
+      mp.socket.emit('game_state', serializeState());
     }
   }
 
