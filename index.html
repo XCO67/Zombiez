@@ -2767,19 +2767,30 @@ function applyHostState(state) {
       REMOTE_PLAYERS.push(rp);
     }
   });
-  // Sync enemies
-  ZOMBIES.length=0;
-  state.z.forEach(z=>ZOMBIES.push({cx:z.cx,cy:z.cy,hp:z.hp,maxHp:z.mhp||100,facing:z.f,frame:z.fr,dead:false,hitFlash:0,deathTimer:0}));
-  SKELETONS.length=0;
-  state.sk.forEach(s=>SKELETONS.push({cx:s.cx,cy:s.cy,hp:s.hp,maxHp:110,facing:s.f,frame:s.fr,dead:false,hitFlash:0,deathTimer:0}));
-  DRAGONS.length=0;
-  state.dr.forEach(d=>DRAGONS.push({cx:d.cx,cy:d.cy,hp:d.hp,maxHp:200,facing:d.f,frame:d.fr,dead:false,hitFlash:0,deathTimer:0,fireTimer:0}));
+  // Sync enemies — lerp positions to avoid teleport (α=0.4 snaps fast but smoothly)
+  const LERP = 0.45;
+  function syncArray(local, remote, factory) {
+    // Remove excess
+    while (local.length > remote.length) local.pop();
+    remote.forEach((rd, i) => {
+      if (!local[i]) { local[i] = factory(rd); return; }
+      local[i].cx += (rd.cx - local[i].cx) * LERP;
+      local[i].cy += (rd.cy - local[i].cy) * LERP;
+      local[i].hp = rd.hp; local[i].facing = rd.f;
+      local[i].dead = false;
+    });
+  }
+  syncArray(ZOMBIES,   state.z,  z=>({cx:z.cx,cy:z.cy,hp:z.hp,maxHp:z.mhp||100,facing:z.f,frame:0,dead:false,hitFlash:0,deathTimer:0,_ft:0}));
+  syncArray(SKELETONS, state.sk, s=>({cx:s.cx,cy:s.cy,hp:s.hp,maxHp:110,facing:s.f,frame:0,dead:false,hitFlash:0,deathTimer:0,_ft:0}));
+  syncArray(DRAGONS,   state.dr, d=>({cx:d.cx,cy:d.cy,hp:d.hp,maxHp:200,facing:d.f,frame:0,dead:false,hitFlash:0,deathTimer:0,fireTimer:0,_ft:0}));
+  // Projectiles: just replace (short-lived, lerping not needed)
   projectiles.length=0;
   state.pr.forEach(p=>projectiles.push({x:p.x,y:p.y,vx:p.vx,vy:p.vy,color:p.c,trail:p.t,life:p.l,prevX:p.x,prevY:p.y,dmg:0,pierce:false,owner:'remote'}));
   FLAMES.length=0;
   state.fl.forEach(f=>FLAMES.push({x:f.x,y:f.y,vx:f.vx,vy:f.vy,life:f.l}));
-  COINS.length=0;
-  state.co.forEach(c=>COINS.push({cx:c.cx,cy:c.cy,amount:c.am,bob:0}));
+  // Coins: lerp positions
+  syncArray(COINS, state.co, c=>({cx:c.cx,cy:c.cy,amount:c.am,bob:0}));
+  COINS.forEach((c,i)=>{ if(state.co[i]) c.amount=state.co[i].am; });
   game.round=state.g.r; game.kills=state.g.k; game.score=state.g.sc;
   game.state=state.g.st; game.waveTimer=state.g.wt;
   spawnRemaining=state.g.sp||0; player.money=state.g.mo;
@@ -2871,7 +2882,7 @@ function sendGuestInput() {
     keys: { w:!!(keys['w']||keys['arrowup']), s:!!(keys['s']||keys['arrowdown']),
             a:!!(keys['a']||keys['arrowleft']), d:!!(keys['d']||keys['arrowright']) },
     mx: (mouse.x + camX), my: (mouse.y + camY),
-    shooting: !!mouseDown,
+    shooting: !!mouse.down,
     swap: !!(keys['q']),
     revive: !!(keys['f']),
   });
@@ -2970,6 +2981,35 @@ function renderMpLobby() {
     </div>`).join('');
 }
 
+// Guest-side local physics — runs every frame to keep rendering smooth between host state updates
+function guestLocalPhysics() {
+  // Move projectiles forward locally
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.prevX = p.x; p.prevY = p.y;
+    p.x += p.vx; p.y += p.vy;
+    p.life--;
+    if (p.life <= 0) { projectiles.splice(i, 1); continue; }
+    const tr = Math.floor(p.y / TH), tc = Math.floor(p.x / TW);
+    if (tr < 0 || tr >= MAP_H || tc < 0 || tc >= MAP_W || MAP[tr]?.[tc] === T.WALL || MAP[tr]?.[tc] === T.PILLAR) {
+      projectiles.splice(i, 1);
+    }
+  }
+  // Move flames forward locally
+  for (let i = FLAMES.length - 1; i >= 0; i--) {
+    const f = FLAMES[i]; f.x += f.vx; f.y += f.vy; f.life--;
+    if (f.life <= 0) FLAMES.splice(i, 1);
+  }
+  // Animate enemy frames locally (so they don't freeze)
+  ZOMBIES.forEach(z => { z._ft=(z._ft||0)+1; if(z._ft>=8){z._ft=0;z.frame=(z.frame+1)%8;} });
+  SKELETONS.forEach(s => { s._ft=(s._ft||0)+1; if(s._ft>=6){s._ft=0;s.frame=(s.frame+1)%4;} });
+  DRAGONS.forEach(d => { d._ft=(d._ft||0)+1; if(d._ft>=8){d._ft=0;d.frame=(d.frame+1)%8;} });
+  // Bob coins
+  COINS.forEach(c => { c.bob=(c.bob||0)+0.08; });
+  // Tick perks/effects
+  Object.keys(activePerkTimers).forEach(k => { if(activePerkTimers[k]>0) activePerkTimers[k]--; });
+}
+
 // ─── RENDER LOOP ──────────────────────────────────────────────────────────────
 let t = 0;
 let gameStarted = false; // true once player clicks PLAY
@@ -2986,8 +3026,13 @@ function render(now) {
 
   // ── Logic ────────────────────────────────────────────────────────────────────
   if (mp.mode === 'guest') {
+    // Send input every frame for responsive feel
     sendGuestInput();
+    // Run local physics between host state corrections (dead reckoning)
     updateCamera();
+    guestLocalPhysics();
+    updateDmgNums();
+    updateEffects();
   } else {
     updateCamera();
     updatePlayer();
@@ -3006,7 +3051,10 @@ function render(now) {
     updateWave();
     if (mp.mode === 'host') {
       mpStateFrame++;
-      if (mpStateFrame >= 2) { mpStateFrame=0; mp.socket.emit('game_state', serializeGameState()); }
+      if (mpStateFrame >= 2) {
+        mpStateFrame = 0;
+        mp.socket.emit('game_state', serializeGameState());
+      }
     }
   }
 
