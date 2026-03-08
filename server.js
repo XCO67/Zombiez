@@ -1,4 +1,6 @@
 const express  = require('express');
+const http     = require('http');
+const { Server } = require('socket.io');
 const { Pool } = require('pg');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
@@ -9,12 +11,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, { cors: { origin: '*' } });
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'zombiez_dev_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'deadsurge_dev_secret';
 
 // ── Bootstrap tables ──────────────────────────────────────────────────────────
 async function initDB() {
@@ -127,7 +132,6 @@ app.post('/api/scores', authMiddleware, async (req, res) => {
 });
 
 // ── GET /api/leaderboard ──────────────────────────────────────────────────────
-// Sorts by round DESC → kills DESC → score DESC (surviving = most impressive)
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -145,5 +149,83 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+// ── MULTIPLAYER ROOMS ─────────────────────────────────────────────────────────
+const rooms = new Map(); // code -> { code, hostId, players:[{id,name,slot}] }
+
+function makeCode() {
+  let code;
+  do { code = Math.random().toString(36).substr(2,6).toUpperCase(); } while (rooms.has(code));
+  return code;
+}
+
+io.on('connection', socket => {
+  console.log('[MP] connect', socket.id);
+
+  socket.on('create_room', ({ name }) => {
+    const code = makeCode();
+    const room = { code, hostId: socket.id, players: [{ id: socket.id, name: name || 'Player', slot: 0 }] };
+    rooms.set(code, room);
+    socket.join(code);
+    socket.data.code = code;
+    socket.data.slot = 0;
+    socket.emit('room_created', { code, slot: 0, players: room.players });
+    console.log('[MP] room created', code);
+  });
+
+  socket.on('join_room', ({ code, name }) => {
+    const room = rooms.get((code||'').toUpperCase());
+    if (!room) return socket.emit('mp_error', 'Room not found');
+    if (room.players.length >= 4) return socket.emit('mp_error', 'Room is full (max 4)');
+    const slot = room.players.length;
+    room.players.push({ id: socket.id, name: name || 'Player', slot });
+    socket.join(room.code);
+    socket.data.code = room.code;
+    socket.data.slot = slot;
+    socket.emit('room_joined', { code: room.code, slot, players: room.players });
+    socket.to(room.code).emit('lobby_update', room.players);
+    console.log('[MP] join', room.code, 'slot', slot);
+  });
+
+  socket.on('start_game', () => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.hostId !== socket.id) return;
+    io.to(room.code).emit('game_start', room.players);
+    console.log('[MP] start', room.code);
+  });
+
+  // Host → guests: full game state
+  socket.on('game_state', state => {
+    const code = socket.data.code;
+    if (!code) return;
+    socket.to(code).emit('game_state', state);
+  });
+
+  // Guest → host: player input
+  socket.on('player_input', input => {
+    const code = socket.data.code;
+    if (!code) return;
+    const room = rooms.get(code);
+    if (!room) return;
+    io.to(room.hostId).emit('player_input', { ...input, slot: socket.data.slot });
+  });
+
+  socket.on('disconnect', () => {
+    const code = socket.data.code;
+    if (!code) return;
+    const room = rooms.get(code);
+    if (!room) return;
+    if (room.hostId === socket.id) {
+      io.to(code).emit('host_left');
+      rooms.delete(code);
+      console.log('[MP] host left, room', code, 'closed');
+    } else {
+      room.players = room.players.filter(p => p.id !== socket.id);
+      io.to(code).emit('lobby_update', room.players);
+      io.to(room.hostId).emit('player_left', { slot: socket.data.slot });
+      console.log('[MP] guest slot', socket.data.slot, 'left', code);
+    }
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`[Zombiez] server listening on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`[Dead Surge] server listening on port ${PORT}`));

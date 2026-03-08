@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dead Surge</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { overflow: hidden; background: #0c0b12; cursor: none; }
@@ -106,6 +107,19 @@
     .auth-tab { flex:1; padding:11px; background:rgba(255,255,255,.04); border:none; color:rgba(255,255,255,.4); font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .15s; font-family:'Segoe UI',sans-serif; }
     .auth-tab:hover { color:rgba(255,255,255,.75); background:rgba(255,255,255,.08); }
     .auth-tab.active { background:rgba(130,55,220,.35); color:#cc99ff; }
+    /* multiplayer */
+    .mbtn.mp { background:rgba(0,160,80,.16); border-color:rgba(0,230,120,.3); color:#66ffaa; }
+    .mbtn.mp:hover { background:rgba(0,190,100,.28); border-color:#00ee88; color:#fff; box-shadow:0 6px 28px rgba(0,180,80,.3); }
+    .mp-code { font-size:34px; font-weight:900; letter-spacing:.22em; color:#00ffaa; text-align:center; margin:14px 0; text-shadow:0 0 20px #00cc88; }
+    .mp-players { width:100%; margin:14px 0; }
+    .mp-player-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; margin-bottom:6px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); }
+    .mp-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .mp-pname { color:#ddd; font-size:14px; flex:1; }
+    .mp-host-badge { font-size:10px; color:#ffcc44; letter-spacing:.08em; background:rgba(255,200,0,.12); border:1px solid rgba(255,200,0,.28); padding:2px 7px; border-radius:4px; }
+    .mp-input-row { display:flex; gap:8px; margin-bottom:12px; }
+    .mp-input-row .linput { margin-bottom:0; flex:1; }
+    .mp-input-row .lsave { width:auto; padding:12px 18px; flex-shrink:0; }
+    .mp-msg { text-align:center; color:#ff8888; font-size:13px; min-height:18px; margin-bottom:8px; }
   </style>
 </head>
 <body>
@@ -119,11 +133,40 @@
     </div>
     <div class="menu-btns">
       <button class="mbtn play" onclick="startGame()">▶&nbsp;&nbsp;Play</button>
+      <button class="mbtn mp"   onclick="openModal('mpModal')">👥&nbsp;&nbsp;Multiplayer</button>
       <button class="mbtn lb"   onclick="openModal('lbModal')">🏆&nbsp;&nbsp;Leaderboard</button>
       <button class="mbtn cfg"  onclick="openModal('settingsModal')">⚙&nbsp;&nbsp;Settings</button>
     </div>
   </div>
   <span class="menu-ver">DEAD SURGE v1.0</span>
+
+  <!-- Multiplayer Lobby -->
+  <div id="mpModal" class="modal-ov" style="display:none">
+    <div class="modal-box" style="max-width:440px">
+      <button class="modal-x" onclick="mpClose()">✕</button>
+      <div class="modal-title">👥 Multiplayer</div>
+      <div class="mp-msg" id="mpMsg"></div>
+
+      <!-- Join/Create view -->
+      <div id="mpLobbySetup">
+        <button class="lsave" style="margin-bottom:12px" onclick="mpCreate()">Create Room</button>
+        <div class="mp-input-row">
+          <input class="linput" id="mpJoinCode" placeholder="Room code" maxlength="6" style="text-transform:uppercase;letter-spacing:.15em">
+          <button class="lsave" onclick="mpJoin()">Join</button>
+        </div>
+      </div>
+
+      <!-- Lobby view (after create/join) -->
+      <div id="mpLobbyRoom" style="display:none">
+        <div style="text-align:center;color:rgba(255,255,255,.45);font-size:12px;letter-spacing:.1em;margin-bottom:4px">ROOM CODE</div>
+        <div class="mp-code" id="mpRoomCode">——</div>
+        <div style="color:rgba(255,255,255,.35);font-size:12px;text-align:center;margin-bottom:14px">Share this code with your friends</div>
+        <div class="mp-players" id="mpPlayerList"></div>
+        <button class="lsave" id="mpStartBtn" style="display:none" onclick="mpStartGame()">Start Game</button>
+        <div style="text-align:center;color:rgba(255,255,255,.28);font-size:12px;margin-top:10px" id="mpWaitMsg">Waiting for host to start...</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Leaderboard -->
   <div id="lbModal" class="modal-ov" style="display:none">
@@ -515,7 +558,7 @@ const PLAYER_SPEED = 0.055;
 const player = {
   cx:PLAYER_START.cx, cy:PLAYER_START.cy, facing:'south',
   frame:0, ft:0, moving:false, speed:PLAYER_SPEED,
-  hp:100, maxHp:100, hurtTimer:0, dead:false,
+  hp:100, maxHp:100, hurtTimer:0, dead:false, downed:false, downedTimer:0, reviveProgress:0,
   money:0, goldEarned:0,
   upgrades:{ damage:0, atkSpeed:0, crit:0, moveSpeed:0, hpRegen:0 },
   weaponKey:'pistol', ammo:Infinity,
@@ -1140,7 +1183,20 @@ canvas.addEventListener('wheel', e => {
 }, { passive: false });
 
 function updatePlayer() {
-  if (player.dead) return;
+  // Revive nearby downed remote players with F key
+  if (!player.dead && !player.downed && mp.mode === 'host') {
+    REMOTE_PLAYERS.forEach(rp => {
+      if (!rp.downed) return;
+      const dist = Math.hypot(player.cx-rp.cx, player.cy-rp.cy);
+      if (dist < 2.0 && keys['f']) {
+        rp.reviveProgress++;
+        if (rp.reviveProgress >= 240) {
+          rp.downed=false; rp.hp=Math.ceil(rp.maxHp*.35); rp.reviveProgress=0; rp.downedTimer=0;
+        }
+      } else { rp.reviveProgress=Math.max(0,rp.reviveProgress-2); }
+    });
+  }
+  if (player.dead || player.downed) return;
   let dx=0, dy=0;
 
   // WASD input
@@ -1570,10 +1626,10 @@ function updateZombies() {
     const dx=player.cx-z.cx,dy=player.cy-z.cy,dist=Math.hypot(dx,dy);
     if (dist>0.4){z.cx+=(dx/dist)*spd;z.cy+=(dy/dist)*spd;}
     // Hurt player on contact
-    if (dist<0.65&&player.hurtTimer<=0&&!player.dead&&game.state==='playing'){
+    if (dist<0.65&&player.hurtTimer<=0&&!player.dead&&!player.downed&&game.state==='playing'){
       player.hp=Math.max(0,player.hp-8);
       player.hurtTimer=45;
-      if (player.hp<=0){player.dead=true;game.state='game_over';shopOpen=false;}
+      if (player.hp<=0) playerGoDown();
     }
     z.ft+=1/60; if(z.ft>=.11){z.frame=(z.frame+1)%8;z.ft=0;}
     if(z.hitFlash>0)z.hitFlash--;
@@ -1653,13 +1709,13 @@ function updateSkeletons() {
     const dx=player.cx-s.cx,dy=player.cy-s.cy,dist=Math.hypot(dx,dy);
     if(dist>0.4){s.cx+=(dx/dist)*spd;s.cy+=(dy/dist)*spd;}
     // Contact: steal money + tiny HP hit
-    if(dist<0.62&&player.hurtTimer<=0&&!player.dead&&game.state==='playing'){
+    if(dist<0.62&&player.hurtTimer<=0&&!player.dead&&!player.downed&&game.state==='playing'){
       const stolen=Math.min(player.money, SKEL_STEAL);
       player.money=Math.max(0,player.money-stolen);
       if(stolen>0) spawnDmgNum(player.cx*TW,player.cy*TH-TH,stolen,'#f5c518');
       player.hp=Math.max(0,player.hp-4);
       player.hurtTimer=45;
-      if(player.hp<=0){player.dead=true;game.state='game_over';shopOpen=false;}
+      if(player.hp<=0) playerGoDown();
     }
     s.ft+=1/60;if(s.ft>=.09){s.frame=(s.frame+1)%4;s.ft=0;}
     if(s.hitFlash>0)s.hitFlash--;
@@ -1744,9 +1800,9 @@ function updateDragons() {
     const dx=player.cx-d.cx, dy=player.cy-d.cy, dist=Math.hypot(dx,dy);
     if(dist>0.5){d.cx+=(dx/dist)*DRAGON_SPEED;d.cy+=(dy/dist)*DRAGON_SPEED;}
     // Melee contact
-    if(dist<0.9&&player.hurtTimer<=0&&!player.dead&&game.state==='playing'){
+    if(dist<0.9&&player.hurtTimer<=0&&!player.dead&&!player.downed&&game.state==='playing'){
       player.hp=Math.max(0,player.hp-12); player.hurtTimer=45;
-      if(player.hp<=0){player.dead=true;game.state='game_over';shopOpen=false;}
+      if(player.hp<=0) playerGoDown();
     }
     // Flame attack
     d.fireTimer++;
@@ -1765,9 +1821,9 @@ function updateFlames() {
     const tr=Math.floor(f.y/TH),tc=Math.floor(f.x/TW);
     const wallHit=f.life<=0||tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR;
     if(wallHit){FLAMES.splice(i,1);continue;}
-    if(!player.dead&&player.hurtTimer<=0&&Math.hypot(f.x-player.cx*TW,f.y-player.cy*TH)<TW*.55){
+    if(!player.dead&&!player.downed&&player.hurtTimer<=0&&Math.hypot(f.x-player.cx*TW,f.y-player.cy*TH)<TW*.55){
       player.hp=Math.max(0,player.hp-FLAME_DMG); player.hurtTimer=45;
-      if(player.hp<=0){player.dead=true;game.state='game_over';shopOpen=false;}
+      if(player.hp<=0) playerGoDown();
       FLAMES.splice(i,1);
     }
   }
@@ -1865,7 +1921,8 @@ function updateWave() {
 function restartGame() {
   Object.assign(player,{cx:PLAYER_START.cx,cy:PLAYER_START.cy,hp:100,hurtTimer:0,dead:false,moving:false,speed:PLAYER_SPEED,facing:'south',frame:0,ft:0,
     money:0, goldEarned:0, upgrades:{damage:0,atkSpeed:0,crit:0,moveSpeed:0,hpRegen:0}, weaponKey:'pistol', ammo:Infinity,
-    secondaryKey:null, secondaryAmmo:0, regenTimer:0, regenAccum:0, heat:0, overheated:false});
+    secondaryKey:null, secondaryAmmo:0, regenTimer:0, regenAccum:0, heat:0, overheated:false,
+    downed:false, downedTimer:0, reviveProgress:0});
   Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false});
   Object.assign(box,{state:'idle',spinTimer:0,result:null,notifTimer:0,notifWeapon:''});
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
@@ -2523,6 +2580,396 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke) {
   if(stroke)ctx.stroke();
 }
 
+// ─── MULTIPLAYER ──────────────────────────────────────────────────────────────
+const PLAYER_COLORS = ['#60c0ff','#ff6b6b','#6bff6b','#ffcc44'];
+const mp = { socket:null, mode:null, room:null, slot:0, players:[] };
+const REMOTE_PLAYERS = []; // up to 3 extra player objects (host-controlled on host, display-only on guest)
+const guestInputs = {};    // host: slot -> latest input from that guest
+let mpStateFrame = 0;
+let hostState = null;      // guest: latest state from host
+
+function mpPlayerColor(slot) { return PLAYER_COLORS[slot] || '#ffffff'; }
+
+function createRemotePlayer(name, slot) {
+  return {
+    cx: PLAYER_START.cx + slot*1.5, cy: PLAYER_START.cy,
+    facing:'south', frame:0, ft:0, moving:false, speed:PLAYER_SPEED,
+    hp:100, maxHp:100, hurtTimer:0,
+    dead:false, downed:false, downedTimer:0, reviveProgress:0,
+    weaponKey:'pistol', ammo:Infinity, secondaryKey:null, secondaryAmmo:0,
+    heat:0, overheated:false, shootCooldown:0,
+    name, slot, color: mpPlayerColor(slot),
+  };
+}
+
+// Called when local player HP hits 0
+function playerGoDown() {
+  if (player.downed || player.dead) return;
+  if (mp.mode === null) {
+    // Solo: just game over
+    player.dead = true; game.state = 'game_over'; shopOpen = false; return;
+  }
+  player.downed = true; player.hp = 1;
+  player.downedTimer = 1800; // 30s at 60fps
+  shopOpen = false;
+}
+
+// Remote player goes down (host-side)
+function remoteGoDown(rp) {
+  if (rp.downed || rp.dead) return;
+  rp.downed = true; rp.hp = 1; rp.downedTimer = 1800;
+}
+
+// Check if game over (all players dead/downed-and-expired in MP)
+function checkMpGameOver() {
+  if (mp.mode === null) return;
+  const localOut = player.dead || (player.downed && player.downedTimer <= 0);
+  const remoteOut = REMOTE_PLAYERS.every(r => r.dead || (r.downed && r.downedTimer <= 0));
+  if (localOut && (REMOTE_PLAYERS.length === 0 || remoteOut)) {
+    game.state = 'game_over'; shopOpen = false;
+  }
+}
+
+// Update remote players on the host each frame
+function updateRemotePlayers() {
+  if (mp.mode !== 'host') return;
+  REMOTE_PLAYERS.forEach(rp => {
+    if (rp.dead) return;
+    if (rp.downed) {
+      rp.downedTimer--;
+      if (rp.downedTimer <= 0) { rp.dead = true; rp.downed = false; }
+      // Check if local player is near and holding F to revive
+      const dist = Math.hypot(player.cx - rp.cx, player.cy - rp.cy);
+      const inp = guestInputs[rp.slot];
+      const localReviving = !player.dead && !player.downed && dist < 2.0 && keys['f'];
+      const guestReviving = inp && inp.revive && !player.dead && !player.downed;
+      if (localReviving || guestReviving) {
+        rp.reviveProgress++;
+        if (rp.reviveProgress >= 240) { // 4 seconds
+          rp.downed = false; rp.hp = Math.ceil(rp.maxHp * 0.35);
+          rp.reviveProgress = 0; rp.downedTimer = 0;
+        }
+      } else { rp.reviveProgress = Math.max(0, rp.reviveProgress - 2); }
+      return;
+    }
+    rp.reviveProgress = 0;
+    const inp = guestInputs[rp.slot];
+    if (!inp) return;
+    let dx=0, dy=0;
+    if (inp.keys.w) dy-=1; if (inp.keys.s) dy+=1;
+    if (inp.keys.a) dx-=1; if (inp.keys.d) dx+=1;
+    if (dx||dy) {
+      const len=Math.hypot(dx,dy)||1;
+      const nx=rp.cx+(dx/len)*rp.speed, ny=rp.cy+(dy/len)*rp.speed;
+      if(canWalk(nx,rp.cy)) rp.cx=nx;
+      if(canWalk(rp.cx,ny)) rp.cy=ny;
+      rp.moving=true; rp.facing=dir8(dx,dy);
+      rp.ft++; if(rp.ft>=8){rp.ft=0;rp.frame=(rp.frame+1)%6;}
+    } else { rp.moving=false; }
+    if(rp.hurtTimer>0) rp.hurtTimer--;
+    if(rp.shootCooldown>0) rp.shootCooldown--;
+    if(inp.shooting && rp.shootCooldown<=0) {
+      const w=WEAPONS[rp.weaponKey];
+      rp.shootCooldown=w.fireRate;
+      const ang=Math.atan2(inp.my-(rp.cy*TH), inp.mx-(rp.cx*TW));
+      for(let p=0;p<w.pellets;p++){
+        const a=ang+(Math.random()-0.5)*w.spread;
+        projectiles.push({x:rp.cx*TW,y:rp.cy*TH,vx:Math.cos(a)*w.speed*TW*.06,vy:Math.sin(a)*w.speed*TW*.06,
+          dmg:w.baseDmg,color:rp.color,trail:rp.color,life:90,pierce:w.pierce||false,
+          prevX:rp.cx*TW,prevY:rp.cy*TH,owner:'remote'});
+      }
+    }
+    if(inp.swap && !inp._swapLast) swapWeaponFor(rp);
+    inp._swapLast = inp.swap;
+  });
+  // Check downed revive of local player by remote players
+  if (player.downed) {
+    player.downedTimer--;
+    if (player.downedTimer <= 0) { player.dead = true; player.downed = false; }
+    let anyReviving = false;
+    REMOTE_PLAYERS.forEach(rp => {
+      if (rp.dead || rp.downed) return;
+      const dist = Math.hypot(rp.cx - player.cx, rp.cy - player.cy);
+      const inp = guestInputs[rp.slot];
+      if (inp && inp.revive && dist < 2.0) anyReviving = true;
+    });
+    if (!player.downed) return; // just died
+    if (anyReviving) {
+      player.reviveProgress++;
+      if (player.reviveProgress >= 240) {
+        player.downed = false; player.hp = Math.ceil(player.maxHp * 0.35);
+        player.reviveProgress = 0; player.downedTimer = 0;
+      }
+    } else { player.reviveProgress = Math.max(0, player.reviveProgress - 2); }
+    checkMpGameOver(); return;
+  }
+  // Also allow local player to revive themselves check is handled in local updatePlayer
+}
+
+function swapWeaponFor(rp) {
+  if (!rp.secondaryKey) return;
+  if (rp.weaponKey === 'pistol') {
+    rp.weaponKey = rp.secondaryKey; rp.ammo = rp.secondaryAmmo;
+  } else {
+    rp.secondaryAmmo = rp.ammo; rp.weaponKey = 'pistol'; rp.ammo = Infinity;
+  }
+}
+
+// Serialize entire game state (host → guests)
+function serializeGameState() {
+  const allP = [
+    { cx:+player.cx.toFixed(2), cy:+player.cy.toFixed(2), hp:player.hp, mhp:player.maxHp,
+      f:player.facing, fr:player.frame, mv:player.moving?1:0,
+      dead:player.dead?1:0, dn:player.downed?1:0, dt:player.downedTimer,
+      rvp:+(player.reviveProgress/240).toFixed(2),
+      wk:player.weaponKey, am:player.ammo===Infinity?-1:player.ammo,
+      nm:mp.players[0]?.name||'Host', sl:0 },
+    ...REMOTE_PLAYERS.map(r=>({
+      cx:+r.cx.toFixed(2), cy:+r.cy.toFixed(2), hp:r.hp, mhp:r.maxHp,
+      f:r.facing, fr:r.frame, mv:r.moving?1:0,
+      dead:r.dead?1:0, dn:r.downed?1:0, dt:r.downedTimer,
+      rvp:+(r.reviveProgress/240).toFixed(2),
+      wk:r.weaponKey, am:r.ammo===Infinity?-1:r.ammo,
+      nm:r.name, sl:r.slot }))
+  ];
+  return {
+    p: allP,
+    z: ZOMBIES.filter(z=>!z.dead).map(z=>({cx:+z.cx.toFixed(1),cy:+z.cy.toFixed(1),hp:z.hp,mhp:z.maxHp,f:z.facing,fr:z.frame})),
+    sk: SKELETONS.filter(s=>!s.dead).map(s=>({cx:+s.cx.toFixed(1),cy:+s.cy.toFixed(1),hp:s.hp,mhp:110,f:s.facing,fr:s.frame})),
+    dr: DRAGONS.filter(d=>!d.dead).map(d=>({cx:+d.cx.toFixed(1),cy:+d.cy.toFixed(1),hp:d.hp,mhp:200,f:d.facing,fr:d.frame})),
+    pr: projectiles.map(p=>({x:+p.x.toFixed(1),y:+p.y.toFixed(1),vx:+p.vx.toFixed(2),vy:+p.vy.toFixed(2),c:p.color,t:p.trail,l:p.life})),
+    fl: FLAMES.map(f=>({x:+f.x.toFixed(1),y:+f.y.toFixed(1),vx:+f.vx.toFixed(2),vy:+f.vy.toFixed(2),l:f.life})),
+    co: COINS.map(c=>({cx:+c.cx.toFixed(1),cy:+c.cy.toFixed(1),am:c.amount})),
+    g: {r:game.round,k:game.kills,sc:game.score,st:game.state,mo:player.money,wt:game.waveTimer,sp:spawnRemaining}
+  };
+}
+
+// Apply host state on guest client
+function applyHostState(state) {
+  hostState = state;
+  // Update all remote players display
+  REMOTE_PLAYERS.length = 0;
+  state.p.forEach((pd, i) => {
+    if (i === mp.slot) {
+      // Update own position/state from host (authoritative)
+      player.cx=pd.cx; player.cy=pd.cy; player.hp=pd.hp; player.maxHp=pd.mhp;
+      player.facing=pd.f; player.frame=pd.fr; player.moving=!!pd.mv;
+      player.dead=!!pd.dead; player.downed=!!pd.dn; player.downedTimer=pd.dt||0;
+      player.reviveProgress=(pd.rvp||0)*240;
+      player.weaponKey=pd.wk; player.ammo=pd.am===-1?Infinity:pd.am;
+    } else {
+      const rp = createRemotePlayer(pd.nm, pd.sl);
+      rp.cx=pd.cx; rp.cy=pd.cy; rp.hp=pd.hp; rp.maxHp=pd.mhp;
+      rp.facing=pd.f; rp.frame=pd.fr; rp.moving=!!pd.mv;
+      rp.dead=!!pd.dead; rp.downed=!!pd.dn; rp.downedTimer=pd.dt||0;
+      rp.reviveProgress=(pd.rvp||0)*240;
+      rp.weaponKey=pd.wk;
+      REMOTE_PLAYERS.push(rp);
+    }
+  });
+  // Sync enemies
+  ZOMBIES.length=0;
+  state.z.forEach(z=>ZOMBIES.push({cx:z.cx,cy:z.cy,hp:z.hp,maxHp:z.mhp||100,facing:z.f,frame:z.fr,dead:false,hitFlash:0,deathTimer:0}));
+  SKELETONS.length=0;
+  state.sk.forEach(s=>SKELETONS.push({cx:s.cx,cy:s.cy,hp:s.hp,maxHp:110,facing:s.f,frame:s.fr,dead:false,hitFlash:0,deathTimer:0}));
+  DRAGONS.length=0;
+  state.dr.forEach(d=>DRAGONS.push({cx:d.cx,cy:d.cy,hp:d.hp,maxHp:200,facing:d.f,frame:d.fr,dead:false,hitFlash:0,deathTimer:0,fireTimer:0}));
+  projectiles.length=0;
+  state.pr.forEach(p=>projectiles.push({x:p.x,y:p.y,vx:p.vx,vy:p.vy,color:p.c,trail:p.t,life:p.l,prevX:p.x,prevY:p.y,dmg:0,pierce:false,owner:'remote'}));
+  FLAMES.length=0;
+  state.fl.forEach(f=>FLAMES.push({x:f.x,y:f.y,vx:f.vx,vy:f.vy,life:f.l}));
+  COINS.length=0;
+  state.co.forEach(c=>COINS.push({cx:c.cx,cy:c.cy,amount:c.am,bob:0}));
+  game.round=state.g.r; game.kills=state.g.k; game.score=state.g.sc;
+  game.state=state.g.st; game.waveTimer=state.g.wt;
+  spawnRemaining=state.g.sp||0; player.money=state.g.mo;
+}
+
+// Draw remote players (other players on screen)
+function drawRemotePlayers() {
+  REMOTE_PLAYERS.forEach(rp => {
+    if (rp.dead) return;
+    const px=rp.cx*TW, py=rp.cy*TH;
+    const sz=TW*1.4;
+    const frames = charWalk[rp.facing] || charWalk['south'];
+    const fr = frames && frames[rp.frame % frames.length];
+    if (fr && rp.moving) {
+      ctx.drawImage(fr, px-sz/2, py-sz/2, sz, sz);
+    } else if (charWalk[rp.facing] && charWalk[rp.facing][0]) {
+      ctx.drawImage(charWalk[rp.facing][0], px-sz/2, py-sz/2, sz, sz);
+    } else {
+      ctx.fillStyle = rp.color; ctx.beginPath(); ctx.arc(px,py,TW*.35,0,Math.PI*2); ctx.fill();
+    }
+    // Name tag
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillStyle=rp.color; ctx.font=`bold ${Math.round(TW*.28)}px Segoe UI`;
+    ctx.fillText(rp.name, px, py-sz*.55);
+    // HP bar
+    const bw=sz*.75, bh=Math.max(3,TH*.08), bx=px-bw/2, by=py-sz*.52;
+    ctx.fillStyle='#300'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=rp.hp/rp.maxHp>0.5?'#2ecc40':rp.hp/rp.maxHp>0.25?'#e6c020':'#e74c3c';
+    ctx.fillRect(bx,by,bw*(rp.hp/rp.maxHp),bh);
+    // Downed state
+    if (rp.downed) {
+      ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx,by,bw,bh);
+      ctx.fillStyle='#ff4444'; ctx.font=`bold ${Math.round(TW*.22)}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('DOWN', px, py);
+      // Revive progress arc
+      if (rp.reviveProgress>0) {
+        ctx.strokeStyle='#00ffaa'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(px,py,TW*.55,-Math.PI/2,-Math.PI/2+(Math.PI*2*(rp.reviveProgress/240)));
+        ctx.stroke();
+      }
+    }
+  });
+  // Draw downed state for local player
+  if (player.downed) {
+    const px=player.cx*TW, py=player.cy*TH;
+    ctx.fillStyle='rgba(255,50,50,0.18)';
+    ctx.beginPath(); ctx.arc(px,py,TW*.55,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ff4444'; ctx.font=`bold ${Math.round(TW*.26)}px Segoe UI`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('DOWN', px, py);
+    if (player.reviveProgress>0) {
+      ctx.strokeStyle='#00ffaa'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(px,py,TW*.7,-Math.PI/2,-Math.PI/2+(Math.PI*2*(player.reviveProgress/240)));
+      ctx.stroke();
+    }
+  }
+}
+
+// Draw downed HUD overlay
+function drawDownedHUD() {
+  if (!player.downed) return;
+  const W=canvas.width, H=canvas.height;
+  // Red vignette
+  const g=ctx.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,H*.75);
+  g.addColorStop(0,'rgba(180,0,0,0)'); g.addColorStop(1,'rgba(180,0,0,0.55)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // Text
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#ff4444'; ctx.font=`bold ${Math.round(W*.035)}px Segoe UI`;
+  ctx.fillText('YOU ARE DOWN', W/2, H/2-40);
+  ctx.fillStyle='#ffaaaa'; ctx.font=`${Math.round(W*.016)}px Segoe UI`;
+  const secs=Math.ceil(player.downedTimer/60);
+  ctx.fillText(`A teammate can revive you — ${secs}s remaining`, W/2, H/2+4);
+  // Revive progress bar
+  if (player.reviveProgress>0) {
+    const bw=280, bh=12, bx=W/2-bw/2, by=H/2+34;
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#00ffaa'; ctx.fillRect(bx,by,bw*(player.reviveProgress/240),bh);
+    ctx.fillStyle='#00ffaa'; ctx.font=`${Math.round(W*.013)}px Segoe UI`;
+    ctx.fillText('Being revived...', W/2, by+bh+14);
+  }
+}
+
+// Send input from guest to server
+function sendGuestInput() {
+  if (!mp.socket || mp.mode !== 'guest') return;
+  mp.socket.emit('player_input', {
+    keys: { w:!!(keys['w']||keys['arrowup']), s:!!(keys['s']||keys['arrowdown']),
+            a:!!(keys['a']||keys['arrowleft']), d:!!(keys['d']||keys['arrowright']) },
+    mx: (mouse.x + camX), my: (mouse.y + camY),
+    shooting: !!mouseDown,
+    swap: !!(keys['q']),
+    revive: !!(keys['f']),
+  });
+}
+
+// ── Socket.io connection & room UI ───────────────────────────────────────────
+function mpConnect(cb) {
+  if (mp.socket && mp.socket.connected) { cb(); return; }
+  mp.socket = io(API_URL, { transports:['websocket','polling'] });
+  mp.socket.on('connect', cb);
+  mp.socket.on('mp_error', msg => { document.getElementById('mpMsg').textContent = msg; });
+  mp.socket.on('host_left', () => {
+    alert('The host disconnected. Returning to menu.'); mpClose(); goToMenu();
+  });
+  mp.socket.on('lobby_update', players => {
+    mp.players = players; renderMpLobby();
+  });
+  mp.socket.on('player_left', ({ slot }) => {
+    REMOTE_PLAYERS.splice(REMOTE_PLAYERS.findIndex(r=>r.slot===slot), 1);
+  });
+  mp.socket.on('game_start', players => {
+    mp.players = players;
+    // Build remote player objects
+    REMOTE_PLAYERS.length = 0;
+    players.forEach(p => { if(p.slot !== mp.slot) REMOTE_PLAYERS.push(createRemotePlayer(p.name, p.slot)); });
+    closeModal('mpModal');
+    startGame();
+  });
+  mp.socket.on('game_state', state => { if(mp.mode==='guest') applyHostState(state); });
+  mp.socket.on('player_input', inp => {
+    if (mp.mode==='host') guestInputs[inp.slot] = inp;
+  });
+}
+
+function mpCreate() {
+  const u = getUser();
+  const name = u ? u.username : ('Player' + Math.floor(Math.random()*999));
+  document.getElementById('mpMsg').textContent = '';
+  mpConnect(() => {
+    mp.mode = 'host'; mp.slot = 0;
+    mp.socket.emit('create_room', { name });
+    mp.socket.once('room_created', ({ code, slot, players }) => {
+      mp.room = code; mp.slot = slot; mp.players = players;
+      document.getElementById('mpLobbySetup').style.display='none';
+      document.getElementById('mpLobbyRoom').style.display='block';
+      document.getElementById('mpRoomCode').textContent = code;
+      document.getElementById('mpStartBtn').style.display='block';
+      document.getElementById('mpWaitMsg').style.display='none';
+      renderMpLobby();
+    });
+  });
+}
+
+function mpJoin() {
+  const code = document.getElementById('mpJoinCode').value.trim().toUpperCase();
+  if (!code) { document.getElementById('mpMsg').textContent='Enter a room code'; return; }
+  const u = getUser();
+  const name = u ? u.username : ('Player' + Math.floor(Math.random()*999));
+  document.getElementById('mpMsg').textContent='';
+  mpConnect(() => {
+    mp.mode = 'guest'; mp.socket.emit('join_room', { code, name });
+    mp.socket.once('room_joined', ({ code:c, slot, players }) => {
+      mp.room = c; mp.slot = slot; mp.players = players;
+      document.getElementById('mpLobbySetup').style.display='none';
+      document.getElementById('mpLobbyRoom').style.display='block';
+      document.getElementById('mpRoomCode').textContent = c;
+      document.getElementById('mpStartBtn').style.display='none';
+      document.getElementById('mpWaitMsg').style.display='block';
+      renderMpLobby();
+    });
+  });
+}
+
+function mpStartGame() {
+  if (mp.mode !== 'host' || !mp.socket) return;
+  mp.socket.emit('start_game');
+}
+
+function mpClose() {
+  document.getElementById('mpLobbySetup').style.display='block';
+  document.getElementById('mpLobbyRoom').style.display='none';
+  document.getElementById('mpMsg').textContent='';
+  if (mp.socket) { mp.socket.disconnect(); mp.socket=null; }
+  mp.mode=null; mp.room=null; mp.slot=0; mp.players=[];
+  REMOTE_PLAYERS.length=0;
+  closeModal('mpModal');
+}
+
+function renderMpLobby() {
+  const list = document.getElementById('mpPlayerList');
+  list.innerHTML = mp.players.map(p=>`
+    <div class="mp-player-row">
+      <div class="mp-dot" style="background:${mpPlayerColor(p.slot)}"></div>
+      <div class="mp-pname">${p.name}</div>
+      ${p.slot===0?'<div class="mp-host-badge">HOST</div>':''}
+    </div>`).join('');
+}
+
 // ─── RENDER LOOP ──────────────────────────────────────────────────────────────
 let t = 0;
 let gameStarted = false; // true once player clicks PLAY
@@ -2538,20 +2985,30 @@ function render(now) {
   if (!gameStarted) { return; }
 
   // ── Logic ────────────────────────────────────────────────────────────────────
-  updateCamera();
-  updatePlayer();
-  tryShoot();
-  updateZombies();
-  updateSkeletons();
-  updateDragons();
-  updateFlames();
-  updateProjectiles();
-  updateDmgNums();
-  updateCoins();
-  updatePerks();
-  updateBox();
-  updateEffects();
-  updateWave();
+  if (mp.mode === 'guest') {
+    sendGuestInput();
+    updateCamera();
+  } else {
+    updateCamera();
+    updatePlayer();
+    tryShoot();
+    updateRemotePlayers();
+    updateZombies();
+    updateSkeletons();
+    updateDragons();
+    updateFlames();
+    updateProjectiles();
+    updateDmgNums();
+    updateCoins();
+    updatePerks();
+    updateBox();
+    updateEffects();
+    updateWave();
+    if (mp.mode === 'host') {
+      mpStateFrame++;
+      if (mpStateFrame >= 2) { mpStateFrame=0; mp.socket.emit('game_state', serializeGameState()); }
+    }
+  }
 
   // ── Fill background ───────────────────────────────────────────────────────────
   ctx.fillStyle = '#0c0b12';
@@ -2581,9 +3038,11 @@ function render(now) {
     {y:player.cy*TH, draw:drawPlayer},
     ...ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawZombie(z)})),
     ...SKELETONS.map(s=>({y:s.cy*TH, draw:()=>drawSkeleton(s)})),
-    ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)}))
+    ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)})),
+    ...REMOTE_PLAYERS.map(r=>({y:r.cy*TH, draw:()=>{}})) // positions for sort only
   ];
   entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
+  drawRemotePlayers();
 
   // World-space interactables
   drawClickIndicator();
@@ -2604,6 +3063,7 @@ function render(now) {
   drawHUD();
   drawMinimap();
   drawShopUI();
+  drawDownedHUD();
   drawCursor();
 
 }
