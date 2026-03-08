@@ -2607,7 +2607,6 @@ const mp = {
 const REMOTE_PLAYERS_MAP = new Map();
 // REMOTE_PLAYERS: array view kept in sync for any legacy rendering code
 const REMOTE_PLAYERS = [];
-let mpInputFrame = 0;
 
 function getAllPlayers() {
   const out = [];
@@ -2649,7 +2648,9 @@ function applyServerSnapshot(st) {
       player.downedTimer = pd.dt;
       player.reviveProgress = (pd.rvp || 0) * 240;
       player.weaponKey = pd.wk;
-      player.ammo = pd.am === -1 ? Infinity : pd.am;
+      // Take the lower of server/client ammo to avoid snapshot restoring spent ammo
+      const srvAmmo = pd.am === -1 ? Infinity : pd.am;
+      player.ammo = (player.ammo === Infinity || srvAmmo === Infinity) ? srvAmmo : Math.min(player.ammo, srvAmmo);
       player.money = pd.mo || 0;
       player.goldEarned = pd.sc || 0;
       if (pd.upg) player.upgrades = pd.upg;
@@ -2662,8 +2663,8 @@ function applyServerSnapshot(st) {
       else {
         const ex = pd.cx - player.cx, ey = pd.cy - player.cy;
         const d = Math.hypot(ex, ey);
-        if (d > 2) { player.cx = pd.cx; player.cy = pd.cy; }
-        else if (d > 0.05) { player.cx += ex * 0.2; player.cy += ey * 0.2; }
+        if (d > 5) { player.cx = pd.cx; player.cy = pd.cy; }
+        else if (d > 0.05) { player.cx += ex * 0.1; player.cy += ey * 0.1; }
       }
     } else {
       let rp = REMOTE_PLAYERS_MAP.get(pd.sl);
@@ -2710,12 +2711,15 @@ function applyServerSnapshot(st) {
   FLAMES.length = 0;
   st.fl.forEach(f => FLAMES.push({ x:f[0], y:f[1], vx:f[2], vy:f[3], life:f[4], maxLife:f[4] }));
 
-  // Projectiles — update in place to preserve trail arrays
+  // Projectiles — keep _local bullets, update server bullets in place
+  const localPr = projectiles.filter(p => p._local);
   const newPr = st.pr || [];
-  const oldPr = projectiles.slice();
+  const oldServerPr = projectiles.filter(p => !p._local);
   projectiles.length = 0;
   newPr.forEach(p => {
-    const existing = oldPr.find(op =>
+    // Skip server bullets for our own slot — we show _local ones instead
+    if (p[6] === mp.slot) return;
+    const existing = oldServerPr.find(op =>
       op.wkey === p[4] && Math.hypot(op.x - p[0], op.y - p[1]) < TW * 2
     );
     if (existing) {
@@ -2723,12 +2727,14 @@ function applyServerSnapshot(st) {
       existing.vx = p[2]; existing.vy = p[3];
       existing.life = p[5];
       projectiles.push(existing);
-      oldPr.splice(oldPr.indexOf(existing), 1);
+      oldServerPr.splice(oldServerPr.indexOf(existing), 1);
     } else {
       projectiles.push({ x:p[0],y:p[1],vx:p[2],vy:p[3],wkey:p[4],life:p[5],
         trail:[],prevX:p[0],prevY:p[1],slot:p[6] });
     }
   });
+  // Re-add local bullets after server sync
+  localPr.forEach(p => projectiles.push(p));
 
   // Coins
   COINS.length = 0;
@@ -2767,6 +2773,13 @@ function mpAnimate() {
     if (keys['s']||keys['arrowdown'])  dy += 1;
     if (keys['a']||keys['arrowleft'])  dx -= 1;
     if (keys['d']||keys['arrowright']) dx += 1;
+    // Right-click move (when no WASD)
+    if (dx===0 && dy===0 && clickTarget) {
+      const cdx=clickTarget.cx-player.cx, cdy=clickTarget.cy-player.cy;
+      const dist=Math.hypot(cdx,cdy);
+      if (dist<0.12) { clickTarget=null; }
+      else { dx=cdx/dist; dy=cdy/dist; }
+    }
     if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
     player.moving = dx !== 0 || dy !== 0;
     player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.10);
@@ -2779,7 +2792,37 @@ function mpAnimate() {
     }
     player.facing = dir8((mouse.x + camX) - player.cx * TW, (mouse.y + camY) - player.cy * TH);
     if (player.hurtTimer > 0) player.hurtTimer--;
-    if (shootTimer > 0) shootTimer--;
+
+    // Local shooting — immediate visual feedback, no waiting for server RTT
+    if (!player._mpShootCD) player._mpShootCD = 0;
+    if (player._mpShootCD > 0) player._mpShootCD--;
+    if (mouse.down && player._mpShootCD <= 0 && !shopOpen) {
+      const w = WEAPONS[player.weaponKey];
+      const hasAmmo = player.weaponKey === 'pistol' || player.ammo > 0;
+      if (hasAmmo && !(player.weaponKey === 'pistol' && player.overheated)) {
+        player._mpShootCD = w.fireRate;
+        const sx=player.cx*TW, sy=player.cy*TH;
+        const ang=Math.atan2((mouse.y+camY)-sy,(mouse.x+camX)-sx);
+        if (!w.wave) {
+          for (let i=0;i<w.pellets;i++){
+            const a=ang+(Math.random()-.5)*w.spread*2;
+            projectiles.push({x:sx,y:sy,vx:Math.cos(a)*w.speed,vy:Math.sin(a)*w.speed,
+              trail:[],life:90,wkey:player.weaponKey,_local:true});
+          }
+          muzzleFlash=6; muzzleColor=w.color;
+        } else {
+          spawnEffect('windwave',sx,sy,{ang,halfAng:WAVE_HALFANG,range:WAVE_RANGE});
+          muzzleFlash=10; muzzleColor='#60e8ff';
+        }
+        // Immediate ammo + heat feedback
+        if (player.weaponKey!=='pistol' && player.ammo>0) player.ammo--;
+        if (player.weaponKey==='pistol') {
+          player.heat=Math.min(100,player.heat+15);
+          if (player.heat>=100) player.overheated=true;
+          playPistolSound();
+        }
+      }
+    }
     if (muzzleFlash > 0) muzzleFlash--;
   }
 
@@ -2923,6 +2966,7 @@ function sendMpInput() {
     a: !!(keys['a']||keys['arrowleft']), d: !!(keys['d']||keys['arrowright']),
     mx: mouse.x + camX, my: mouse.y + camY,
     shooting: !!mouse.down, q: !!keys['q'], f: !!keys['f'], e: !!keys['e'],
+    ctx: clickTarget ? clickTarget.cx : null, cty: clickTarget ? clickTarget.cy : null,
   });
 }
 
@@ -3037,7 +3081,7 @@ function render(now) {
   // ── Game logic ───────────────────────────────────────────────────────────────
   if (mp.active) {
     // Send input to server every other frame (30fps is enough)
-    if (++mpInputFrame >= 2) { mpInputFrame = 0; sendMpInput(); }
+    sendMpInput();
     if (!mp.firstState) {
       ctx.fillStyle='#060410'; ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.textAlign='center'; ctx.textBaseline='middle';

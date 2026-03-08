@@ -394,6 +394,12 @@ class GameRoom {
       let dx = 0, dy = 0;
       if (inp.w) dy -= 1; if (inp.s) dy += 1;
       if (inp.a) dx -= 1; if (inp.d) dx += 1;
+      // Click-to-move when no WASD
+      if (dx === 0 && dy === 0 && inp.ctx != null && inp.cty != null) {
+        const cdx = inp.ctx - ps.cx, cdy = inp.cty - ps.cy;
+        const dist = Math.hypot(cdx, cdy);
+        if (dist > 0.12) { dx = cdx / dist; dy = cdy / dist; }
+      }
       if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
       ps.moving = dx !== 0 || dy !== 0;
       const sp = PLAYER_SPEED_S * (1 + Math.min(ps.upgrades.moveSpeed, 5) * 0.10);
