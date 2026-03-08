@@ -209,6 +209,8 @@ io.on('connection', socket => {
     io.to(room.hostId).emit('player_input', { ...input, slot: socket.data.slot });
   });
 
+  socket.on('ping_mp', () => socket.emit('pong_mp'));
+
   socket.on('disconnect', () => {
     const code = socket.data.code;
     if (!code) return;
