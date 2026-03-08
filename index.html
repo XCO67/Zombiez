@@ -2692,11 +2692,13 @@ function applyServerSnapshot(st) {
   REMOTE_PLAYERS_MAP.forEach(rp => REMOTE_PLAYERS.push(rp));
 
   // Enemies — update in place, never recreate
-  function syncEnts(local, remote, factory) {
+  // maxHpIdx: which array index holds maxHp (only zombies have variable maxHp)
+  function syncEnts(local, remote, factory, maxHpIdx) {
     while (local.length > remote.length) local.pop();
     remote.forEach((rd, i) => {
       if (!local[i]) { local[i] = factory(rd); return; }
       local[i]._tx = rd[0]; local[i]._ty = rd[1];
+      if (maxHpIdx !== undefined && rd[maxHpIdx] > 0) local[i].maxHp = rd[maxHpIdx];
       const prevHp = local[i].hp;
       local[i].hp = rd[2]; local[i].dead = rd[rd.length-1] === 1;
       // Client-side hit feedback: detect HP drops and show damage number + hit flash
@@ -2707,7 +2709,7 @@ function applyServerSnapshot(st) {
     });
   }
   syncEnts(ZOMBIES, st.z,
-    z => ({ cx:z[0],cy:z[1],_tx:z[0],_ty:z[1],hp:z[2],maxHp:z[3]||100,facing:z[4],frame:z[5],dead:!!z[6],hitFlash:0,deathTimer:0 }));
+    z => ({ cx:z[0],cy:z[1],_tx:z[0],_ty:z[1],hp:z[2],maxHp:z[3]||100,facing:z[4],frame:z[5],dead:!!z[6],hitFlash:0,deathTimer:0 }), 3);
   syncEnts(SKELETONS, st.sk,
     s => ({ cx:s[0],cy:s[1],_tx:s[0],_ty:s[1],hp:s[2],maxHp:SKEL_HP,facing:s[3],frame:s[4],dead:!!s[5],hitFlash:0,deathTimer:0 }));
   syncEnts(DRAGONS, st.dr,
@@ -2718,6 +2720,8 @@ function applyServerSnapshot(st) {
   st.fl.forEach(f => FLAMES.push({ x:f[0], y:f[1], vx:f[2], vy:f[3], life:f[4], maxLife:f[4] }));
 
   // Projectiles — keep _local bullets, update server bullets in place
+  // Server vx/vy are in pixels/tick (20tps), client advances per frame (60fps) → divide by 3
+  // Server life is ticks, client counts frames → multiply by 3
   const localPr = projectiles.filter(p => p._local);
   const newPr = st.pr || [];
   const oldServerPr = projectiles.filter(p => !p._local);
@@ -2725,17 +2729,19 @@ function applyServerSnapshot(st) {
   newPr.forEach(p => {
     // Skip server bullets for our own slot — we show _local ones instead
     if (p[6] === mp.slot) return;
+    const cvx = p[2] / 3, cvy = p[3] / 3; // convert server speed → client speed
+    const clife = p[5] * 3;                // convert server ticks → client frames
     const existing = oldServerPr.find(op =>
-      op.wkey === p[4] && Math.hypot(op.x - p[0], op.y - p[1]) < TW * 2
+      op.wkey === p[4] && Math.hypot(op.x - p[0], op.y - p[1]) < TW * 3
     );
     if (existing) {
       existing.x = p[0]; existing.y = p[1];
-      existing.vx = p[2]; existing.vy = p[3];
-      existing.life = p[5];
+      existing.vx = cvx; existing.vy = cvy;
+      existing.life = clife;
       projectiles.push(existing);
       oldServerPr.splice(oldServerPr.indexOf(existing), 1);
     } else {
-      projectiles.push({ x:p[0],y:p[1],vx:p[2],vy:p[3],wkey:p[4],life:p[5],
+      projectiles.push({ x:p[0],y:p[1],vx:cvx,vy:cvy,wkey:p[4],life:clife,
         trail:[],prevX:p[0],prevY:p[1],slot:p[6] });
     }
   });
