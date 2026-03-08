@@ -2719,32 +2719,9 @@ function applyServerSnapshot(st) {
   FLAMES.length = 0;
   st.fl.forEach(f => FLAMES.push({ x:f[0], y:f[1], vx:f[2], vy:f[3], life:f[4], maxLife:f[4] }));
 
-  // Projectiles — keep _local bullets, smoothly advance server bullets
-  // Server vx/vy are pixels/tick at 30tps, client renders at 60fps → divide by 2
-  // Server life is ticks → multiply by 2 for client frames. Only set on first creation.
-  const localPr = projectiles.filter(p => p._local);
-  const newPr = st.pr || [];
-  const oldServerPr = projectiles.filter(p => !p._local);
-  const keptIds = new Set();
-  projectiles.length = 0;
-  newPr.forEach(p => {
-    if (p[6] === mp.slot) return; // own slot: use _local bullets instead
-    const cvx = p[2] / 2, cvy = p[3] / 2;
-    const existing = oldServerPr.find(op =>
-      op.slot === p[6] && op.wkey === p[4] && !keptIds.has(op)
-    );
-    if (existing) {
-      // Don't snap position — let it advance smoothly from current local position
-      keptIds.add(existing);
-      projectiles.push(existing);
-    } else {
-      // New bullet: spawn at server position with correct client-speed velocity
-      projectiles.push({ x:p[0],y:p[1],vx:cvx,vy:cvy,wkey:p[4],
-        life:p[5]*2,trail:[],prevX:p[0],prevY:p[1],slot:p[6] });
-    }
-  });
-  // Re-add local bullets after server sync
-  localPr.forEach(p => projectiles.push(p));
+  // Projectiles: managed by bullet_fired events (other players) and _local (own).
+  // Snapshot does NOT touch bullets — they advance freely until life expires.
+  // Only clear snapshot projectile data (st.pr) — nothing to do here.
 
   // Coins
   COINS.length = 0;
@@ -2989,6 +2966,17 @@ function mpConnect(cb) {
     REMOTE_PLAYERS_MAP.delete(slot);
     REMOTE_PLAYERS.length = 0;
     REMOTE_PLAYERS_MAP.forEach(rp => REMOTE_PLAYERS.push(rp));
+  });
+  // bullet_fired: server tells us exactly where/when another player fired
+  // This spawns the bullet at the character's position immediately — no mid-air appearance
+  mp.socket.on('bullet_fired', bullets => {
+    if (!mp.active || !mp.firstState) return;
+    bullets.forEach(b => {
+      if (b.sl === mp.slot) return; // skip own — we already have _local bullets
+      const cvx = b.vx / 2, cvy = b.vy / 2; // server px/tick (30tps) → client px/frame (60fps)
+      projectiles.push({ x:b.x, y:b.y, vx:cvx, vy:cvy, wkey:b.wk,
+        life:90, trail:[], prevX:b.x, prevY:b.y, slot:b.sl });
+    });
   });
   mp.socket.on('game_start', ({ players }) => {
     console.log('[MP] game_start received, slot=', mp.slot);

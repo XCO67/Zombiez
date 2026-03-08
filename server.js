@@ -448,16 +448,21 @@ class GameRoom {
             this._fireWindWave(ps, inp);
           } else if (inp.mx !== undefined) {
             const ang = Math.atan2(inp.my - ps.cy * TH_S, inp.mx - ps.cx * TW_S);
+            const fired = [];
             for (let i = 0; i < w.pellets; i++) {
               const a = ang + (Math.random() - 0.5) * w.spread * 2;
-              this.projectiles.push({
+              const bul = {
                 x: ps.cx * TW_S, y: ps.cy * TH_S,
                 vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
                 life: PROJ_LIFE_S, wkey: ps.weaponKey, slot,
                 pierce: !!w.pierce, hitR: w.hitR,
                 upgDmg: ps.upgrades.damage, upgCrit: ps.upgrades.crit,
-              });
+              };
+              this.projectiles.push(bul);
+              fired.push({ sl: slot, wk: bul.wkey, x: bul.x|0, y: bul.y|0, vx: +bul.vx.toFixed(1), vy: +bul.vy.toFixed(1) });
             }
+            // Immediately tell ALL clients about these bullets so they spawn from the correct position
+            if (fired.length) io.to(this.code).emit('bullet_fired', fired);
           }
           if (ps.weaponKey === 'pistol') {
             ps.heat = Math.min(100, ps.heat + 15);
