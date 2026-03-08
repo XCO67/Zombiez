@@ -150,29 +150,29 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// ── GAME CONSTANTS ────────────────────────────────────────────────────────────
+// ── GAME CONSTANTS (30tps — tick every 33ms, all durations = real_seconds × 30) ──
 const T_S     = { WALL:0, FLOOR:1, PILLAR:2, SPAWN:3, DOOR:4 };
 const MAP_W_S = 40, MAP_H_S = 28;
 const TW_S = 48, TH_S = 48;
 const PLAYER_R_S = 0.28;
-const PLAYER_SPEED_S = 0.055 * 3;   // tiles/tick
-const ZOMBIE_SPEED_S  = 0.018 * 3;
-const SKEL_SPEED_S    = 0.032 * 3;
-const DRAGON_SPEED_S  = 0.012 * 3;
-const FLAME_SPEED_S   = 5.5 * 3;    // px/tick
+const PLAYER_SPEED_S = 0.055 * 2;   // tiles/tick  (0.055 tiles/frame × 60fps / 30tps)
+const ZOMBIE_SPEED_S  = 0.018 * 2;
+const SKEL_SPEED_S    = 0.032 * 2;
+const DRAGON_SPEED_S  = 0.012 * 2;
+const FLAME_SPEED_S   = 5.5 * 2;    // px/tick
 const SKEL_HP_S       = 110;
 const DRAGON_HP_S     = 200;
 const SKEL_STEAL_S    = 20;
 const FLAME_DMG_S     = 20;
 const DRAGON_FIRE_RANGE_S    = 10;   // tiles
-const DRAGON_FIRE_INTERVAL_S = 30;   // ticks (90fr/3)
-const FLAME_LIFE_S    = 67;    // ticks
-const HURT_TICKS_S    = 15;    // 45fr/3
-const DOWNED_TICKS_S  = 600;   // 1800fr/3
-const REVIVE_TICKS_S  = 80;    // 240fr/3
-const WAVE_CLEAR_TICKS_S = 60; // 180fr/3
-const SPAWN_INT_S     = 9;     // 28fr/3
-const PROJ_LIFE_S     = 30;    // 90fr/3
+const DRAGON_FIRE_INTERVAL_S = 45;   // ticks  (1.5s × 30)
+const FLAME_LIFE_S    = 100;   // ticks  (3.33s × 30)
+const HURT_TICKS_S    = 22;    // ticks  (0.75s × 30)
+const DOWNED_TICKS_S  = 900;   // ticks  (30s × 30)
+const REVIVE_TICKS_S  = 120;   // ticks  (4s × 30)
+const WAVE_CLEAR_TICKS_S = 90; // ticks  (3s × 30)
+const SPAWN_INT_S     = 13;    // ticks  (0.45s × 30)
+const PROJ_LIFE_S     = 45;    // ticks  (1.5s × 30)
 const WAVE_RANGE_S    = 10;    // tiles (thundergun cone)
 const WAVE_HALFANG_S  = 0.72;
 const BOX_COST_S      = 750;
@@ -186,11 +186,11 @@ const DEV_CHEST_POS_S = { cx: 19.5, cy: 16 };
 const DEV_CHEST_RADIUS_S = 2.0;
 
 const WEAPONS_S = {
-  pistol:     { fireRate:7,  baseDmg:10,    ammoMax:Infinity, pellets:1, spread:0,    speed:16*3, hitR:.55, pierce:false },
-  smg:        { fireRate:2,  baseDmg:8,     ammoMax:120,      pellets:1, spread:0.12, speed:22*3, hitR:.45, pierce:false, ammoCost:30 },
-  shotgun:    { fireRate:13, baseDmg:18,    ammoMax:64,       pellets:7, spread:0.36, speed:18*3, hitR:.45, pierce:false, ammoCost:75 },
-  thundergun: { fireRate:25, baseDmg:90,    ammoMax:16,       pellets:1, spread:0,    speed:0,    hitR:0,   pierce:false, wave:true, ammoCost:200 },
-  devgun:     { fireRate:1,  baseDmg:99999, ammoMax:Infinity, pellets:3, spread:0.08, speed:28*3, hitR:1.8, pierce:true },
+  pistol:     { fireRate:11, baseDmg:10,    ammoMax:Infinity, pellets:1, spread:0,    speed:16*2, hitR:.55, pierce:false },
+  smg:        { fireRate:3,  baseDmg:8,     ammoMax:120,      pellets:1, spread:0.12, speed:22*2, hitR:.45, pierce:false, ammoCost:30 },
+  shotgun:    { fireRate:19, baseDmg:18,    ammoMax:64,       pellets:7, spread:0.36, speed:18*2, hitR:.45, pierce:false, ammoCost:75 },
+  thundergun: { fireRate:38, baseDmg:90,    ammoMax:16,       pellets:1, spread:0,    speed:0,    hitR:0,   pierce:false, wave:true, ammoCost:200 },
+  devgun:     { fireRate:1,  baseDmg:99999, ammoMax:Infinity, pellets:3, spread:0.08, speed:28*2, hitR:1.8, pierce:true },
 };
 
 const SHOP_ITEMS_S = [
@@ -331,7 +331,7 @@ class GameRoom {
 
   startGame() {
     this._startWave(1);
-    this.tickInterval = setInterval(() => this.tick(), 50);
+    this.tickInterval = setInterval(() => this.tick(), 33);
   }
 
   stop() {
@@ -407,7 +407,7 @@ class GameRoom {
         const nx = ps.cx + dx * sp, ny = ps.cy + dy * sp;
         if (!isBlockedS(this.map, nx, ps.cy)) ps.cx = nx;
         if (!isBlockedS(this.map, ps.cx, ny)) ps.cy = ny;
-        ps.ft += 1/20; if (ps.ft >= 0.28) { ps.ft = 0; ps.frame = (ps.frame + 1) % 6; }
+        ps.ft += 1/30; if (ps.ft >= 0.28) { ps.ft = 0; ps.frame = (ps.frame + 1) % 6; }
       }
       if (inp.mx !== undefined && inp.my !== undefined) {
         ps.facing = dir8S(inp.mx - ps.cx * TW_S, inp.my - ps.cy * TH_S);
@@ -665,7 +665,7 @@ class GameRoom {
         if (!isBlockedS(this.map, z.cx, ny)) z.cy = ny;
         z.facing = dir8S(dx, dy);
       }
-      z.ft += 1/20; if (z.ft >= 0.33) { z.frame = (z.frame + 1) % 8; z.ft = 0; }
+      z.ft += 1/30; if (z.ft >= 0.33) { z.frame = (z.frame + 1) % 8; z.ft = 0; }
       if (z.hitFlash > 0) z.hitFlash--;
       if (dist < 0.65 && tgt.hurtTimer <= 0 && g.state === 'playing') {
         this._damagePlayer(tgt, 8, tgt.slot);
@@ -695,7 +695,7 @@ class GameRoom {
         if (!isBlockedS(this.map, s.cx, ny)) s.cy = ny;
         s.facing = dir8S(dx, dy);
       }
-      s.ft += 1/20; if (s.ft >= 0.27) { s.frame = (s.frame + 1) % 4; s.ft = 0; }
+      s.ft += 1/30; if (s.ft >= 0.27) { s.frame = (s.frame + 1) % 4; s.ft = 0; }
       if (s.hitFlash > 0) s.hitFlash--;
       if (dist < 0.62 && tgt.hurtTimer <= 0 && g.state === 'playing') {
         const stolen = Math.min(tgt.money, SKEL_STEAL_S);
@@ -725,7 +725,7 @@ class GameRoom {
         d.cy += (dy / dist) * DRAGON_SPEED_S;
         d.facing = dir8S(dx, dy);
       }
-      d.ft += 1/20; if (d.ft >= 0.33) { d.frame = (d.frame + 1) % 8; d.ft = 0; }
+      d.ft += 1/30; if (d.ft >= 0.33) { d.frame = (d.frame + 1) % 8; d.ft = 0; }
       if (d.hitFlash > 0) d.hitFlash--;
       if (dist < 0.9 && tgt.hurtTimer <= 0 && g.state === 'playing') {
         this._damagePlayer(tgt, 12, tgt.slot);
