@@ -2450,41 +2450,7 @@ function drawHUD() {
   const W = canvas.width, H = canvas.height;
   ctx.save();
 
-  // ── Active perk banners (top-left) ──────────────
   const pad = 14;
-  {
-    const perksToShow = [
-      { key:'doublePoints', label:'2×  GOLD', col:'#ffd700', bg:'rgba(80,50,0,0.85)'   },
-      { key:'magnet',       label:'MAGNET',   col:'#60ccff', bg:'rgba(0,20,60,0.85)'   },
-    ].filter(pd => activePerkTimers[pd.key] > 0);
-
-    perksToShow.forEach((pd, i) => {
-      const timer = activePerkTimers[pd.key];
-      const frac  = timer / PERK_DURATION;
-      const bx=pad, by=pad + i*42;
-      const bw=130, bh=34;
-      ctx.save();
-      // bg pill
-      ctx.fillStyle=pd.bg;
-      roundRect(ctx,bx,by,bw,bh,6,true,false);
-      ctx.strokeStyle=pd.col+'88'; ctx.lineWidth=1;
-      roundRect(ctx,bx,by,bw,bh,6,false,true);
-      // label
-      ctx.fillStyle=pd.col; ctx.font='bold 13px Segoe UI';
-      ctx.textAlign='left'; ctx.textBaseline='middle';
-      ctx.shadowColor=pd.col; ctx.shadowBlur=6;
-      ctx.fillText(pd.label, bx+10, by+bh*.38);
-      // countdown bar
-      ctx.shadowBlur=0;
-      ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fillRect(bx+6, by+bh*.68, bw-12, 5);
-      ctx.fillStyle=pd.col; ctx.fillRect(bx+6, by+bh*.68, (bw-12)*frac, 5);
-      // seconds remaining
-      ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.font='9px Segoe UI';
-      ctx.textAlign='right'; ctx.textBaseline='middle';
-      ctx.fillText(Math.ceil(timer/60)+'s', bx+bw-8, by+bh*.38);
-      ctx.restore();
-    });
-  }
 
   // ── Round (top-center)
   ctx.fillStyle='rgba(0,0,0,0.55)';
@@ -2747,6 +2713,83 @@ function drawHUD() {
     ctx.font=`bold ${Math.round(HUD_H*.38)}px Segoe UI`;
     ctx.fillStyle='#f5c518';
     ctx.fillText(`$${player.money}`, monX+55, midY+4);
+
+    // ── 5. Active perk tiles (bottom-right) ───────
+    const PERK_DEFS = [
+      { key:'doublePoints', icon:'2×', label:'DOUBLE GOLD', col:'#ffd700', glow:'rgba(255,200,0,0.35)' },
+      { key:'magnet',       icon:'🧲', label:'MAGNET',      col:'#60ccff', glow:'rgba(50,150,255,0.3)' },
+    ];
+    const activePerks = PERK_DEFS.filter(pd => activePerkTimers[pd.key] > 0);
+    if (activePerks.length > 0) {
+      const tileW = 68, tileH = HUD_H - 16, tileGap = 6;
+      const totalW = activePerks.length * (tileW + tileGap) - tileGap;
+      let px2 = W - ipd - totalW;
+
+      vDiv(px2 - ipd);
+
+      activePerks.forEach(pd => {
+        const timer = activePerkTimers[pd.key];
+        const frac  = timer / PERK_DURATION;
+        const tx = px2, ty = BY + 8;
+
+        ctx.save();
+
+        // Glow pulse
+        const gp = Math.sin(performance.now() / 400) * 0.5 + 0.5;
+        ctx.shadowColor = pd.col; ctx.shadowBlur = 6 + gp * 8;
+
+        // Tile bg — brightens as timer is high
+        ctx.fillStyle = `rgba(${pd.col==='#ffd700'?'60,40,0':'0,20,55'},${0.7+gp*0.15})`;
+        roundRect(ctx, tx, ty, tileW, tileH, 7, true, false);
+        ctx.shadowBlur = 0;
+
+        // Border (flashes when < 3s left)
+        const lowTime = timer < 180;
+        const flashAlpha = lowTime ? 0.5 + Math.sin(performance.now()/120)*0.5 : 0.7;
+        ctx.strokeStyle = pd.col + Math.round(flashAlpha * 255).toString(16).padStart(2,'0');
+        ctx.lineWidth = lowTime ? 2 : 1.5;
+        roundRect(ctx, tx, ty, tileW, tileH, 7, false, true);
+
+        // Big icon
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const isEmoji = pd.icon.length > 1 || pd.icon.codePointAt(0) > 127;
+        ctx.font = isEmoji ? `18px Segoe UI` : `bold 18px Segoe UI`;
+        ctx.fillStyle = pd.col;
+        ctx.shadowColor = pd.col; ctx.shadowBlur = 8;
+        ctx.fillText(pd.icon, tx + tileW / 2, ty + tileH * 0.32);
+        ctx.shadowBlur = 0;
+
+        // Label
+        ctx.font = 'bold 7px Segoe UI';
+        ctx.fillStyle = 'rgba(200,200,200,0.6)';
+        ctx.fillText(pd.label, tx + tileW / 2, ty + tileH * 0.58);
+
+        // Timer bar track
+        const barX = tx + 5, barY = ty + tileH - 13, barW = tileW - 10, barH = 6;
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        // Timer bar fill — color shifts red when low
+        const barCol = lowTime
+          ? `hsl(${Math.round(frac * 60)},90%,55%)`
+          : pd.col;
+        ctx.fillStyle = barCol;
+        ctx.fillRect(barX, barY, barW * frac, barH);
+
+        // Gloss on bar
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(barX, barY, barW * frac, barH / 2);
+
+        // Seconds text
+        ctx.font = 'bold 8px Segoe UI';
+        ctx.fillStyle = lowTime ? barCol : 'rgba(255,255,255,0.55)';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.ceil(timer / 60) + 's', tx + tileW / 2, barY - 1);
+
+        ctx.restore();
+        px2 += tileW + tileGap;
+      });
+    }
   }
 
   // ── Screen damage vignette
