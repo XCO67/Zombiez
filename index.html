@@ -121,49 +121,6 @@
     .mp-input-row .lsave { width:auto; padding:12px 18px; flex-shrink:0; }
     .mp-msg { text-align:center; color:#ff8888; font-size:13px; min-height:18px; margin-bottom:8px; }
 
-    /* ── MAP EDITOR ────────────────────────────────────────── */
-    #edOverlay {
-      position:fixed; inset:0; z-index:500; background:#07050f;
-      display:none; flex-direction:column; font-family:'Segoe UI',sans-serif;
-    }
-    #edOverlay.vis { display:flex; }
-    #edBar {
-      display:flex; align-items:center; gap:8px; padding:7px 12px; flex-shrink:0;
-      background:#09071a; border-bottom:1px solid rgba(100,80,200,.3);
-    }
-    #edBar button {
-      padding:5px 13px; border-radius:6px; border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.06); color:#ccc; cursor:pointer;
-      font-family:inherit; font-size:12px; font-weight:600; transition:all .14s;
-    }
-    #edBar button:hover { border-color:rgba(255,255,255,.4); color:#fff; background:rgba(255,255,255,.11); }
-    #edBar button.eprimary { background:rgba(60,180,80,.22); border-color:#4c9; color:#8fa; }
-    #edBar button.eprimary:hover { background:rgba(60,200,90,.38); color:#fff; }
-    #edBar button.edanger { background:rgba(160,30,30,.2); border-color:#c44; color:#f88; }
-    #edMapName {
-      padding:5px 11px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18);
-      border-radius:6px; color:#fff; font-size:13px; font-family:inherit; outline:none; width:170px;
-    }
-    #edMapName:focus { border-color:rgba(130,200,255,.6); }
-    #edStatus { color:rgba(255,255,255,.38); font-size:11px; flex:1; min-width:60px; }
-    #edPalette {
-      position:absolute; right:12px; top:52px; z-index:10;
-      display:flex; flex-direction:column; gap:4px; padding:8px;
-      background:rgba(8,5,20,.93); border:1px solid rgba(100,80,200,.35); border-radius:8px;
-    }
-    .edtile {
-      width:80px; height:30px; border-radius:5px; border:2px solid transparent;
-      cursor:pointer; font-size:11px; font-weight:700; font-family:'Segoe UI',sans-serif;
-      display:flex; align-items:center; padding:0 8px; gap:6px; transition:all .12s;
-      color:rgba(255,255,255,.8);
-    }
-    .edtile.active { border-color:#fff !important; box-shadow:0 0 8px rgba(255,255,255,.3); }
-    .edtile:hover { opacity:.9; transform:translateX(-2px); }
-    #edCanvas { flex:1; display:block; }
-    #edHint {
-      text-align:center; font-size:11px; color:rgba(255,255,255,.28); padding:4px;
-      background:#09071a; border-top:1px solid rgba(255,255,255,.06); flex-shrink:0;
-    }
     /* Map selector */
     .map-row {
       display:flex; align-items:center; gap:8px; padding:9px 10px;
@@ -180,8 +137,6 @@
     .map-row button:hover { border-color:rgba(255,255,255,.4); color:#fff; }
     .map-row button.play-btn { background:rgba(180,18,18,.28); border-color:rgba(255,55,55,.5); color:#ff9090; }
     .map-row button.play-btn:hover { background:rgba(220,28,28,.42); color:#fff; }
-    .mbtn.ed  { background:rgba(0,160,80,.16); border-color:rgba(0,220,100,.3); color:#66ffaa; }
-    .mbtn.ed:hover  { background:rgba(0,180,90,.3); border-color:#44ff99; color:#fff; box-shadow:0 6px 28px rgba(0,160,80,.3); }
   </style>
 </head>
 <body>
@@ -196,7 +151,6 @@
     <div class="menu-btns">
       <button class="mbtn play" onclick="openMapSelect()">▶&nbsp;&nbsp;Play</button>
       <button class="mbtn mp"   onclick="openModal('mpModal')">👥&nbsp;&nbsp;Multiplayer</button>
-      <button class="mbtn ed"   onclick="openEditor(null)">🗺&nbsp;&nbsp;Map Editor</button>
       <button class="mbtn lb"   onclick="openModal('lbModal')">🏆&nbsp;&nbsp;Leaderboard</button>
       <button class="mbtn cfg"  onclick="openModal('settingsModal')">⚙&nbsp;&nbsp;Settings</button>
     </div>
@@ -308,23 +262,6 @@
   </div>
 </div>
 
-<!-- Full-screen Map Editor -->
-<div id="edOverlay">
-  <div id="edBar">
-    <button onclick="closeEditor()">← Menu</button>
-    <input id="edMapName" type="text" placeholder="Map name…" maxlength="36" value="My Map" />
-    <button class="eprimary" onclick="edSave()">💾 Save</button>
-    <button class="eprimary" onclick="edSaveAndPlay()">▶ Play</button>
-    <button onclick="edLoadDefault()">Load Default</button>
-    <button onclick="edNewMap()">New Map</button>
-    <button class="edanger" onclick="edClear()">Clear All</button>
-    <span id="edStatus"></span>
-  </div>
-  <div id="edPalette"></div>
-  <canvas id="edCanvas"></canvas>
-  <div id="edHint">Left-click: paint  •  Right-click: erase  •  Scroll: zoom  •  Middle-drag / Space+drag: pan  •  P: place player start  •  T: place torch</div>
-</div>
-
 <canvas id="c"></canvas>
 <script>
 
@@ -403,6 +340,16 @@ function applyMapData(data) {
   TORCHES = data.torches || [];
   if (data.playerStart) { PLAYER_START.cx=data.playerStart[0]; PLAYER_START.cy=data.playerStart[1]; }
   DOORS.forEach(d=>{ d.unlocked=true; });
+  // Apply vendor/object positions if provided
+  if (data.objects) {
+    const o = data.objects;
+    if (o.shop)       { SHOP_POS.cx=o.shop.cx;             SHOP_POS.cy=o.shop.cy; }
+    if (o.ammo)       { AMMO_POS.cx=o.ammo.cx;             AMMO_POS.cy=o.ammo.cy; }
+    if (o.pap)        { PAP_POS.cx=o.pap.cx;               PAP_POS.cy=o.pap.cy; }
+    if (o.perkvendor) { PERK_VENDOR_POS.cx=o.perkvendor.cx; PERK_VENDOR_POS.cy=o.perkvendor.cy; }
+    if (o.box)        { BOX_POS.cx=o.box.cx;               BOX_POS.cy=o.box.cy; }
+    if (o.devchest)   { DEV_CHEST_POS.cx=o.devchest.cx;    DEV_CHEST_POS.cy=o.devchest.cy; }
+  }
 }
 
 // Load active map on startup
@@ -440,12 +387,13 @@ function openMapSelect() {
       <span class="map-row-name">${active?'★ ':''}${escHtml(m.name)}</span>
       <span class="map-row-size">${m.mapW}×${m.mapH}</span>
       <button class="play-btn" onclick="selectAndPlay('${m.id}')">▶ Play</button>
-      <button onclick="openEditor('${m.id}')">✏ Edit</button>
+      <a href="/editor?id=${m.id}" style="padding:4px 10px;border-radius:5px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#ccc;cursor:pointer;font-size:11px;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center">✏ Edit</a>
       <button onclick="confirmDeleteMap('${m.id}','${escHtml(m.name)}')">🗑</button>
     </div>`;
   });
 
-  if (!maps.length) html += `<p style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:16px">No custom maps yet.<br>Use Map Editor to create one!</p>`;
+  if (!maps.length) html += `<p style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:16px">No custom maps yet.<br><a href="/editor" style="color:#a090f8;text-decoration:none">Open Map Editor →</a></p>`;
+  html += `<div style="margin-top:8px;text-align:center"><a href="/editor" style="font-size:11px;color:#a090f8;text-decoration:none;opacity:.8">🗺 Map Editor →</a></div>`;
   list.innerHTML = html;
 }
 function closeMapSelect() { document.getElementById('mapSelectModal').style.display='none'; }
@@ -469,316 +417,6 @@ function confirmDeleteMap(id, name) {
   if (confirm(`Delete map "${name}"?`)) { deleteMap(id); openMapSelect(); }
 }
 
-// ─── MAP EDITOR ───────────────────────────────────────────────────────────────
-const TILE_DEFS = [
-  { v:0, label:'WALL',   color:'#1a1a2e', dot:'#333' },
-  { v:1, label:'FLOOR',  color:'#2a3520', dot:'#4a6a30' },
-  { v:2, label:'PILLAR', color:'#3a2800', dot:'#886620' },
-  { v:3, label:'SPAWN',  color:'#3a0808', dot:'#cc2020' },
-  { v:4, label:'DOOR',   color:'#3a2200', dot:'#cc8800' },
-];
-
-const ed = {
-  open:false, mapW:40, mapH:28, tiles:null,
-  torches:[], playerStart:[19.5,13.5],
-  brush:1, tool:'paint', // tool: paint | playerStart | torch
-  camX:0, camY:0, zoom:20,
-  painting:false, erasing:false, panning:false,
-  panStart:null, panCam:null,
-  canvas:null, ctx:null, raf:null,
-  editId:null, // id of map being edited (null = new)
-  spaceDown:false,
-};
-
-function openEditor(mapId) {
-  document.getElementById('mapSelectModal').style.display='none';
-  document.getElementById('menu').style.display='none';
-  const overlay = document.getElementById('edOverlay');
-  overlay.classList.add('vis');
-  ed.open = true;
-  ed.editId = mapId;
-
-  // Build palette
-  const pal = document.getElementById('edPalette');
-  pal.innerHTML = TILE_DEFS.map((td,i)=>`
-    <div class="edtile${ed.brush===td.v?' active':''}" id="edtile${td.v}"
-         style="background:${td.color};border-color:${td.dot}"
-         onclick="edSetBrush(${td.v})">
-      <span style="width:10px;height:10px;border-radius:2px;background:${td.dot};display:inline-block"></span>
-      ${td.label}
-    </div>
-  `).join('')+`
-    <div class="edtile${ed.tool==='playerStart'?' active':''}" id="edtilePS"
-         style="background:#0a2a1a;border-color:#44ff88" onclick="edSetTool('playerStart')">
-      <span style="width:10px;height:10px;border-radius:50%;background:#44ff88;display:inline-block"></span>
-      PLAYER
-    </div>
-    <div class="edtile${ed.tool==='torch'?' active':''}" id="edtileTC"
-         style="background:#2a1800;border-color:#ff8833" onclick="edSetTool('torch')">
-      <span style="width:10px;height:10px;border-radius:50%;background:#ff8833;display:inline-block"></span>
-      TORCH
-    </div>
-  `;
-
-  // Load map data
-  if (mapId && mapId !== 'new') {
-    const m = getMapById(mapId);
-    if (m) {
-      ed.mapW=m.mapW; ed.mapH=m.mapH;
-      ed.tiles=new Uint8Array(m.mapW*m.mapH);
-      for(let r=0;r<m.mapH;r++) for(let c=0;c<m.mapW;c++) ed.tiles[r*m.mapW+c]=m.tiles[r]?.[c]??0;
-      ed.torches=[...(m.torches||[])];
-      ed.playerStart=[...(m.playerStart||[19.5,13.5])];
-      document.getElementById('edMapName').value=m.name;
-    }
-  } else {
-    edNewMap();
-  }
-
-  // Setup canvas
-  edResizeCanvas();
-  window.addEventListener('resize', edResizeCanvas);
-  edSetupEvents();
-  edDrawLoop();
-}
-
-function closeEditor() {
-  ed.open=false;
-  document.getElementById('edOverlay').classList.remove('vis');
-  document.getElementById('menu').style.display='flex';
-  window.removeEventListener('resize', edResizeCanvas);
-  edRemoveEvents();
-  if (ed.raf) { cancelAnimationFrame(ed.raf); ed.raf=null; }
-}
-
-function edResizeCanvas() {
-  const bar = document.getElementById('edBar');
-  const hint = document.getElementById('edHint');
-  ed.canvas = document.getElementById('edCanvas');
-  ed.ctx = ed.canvas.getContext('2d');
-  ed.canvas.width = window.innerWidth;
-  ed.canvas.height = window.innerHeight - bar.offsetHeight - hint.offsetHeight;
-  edCenterMap();
-}
-
-function edCenterMap() {
-  if (!ed.canvas) return;
-  ed.camX = (ed.canvas.width  - ed.mapW * ed.zoom) / 2;
-  ed.camY = (ed.canvas.height - ed.mapH * ed.zoom) / 2;
-}
-
-function edNewMap() {
-  ed.mapW=40; ed.mapH=28;
-  ed.tiles=new Uint8Array(ed.mapW*ed.mapH);
-  // Fill interior with floor
-  for(let r=1;r<ed.mapH-1;r++) for(let c=1;c<ed.mapW-1;c++) ed.tiles[r*ed.mapW+c]=1;
-  ed.torches=[]; ed.playerStart=[19.5,13.5]; ed.editId=null;
-  document.getElementById('edMapName').value='My Map';
-  document.getElementById('edStatus').textContent='New map';
-  if(ed.canvas) edCenterMap();
-}
-
-function edLoadDefault() {
-  const built=buildMap();
-  ed.mapW=40; ed.mapH=28;
-  ed.tiles=new Uint8Array(ed.mapW*ed.mapH);
-  for(let r=0;r<ed.mapH;r++) for(let c=0;c<ed.mapW;c++) ed.tiles[r*ed.mapW+c]=built[r][c];
-  ed.torches=[[7,16],[7,23],[20,16],[20,23],[11,9],[16,9],[11,30],[16,30],[8,9],[8,30],[19,9],[19,30],[4,16],[4,23],[23,16],[23,23],[3,26],[3,36],[5,26],[5,36],[22,3],[22,13],[24,3],[24,13]];
-  ed.playerStart=[19.5,13.5];
-  document.getElementById('edStatus').textContent='Loaded default map';
-}
-
-function edClear() {
-  if(!confirm('Clear entire map to walls?')) return;
-  ed.tiles=new Uint8Array(ed.mapW*ed.mapH);
-  document.getElementById('edStatus').textContent='Cleared';
-}
-
-function edSetBrush(v) {
-  ed.brush=v; ed.tool='paint';
-  document.querySelectorAll('.edtile').forEach(el=>el.classList.remove('active'));
-  const el=document.getElementById('edtile'+v);
-  if(el) el.classList.add('active');
-  const ps=document.getElementById('edtilePS'); if(ps) ps.classList.remove('active');
-  const tc=document.getElementById('edtileTC'); if(tc) tc.classList.remove('active');
-}
-function edSetTool(t) {
-  ed.tool=t;
-  document.querySelectorAll('.edtile').forEach(el=>el.classList.remove('active'));
-  if(t==='playerStart'){ const el=document.getElementById('edtilePS'); if(el)el.classList.add('active'); }
-  if(t==='torch'){       const el=document.getElementById('edtileTC'); if(el)el.classList.add('active'); }
-}
-
-function edScreenToCell(sx, sy) {
-  return { c:Math.floor((sx-ed.camX)/ed.zoom), r:Math.floor((sy-ed.camY)/ed.zoom) };
-}
-function edCellValid(r,c){ return r>=0&&r<ed.mapH&&c>=0&&c<ed.mapW; }
-function edGetTile(r,c){ return edCellValid(r,c)?ed.tiles[r*ed.mapW+c]:0; }
-function edSetTile(r,c,v){ if(edCellValid(r,c)) ed.tiles[r*ed.mapW+c]=v; }
-
-function edPaintAt(sx,sy,erase) {
-  const {r,c}=edScreenToCell(sx,sy);
-  if(!edCellValid(r,c)) return;
-  if(ed.tool==='playerStart'){ ed.playerStart=[c+0.5,r+0.5]; return; }
-  if(ed.tool==='torch'){
-    const key=r+','+c;
-    const idx=ed.torches.findIndex(t=>t[0]===r&&t[1]===c);
-    if(idx>=0) ed.torches.splice(idx,1); else ed.torches.push([r,c]);
-    return;
-  }
-  edSetTile(r,c,erase?0:ed.brush);
-}
-
-// Canvas events
-let _edEvCanvas=null;
-function edSetupEvents(){
-  _edEvCanvas=document.getElementById('edCanvas');
-  _edEvCanvas.addEventListener('mousedown',  edOnDown);
-  _edEvCanvas.addEventListener('mousemove',  edOnMove);
-  _edEvCanvas.addEventListener('mouseup',    edOnUp);
-  _edEvCanvas.addEventListener('wheel',      edOnWheel, {passive:false});
-  _edEvCanvas.addEventListener('contextmenu',e=>e.preventDefault());
-  document.addEventListener('keydown', edOnKey);
-  document.addEventListener('keyup',   edOnKeyUp);
-}
-function edRemoveEvents(){
-  if(!_edEvCanvas) return;
-  _edEvCanvas.removeEventListener('mousedown',  edOnDown);
-  _edEvCanvas.removeEventListener('mousemove',  edOnMove);
-  _edEvCanvas.removeEventListener('mouseup',    edOnUp);
-  _edEvCanvas.removeEventListener('wheel',      edOnWheel);
-  document.removeEventListener('keydown', edOnKey);
-  document.removeEventListener('keyup',   edOnKeyUp);
-}
-function edOnDown(e){
-  e.preventDefault();
-  if(e.button===1||ed.spaceDown){ // middle button or space = pan
-    ed.panning=true; ed.panStart={x:e.clientX,y:e.clientY}; ed.panCam={x:ed.camX,y:ed.camY}; return;
-  }
-  if(e.button===0){ ed.painting=true; edPaintAt(e.offsetX,e.offsetY,false); }
-  if(e.button===2){ ed.erasing=true;  edPaintAt(e.offsetX,e.offsetY,true); }
-}
-function edOnMove(e){
-  if(ed.panning){
-    ed.camX=ed.panCam.x+(e.clientX-ed.panStart.x);
-    ed.camY=ed.panCam.y+(e.clientY-ed.panStart.y);
-    return;
-  }
-  if(ed.painting) edPaintAt(e.offsetX,e.offsetY,false);
-  if(ed.erasing)  edPaintAt(e.offsetX,e.offsetY,true);
-}
-function edOnUp(e){
-  ed.painting=false; ed.erasing=false; ed.panning=false;
-}
-function edOnWheel(e){
-  e.preventDefault();
-  const oldZ=ed.zoom;
-  ed.zoom=Math.max(6,Math.min(48,ed.zoom-(e.deltaY>0?2:-2)));
-  // Zoom toward mouse
-  const mx=e.offsetX, my=e.offsetY;
-  ed.camX=mx-(mx-ed.camX)*(ed.zoom/oldZ);
-  ed.camY=my-(my-ed.camY)*(ed.zoom/oldZ);
-}
-function edOnKey(e){
-  if(e.code==='Space') ed.spaceDown=true;
-  if(e.key==='p'||e.key==='P') edSetTool('playerStart');
-  if(e.key==='t'||e.key==='T') edSetTool('torch');
-  if(e.key>='1'&&e.key<='5') edSetBrush(parseInt(e.key)-1);
-}
-function edOnKeyUp(e){ if(e.code==='Space') ed.spaceDown=false; }
-
-function edDrawLoop(){
-  if(!ed.open){return;}
-  edDraw();
-  ed.raf=requestAnimationFrame(edDrawLoop);
-}
-
-function edDraw(){
-  const c=ed.canvas, x=ed.ctx, z=ed.zoom;
-  if(!c||!x) return;
-  x.fillStyle='#06040f'; x.fillRect(0,0,c.width,c.height);
-
-  // Tiles
-  for(let r=0;r<ed.mapH;r++){
-    for(let col=0;col<ed.mapW;col++){
-      const px=ed.camX+col*z, py=ed.camY+r*z;
-      if(px+z<0||px>c.width||py+z<0||py>c.height) continue;
-      const tv=edGetTile(r,col);
-      const td=TILE_DEFS[tv]||TILE_DEFS[0];
-      x.fillStyle=td.color; x.fillRect(px,py,z,z);
-      // Dot
-      if(z>=10){
-        x.fillStyle=td.dot;
-        const ds=Math.max(2,z*0.22);
-        x.fillRect(px+z/2-ds/2, py+z/2-ds/2, ds, ds);
-      }
-      // Grid lines
-      if(z>=8){
-        x.strokeStyle='rgba(255,255,255,0.07)';
-        x.lineWidth=0.5;
-        x.strokeRect(px,py,z,z);
-      }
-    }
-  }
-
-  // Torches
-  ed.torches.forEach(([tr,tc])=>{
-    const px=ed.camX+tc*z+z/2, py=ed.camY+tr*z+z/2;
-    x.fillStyle='#ff8833';
-    x.beginPath(); x.arc(px,py,Math.max(2,z*0.18),0,Math.PI*2); x.fill();
-  });
-
-  // Player start
-  {
-    const px=ed.camX+ed.playerStart[0]*z, py=ed.camY+ed.playerStart[1]*z;
-    x.strokeStyle='#44ff88'; x.lineWidth=2;
-    x.beginPath(); x.arc(px,py,Math.max(3,z*0.32),0,Math.PI*2); x.stroke();
-    x.fillStyle='rgba(68,255,136,0.3)';
-    x.beginPath(); x.arc(px,py,Math.max(3,z*0.32),0,Math.PI*2); x.fill();
-    if(z>=14){
-      x.fillStyle='#44ff88'; x.font=`bold ${Math.max(7,z*0.28)}px Segoe UI`;
-      x.textAlign='center'; x.textBaseline='bottom';
-      x.fillText('START',px,py-z*0.28);
-    }
-  }
-
-  // Map border
-  x.strokeStyle='rgba(255,255,255,0.35)'; x.lineWidth=2;
-  x.strokeRect(ed.camX,ed.camY,ed.mapW*z,ed.mapH*z);
-}
-
-function edBuildMapObj() {
-  const name = document.getElementById('edMapName').value.trim() || 'Unnamed Map';
-  const id   = ed.editId || ('map_'+Date.now());
-  const tiles = [];
-  for(let r=0;r<ed.mapH;r++){
-    const row=[];
-    for(let c=0;c<ed.mapW;c++) row.push(ed.tiles[r*ed.mapW+c]);
-    tiles.push(row);
-  }
-  return { id, name, mapW:ed.mapW, mapH:ed.mapH, tiles, torches:ed.torches, playerStart:ed.playerStart };
-}
-
-function edSave() {
-  const m=edBuildMapObj();
-  ed.editId=m.id;
-  upsertMap(m);
-  document.getElementById('edStatus').textContent=`Saved "${m.name}"`;
-}
-
-function edSaveAndPlay() {
-  const m=edBuildMapObj();
-  ed.editId=m.id;
-  upsertMap(m);
-  setActiveMapId(m.id);
-  applyMapData(m);
-  ed.open=false;
-  document.getElementById('edOverlay').classList.remove('vis');
-  window.removeEventListener('resize', edResizeCanvas);
-  edRemoveEvents();
-  if(ed.raf){cancelAnimationFrame(ed.raf);ed.raf=null;}
-  startGame();
-}
 
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');

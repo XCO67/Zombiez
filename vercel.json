@@ -2,12 +2,14 @@
   "version": 2,
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
+    { "src": "editor.html", "use": "@vercel/static" },
     { "src": "character/**", "use": "@vercel/static" },
     { "src": "zombies/**", "use": "@vercel/static" },
     { "src": "dragon/**", "use": "@vercel/static" },
     { "src": "skeleton/**", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "/editor", "dest": "/editor.html" },
     { "src": "/", "dest": "/index.html" }
   ]
 }
