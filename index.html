@@ -34,6 +34,8 @@
   <span class="menu-credit">MADE BY JESTERBYTE</span>
   <img class="menu-wizard" src="css/menu-wizard.gif" alt="">
   <img class="menu-zombie" src="css/menu-zombie.gif" alt="">
+  <!-- Hidden YouTube music player -->
+  <div id="yt-music-player" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;left:-9999px"></div>
 
   <!-- Map Selector Modal -->
   <div id="mapSelectModal" class="modal-ov" style="display:none">
@@ -90,6 +92,11 @@
         <span class="slabel">Master Volume</span>
         <input type="range" class="sslider" id="volSlider" min="0" max="100" value="80" oninput="setMasterVol(this.value)">
         <span class="sval" id="volVal">80%</span>
+      </div>
+      <div class="srow">
+        <span class="slabel">Music Volume</span>
+        <input type="range" class="sslider" id="musicSlider" min="0" max="100" value="40" oninput="setMusicVol(this.value)">
+        <span class="sval" id="musicVal">40%</span>
       </div>
       <div class="srow">
         <span class="slabel">Fullscreen</span>
@@ -166,5 +173,7 @@
 <script src="js/multiplayer.js"></script>
 <script src="js/render.js"></script>
 <script src="js/menu.js"></script>
+<script src="js/music.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
