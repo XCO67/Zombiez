@@ -693,18 +693,18 @@ function drawHUD() {
       ctx.fillText(icon, cx2, abilSlotY + 3);
       ctx.globalAlpha = 1;
 
-      // Status (READY / Xs / ACTIVE)
+      // Status (READY / Xs / ACTIVE) — centred inside the ring
       ctx.font = "12px 'VT323'";
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (active) {
         ctx.fillStyle = activeCol;
-        ctx.fillText(labelReady, cx2, abilSlotY + 19);
+        ctx.fillText(labelReady, cx2, aCy);
       } else if (ready) {
         ctx.fillStyle = readyCol;
-        ctx.fillText('READY', cx2, abilSlotY + 19);
+        ctx.fillText('READY', cx2, aCy);
       } else {
         ctx.fillStyle = cdCol;
-        ctx.fillText(labelCd, cx2, abilSlotY + 19);
+        ctx.fillText(labelCd, cx2, aCy);
       }
 
       // Key hint
