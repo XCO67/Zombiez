@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dead Surge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,47 +19,84 @@
       position: fixed; inset: 0; z-index: 100;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      background: #060410; font-family: 'Segoe UI', sans-serif; cursor: default;
+      background: #04030a; cursor: default;
+    }
+    #menu::before {
+      content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 42%, transparent 30%, rgba(0,0,0,.82) 100%);
+    }
+    #menu::after {
+      content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.09) 3px, rgba(0,0,0,.09) 4px);
     }
     #menuBg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-    .menu-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+    .menu-inner { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%; }
+    .menu-logo { text-align: center; }
     .menu-logo h1 {
-      font-size: clamp(58px, 9vw, 118px); font-weight: 900; letter-spacing: .08em;
-      color: #ff2222; text-align: center;
-      text-shadow: 0 0 18px #ff0000, 0 0 55px #aa0000, 0 0 100px #660000;
-      animation: logoPulse 2.2s ease-in-out infinite alternate;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(26px, 5vw, 66px); font-weight: 400; letter-spacing: .06em;
+      color: #ff2222; line-height: 1.25;
+      text-shadow: 4px 4px 0 #7a0000, 0 0 22px #ff0000, 0 0 60px #aa0000;
+      animation: logoPulse 2.4s ease-in-out infinite alternate;
     }
-    .menu-logo p { color: rgba(210,160,160,.65); font-size: clamp(13px,1.8vw,20px); letter-spacing: .32em; text-transform: uppercase; text-align: center; margin-top: 6px; }
+    .menu-logo p {
+      font-family: 'VT323', monospace;
+      color: rgba(255,160,160,.6); font-size: clamp(18px, 2.4vw, 28px);
+      letter-spacing: .42em; text-transform: uppercase; margin-top: 12px;
+    }
     @keyframes logoPulse {
-      from { text-shadow: 0 0 18px #ff0000, 0 0 55px #aa0000, 0 0 100px #660000; }
-      to   { text-shadow: 0 0 28px #ff3300, 0 0 80px #cc0000, 0 0 140px #880000; }
+      from { text-shadow: 4px 4px 0 #7a0000, 0 0 22px #ff0000, 0 0 60px #aa0000; }
+      to   { text-shadow: 4px 4px 0 #7a0000, 0 0 32px #ff3300, 0 0 90px #cc0000, 0 0 140px #770000; }
     }
-    .menu-btns { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 24px; width: 100%; }
+    .menu-divider {
+      width: clamp(240px, 32vw, 380px); display: flex; align-items: center; gap: 10px;
+      margin: 24px 0 16px;
+    }
+    .menu-divider::before, .menu-divider::after { content: ''; flex: 1; height: 2px; }
+    .menu-divider::before { background: linear-gradient(90deg, transparent, rgba(200,40,40,.65)); }
+    .menu-divider::after  { background: linear-gradient(90deg, rgba(200,40,40,.65), transparent); }
+    .menu-divider span { font-family: 'Press Start 2P', monospace; font-size: 8px; color: rgba(200,60,60,.75); }
+    .menu-select-label {
+      font-family: 'Press Start 2P', monospace; font-size: 7px;
+      color: rgba(255,90,90,.4); letter-spacing: .3em; margin-bottom: 16px;
+      animation: blinkAnim 1.5s step-end infinite;
+    }
+    @keyframes blinkAnim { 0%,100%{opacity:1} 50%{opacity:0} }
+    .menu-btns { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
     .mbtn {
-      width: clamp(220px,28vw,340px); padding: 15px 28px;
-      font-size: clamp(14px,1.7vw,18px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05); color: #ccc; cursor: pointer;
-      backdrop-filter: blur(10px); transition: all .18s ease; position: relative; overflow: hidden;
+      font-family: 'Press Start 2P', monospace;
+      width: clamp(270px, 33vw, 390px); padding: 15px 24px;
+      font-size: clamp(10px, 1.1vw, 13px); letter-spacing: .07em; text-transform: uppercase;
+      border-radius: 0; border: 3px solid #2a2a2a; background: #0c0a18; color: #aaa;
+      cursor: pointer; transition: transform .08s, box-shadow .08s;
+      box-shadow: 5px 5px 0 rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.05);
+      position: relative;
     }
-    .mbtn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(255,255,255,.07) 0%,transparent 60%); pointer-events: none; }
-    .mbtn:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.35); color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.55); }
-    .mbtn.play { background: rgba(180,18,18,.28); border-color: rgba(255,55,55,.5); color: #ff9090; font-size: clamp(17px,2.2vw,24px); }
-    .mbtn.play:hover { background: rgba(220,28,28,.42); border-color: #ff4444; color: #fff; box-shadow: 0 8px 38px rgba(200,0,0,.4); }
-    .mbtn.lb   { background: rgba(200,160,0,.15); border-color: rgba(255,210,0,.3); color: #ffcc66; }
-    .mbtn.lb:hover   { background: rgba(220,180,0,.28); border-color: #ffcc00; color: #fff; box-shadow: 0 6px 28px rgba(200,160,0,.3); }
-    .mbtn.cfg  { background: rgba(60,80,200,.14); border-color: rgba(100,140,255,.28); color: #99aaff; }
-    .mbtn.cfg:hover  { background: rgba(70,90,220,.28); border-color: #8899ff; color: #fff; box-shadow: 0 6px 28px rgba(60,80,200,.3); }
+    .mbtn:not([disabled]):hover { transform: translate(2px,2px); box-shadow: 3px 3px 0 rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.05); }
+    .mbtn:not([disabled]):active { transform: translate(5px,5px); box-shadow: none; }
+    .mbtn.play {
+      background: #160404; border-color: #bb1e1e; color: #ff7777;
+      font-size: clamp(11px, 1.35vw, 15px);
+      box-shadow: 5px 5px 0 #500000, inset 0 1px 0 rgba(255,100,100,.1);
+    }
+    .mbtn.play:hover { transform:translate(2px,2px); box-shadow:3px 3px 0 #500000, inset 0 1px 0 rgba(255,100,100,.1); background:#200606; color:#ffaaaa; }
+    .mbtn.lb   { background:#0f0c00; border-color:#8a6a00; color:#ffcc33; box-shadow:5px 5px 0 #2e2000, inset 0 1px 0 rgba(255,190,60,.08); }
+    .mbtn.lb:hover   { transform:translate(2px,2px); box-shadow:3px 3px 0 #2e2000; background:#181200; color:#ffe066; }
+    .mbtn.cfg  { background:#050817; border-color:#1a3388; color:#5577dd; box-shadow:5px 5px 0 #040a28, inset 0 1px 0 rgba(70,110,255,.08); }
+    .mbtn.cfg:hover  { transform:translate(2px,2px); box-shadow:3px 3px 0 #040a28; background:#090e22; color:#8899ff; }
+    .mbtn.mp   { background:#080808; border-color:#222; color:#3a3a3a; box-shadow:5px 5px 0 rgba(0,0,0,.7); line-height:1.8; }
+    .mbtn.mp .mp-cs { display:block; font-size:.7em; color:#2e2e2e; letter-spacing:.15em; margin-top:2px; }
     .login-corner {
-      position: absolute; top: 18px; right: 22px; z-index: 2;
-      padding: 9px 18px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-      border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06);
-      border-radius: 6px; color: #aaa; cursor: pointer; backdrop-filter: blur(8px);
-      transition: all .18s; font-family: 'Segoe UI', sans-serif;
+      position: absolute; top: 18px; right: 22px; z-index: 4;
+      padding: 9px 15px; font-family: 'Press Start 2P', monospace;
+      font-size: 8px; letter-spacing: .07em; text-transform: uppercase;
+      border: 2px solid rgba(255,255,255,.18); background: rgba(6,4,16,.85);
+      border-radius: 0; color: #777; cursor: pointer; transition: all .1s;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.8);
     }
-    .login-corner:hover { border-color: rgba(255,255,255,.5); color: #fff; background: rgba(255,255,255,.12); }
-    .menu-ver { position: absolute; bottom: 12px; right: 16px; color: rgba(255,255,255,.16); font-size: 11px; letter-spacing: .05em; z-index: 1; }
-    .menu-credit { position: absolute; bottom: 12px; left: 16px; color: rgba(255,255,255,.25); font-size: 11px; letter-spacing: .05em; z-index: 1; }
+    .login-corner:hover { border-color:rgba(255,255,255,.5); color:#ccc; transform:translate(1px,1px); box-shadow:2px 2px 0 rgba(0,0,0,.8); }
+    .menu-ver    { position:absolute; bottom:12px; right:16px; z-index:3; font-family:'Press Start 2P',monospace; color:rgba(255,255,255,.12); font-size:7px; }
+    .menu-credit { position:absolute; bottom:12px; left:16px;  z-index:3; font-family:'Press Start 2P',monospace; color:rgba(255,255,255,.18); font-size:7px; }
 
     /* ── MODALS ──────────────────────────────────────────── */
     .modal-ov {
@@ -109,8 +149,6 @@
     .auth-tab:hover { color:rgba(255,255,255,.75); background:rgba(255,255,255,.08); }
     .auth-tab.active { background:rgba(130,55,220,.35); color:#cc99ff; }
     /* multiplayer */
-    .mbtn.mp { background:rgba(0,160,80,.16); border-color:rgba(0,230,120,.3); color:#66ffaa; }
-    .mbtn.mp:hover { background:rgba(0,190,100,.28); border-color:#00ee88; color:#fff; box-shadow:0 6px 28px rgba(0,180,80,.3); }
     .mp-code { font-size:34px; font-weight:900; letter-spacing:.22em; color:#00ffaa; text-align:center; margin:14px 0; text-shadow:0 0 20px #00cc88; }
     .mp-players { width:100%; margin:14px 0; }
     .mp-player-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; margin-bottom:6px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); }
@@ -149,15 +187,17 @@
       <h1>DEAD SURGE</h1>
       <p>Survive the Horde</p>
     </div>
+    <div class="menu-divider"><span>&#9670;</span></div>
+    <div class="menu-select-label">- SELECT -</div>
     <div class="menu-btns">
-      <button class="mbtn play" onclick="openMapSelect()">▶&nbsp;&nbsp;Play</button>
-      <button class="mbtn mp" disabled style="opacity:0.5;cursor:not-allowed;">👥&nbsp;&nbsp;Multiplayer &mdash; Coming Soon</button>
-      <button class="mbtn lb"   onclick="openModal('lbModal')">🏆&nbsp;&nbsp;Leaderboard</button>
-      <button class="mbtn cfg"  onclick="openModal('settingsModal')">⚙&nbsp;&nbsp;Settings</button>
+      <button class="mbtn play" onclick="openMapSelect()">&#9658;&nbsp; PLAY</button>
+      <button class="mbtn mp" disabled style="cursor:not-allowed;">MULTIPLAYER<span class="mp-cs">— COMING SOON —</span></button>
+      <button class="mbtn lb"   onclick="openModal('lbModal')">&#9733;&nbsp; LEADERBOARD</button>
+      <button class="mbtn cfg"  onclick="openModal('settingsModal')">&#9881;&nbsp; SETTINGS</button>
     </div>
   </div>
   <span class="menu-ver">DEAD SURGE v1.0</span>
-  <span class="menu-credit">Made by JesterByte</span>
+  <span class="menu-credit">MADE BY JESTERBYTE</span>
 
   <!-- Map Selector Modal -->
   <div id="mapSelectModal" class="modal-ov" style="display:none">
