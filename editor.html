@@ -187,10 +187,11 @@ const TILES = [
   { id:4, name:'Torch (Wall)', key:'5', fill:'#1a1228', hi:'#c87020', label:'T' },
   { id:5, name:'Door',         key:'6', fill:'#3d1f0a', hi:'#8b5e28', label:'D' },
   { id:6, name:'Player Start', key:'7', fill:'#2e2810', hi:'#c8a030', label:'@' },
+  { id:7, name:'Boss Spawn',   key:'8', fill:'#1a0015', hi:'#880022', label:'B' },
 ];
 
-// Editor tile → game tile value:  Wall=0,Floor=1,Pillar=2,Spawn=3,Torch→Wall+torch list,Door=4,PlayerStart→Floor+record
-const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1];
+// Editor tile → game tile value:  Wall=0,Floor=1,Pillar=2,Spawn=3,Torch→Wall+torch list,Door=4,PlayerStart→Floor+record,BossSpawn=5
+const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5];
 
 // ── ASSET DEFINITIONS ────────────────────────────────────────────────────────
 // Assets are placed as floating objects on the map (snap to 0.5-tile centres)

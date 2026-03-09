@@ -153,6 +153,16 @@ function fireWindWave(sx, sy, angle) {
     if(s.hp<=0){s.dead=true;s.deathTimer=22;game.kills++;game.score+=15;
       spawnCoin(s.cx,s.cy,15+game.round*3);spawnPerk(s.cx,s.cy);}
   });
+  // Boss hit by wave
+  BOSS_DEMONS.forEach(b => {
+    if(b.dead) return;
+    const dx=b.cx*TW-sx, dy=b.cy*TH-sy, dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const bAng=Math.atan2(dy,dx); let diff=bAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitBoss(b,'thundergun',1);
+  });
   // Remove dead zombies killed by wave
   for (let i = ZOMBIES.length-1; i >= 0; i--) {
     if (ZOMBIES[i].hp <= 0) ZOMBIES.splice(i, 1);
@@ -218,6 +228,15 @@ function updateProjectiles() {
       const s=SKELETONS[si]; if(s.dead) continue;
       if(Math.hypot(p.x-s.cx*TW,p.y-s.cy*TH)<TW*w.hitR){
         hitSkeleton(s,p.wkey,p.papped?3:1);
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Boss hits
+    for(let bi=0;bi<BOSS_DEMONS.length;bi++){
+      const b=BOSS_DEMONS[bi]; if(b.dead) continue;
+      if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*1.6){
+        hitBoss(b,p.wkey,p.papped?3:1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }

@@ -36,6 +36,8 @@ function render(now) {
     updateSkeletons();
     updateDragons();
     updateFlames();
+    updateBossDemons();
+    updateBossShots();
     updateProjectiles();
     updateDmgNums();
     updateCoins();
@@ -57,10 +59,11 @@ function render(now) {
 
   for (let r=0;r<MAP_H;r++) for (let c=0;c<MAP_W;c++) {
     const type=MAP[r][c];
-    if      (type===T.WALL)   drawWall(r,c);
-    else if (type===T.PILLAR) drawPillar(r,c);
-    else if (type===T.DOOR)   drawDoor(r,c);
-    else                      drawFloor(r,c,type);
+    if      (type===T.WALL)       drawWall(r,c);
+    else if (type===T.PILLAR)     drawPillar(r,c);
+    else if (type===T.DOOR)       drawDoor(r,c);
+    else if (type===T.BOSS_SPAWN) drawBossSpawnTile(r,c);
+    else                          drawFloor(r,c,type);
   }
   drawWallShadows();
   drawDoorPrompts();
@@ -75,7 +78,8 @@ function render(now) {
     {y:player.cy*TH, draw:drawPlayer},
     ...ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawZombie(z)})),
     ...SKELETONS.map(s=>({y:s.cy*TH, draw:()=>drawSkeleton(s)})),
-    ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)}))
+    ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)})),
+    ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)}))
   ];
   entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   drawRemotePlayers();
@@ -92,6 +96,7 @@ function render(now) {
   drawPerks();
   drawEffects();
   drawProjectiles();
+  drawBossShots();
 
   ctx.restore(); // end camera transform
 
