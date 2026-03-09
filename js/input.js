@@ -50,6 +50,12 @@ document.addEventListener('keydown', e => {
     player.fireCooldown  = FIRE_RING_COOLDOWN;
     player.fireRingAngle = 0;
   }
+  // Barrier ability (5)
+  if (e.key === '5' && game.state === 'playing' && !player.dead && !player.downed
+      && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
+    player.barrierTimer    = BARRIER_DURATION;
+    player.barrierCooldown = BARRIER_COOLDOWN;
+  }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
     clickTarget = null;

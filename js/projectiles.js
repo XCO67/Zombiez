@@ -28,6 +28,7 @@ function spawnBullet(sx,sy,angle,wkey) {
 
 // Central damage function — routes through shield for the local player
 function applyDamage(tgt, amount) {
+  if (tgt === player && player.barrierTimer > 0) return; // barrier blocks all damage
   if (tgt === player && player.shield > 0) {
     const absorbed = Math.min(player.shield, amount);
     player.shield = Math.max(0, player.shield - absorbed);

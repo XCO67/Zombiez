@@ -607,7 +607,7 @@ function drawHUD() {
     const moneyW = 100;
     const ABIL_SW   = 70;  // each ability slot width
     const ABIL_GAP  = 6;   // gap between slots
-    const abilSecW  = ABIL_SW * 2 + ABIL_GAP; // 146px total
+    const abilSecW  = ABIL_SW * 3 + ABIL_GAP * 2; // 222px total
     const statAreaW = W - wepEndX - moneyW - abilSecW - ipd * 7;
     const statTileW = Math.min(76, Math.floor((statAreaW - stats.length * 4) / stats.length));
     const statStartX = wepEndX + 4;
@@ -728,6 +728,14 @@ function drawHUD() {
     const fireFrac   = fireReady ? 1 : 1 - player.fireCooldown / FIRE_RING_COOLDOWN;
     drawAbilSlot(fireSlotX, '🔥', 'ACTIVE!', Math.ceil(player.fireCooldown/60)+'s', '[4]',
       fireReady, fireActive, fireFrac, '#ff6622', '#ffaa44', '#ffaa44', 'rgba(200,80,20,0.8)');
+
+    // Barrier
+    const barrSlotX  = abilX + (ABIL_SW + ABIL_GAP) * 2;
+    const barrReady  = player.barrierCooldown <= 0;
+    const barrActive = player.barrierTimer > 0;
+    const barrFrac   = barrReady ? 1 : 1 - player.barrierCooldown / BARRIER_COOLDOWN;
+    drawAbilSlot(barrSlotX, '🛡', 'ACTIVE!', Math.ceil(player.barrierCooldown/60)+'s', '[5]',
+      barrReady, barrActive, barrFrac, '#44ddff', '#aaeeff', '#44ddff', 'rgba(40,160,220,0.8)');
 
     vDiv(abilX + abilSecW + ipd + 2);
 

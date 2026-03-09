@@ -34,4 +34,6 @@ const player = {
   fireCooldown: 0,   // frames remaining on fire ring cooldown (1200 = 20s)
   fireRingTimer: 0,  // frames remaining of active fire ring
   fireRingAngle: 0,  // current orbit angle (radians)
+  barrierCooldown: 0, // frames remaining on barrier cooldown (2100 = 35s)
+  barrierTimer: 0,    // frames remaining of active barrier (360 = 6s)
 };

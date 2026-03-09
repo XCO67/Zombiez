@@ -66,6 +66,72 @@ function updateFireRing() {
   });
 }
 
+// ── Barrier ───────────────────────────────────────────────────────────────────
+const BARRIER_COOLDOWN = 2100; // 35 s at 60 fps
+const BARRIER_DURATION = 360;  // 6 s active
+
+function updateBarrier() {
+  if (player.barrierCooldown > 0) player.barrierCooldown--;
+}
+
+function drawBarrier() {
+  if (player.barrierTimer <= 0) return;
+  player.barrierTimer--;
+
+  const cx   = player.cx * TW;
+  const cy   = player.cy * TH;
+  const frac = player.barrierTimer / BARRIER_DURATION;
+  const R    = TW * 1.05; // bubble radius
+  const now  = performance.now();
+  const pulse = 0.88 + Math.sin(now / 180) * 0.12;
+
+  ctx.save();
+
+  // Soft inner fill
+  const fill = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
+  fill.addColorStop(0,   `rgba(140,220,255,${0.06 * frac * pulse})`);
+  fill.addColorStop(0.6, `rgba(80,160,255,${0.10 * frac})`);
+  fill.addColorStop(1,   `rgba(40,100,255,${0.18 * frac * pulse})`);
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+
+  // Outer glow ring
+  const glow = ctx.createRadialGradient(cx, cy, R * 0.85, cx, cy, R * 1.28);
+  glow.addColorStop(0,   `rgba(100,200,255,${0.22 * frac * pulse})`);
+  glow.addColorStop(0.5, `rgba(60,140,255,${0.12 * frac})`);
+  glow.addColorStop(1,   'rgba(20,60,200,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.28, 0, Math.PI * 2); ctx.fill();
+
+  // Solid bubble edge
+  ctx.strokeStyle = `rgba(160,230,255,${0.75 * frac * pulse})`;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = '#60cfff';
+  ctx.shadowBlur = 14 * frac;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Two counter-rotating shimmer arcs
+  for (let i = 0; i < 2; i++) {
+    const offset = i * Math.PI;
+    const rot = now / 900 * (i === 0 ? 1 : -1) + offset;
+    ctx.strokeStyle = `rgba(200,240,255,${0.35 * frac})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, rot, rot + Math.PI * 0.6);
+    ctx.stroke();
+  }
+
+  // Expiry flash (last 60 frames blink)
+  if (player.barrierTimer < 60 && Math.floor(now / 120) % 2 === 0) {
+    ctx.strokeStyle = `rgba(255,100,100,${0.8 * frac})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function drawFireRing() {
   if (player.fireRingTimer <= 0) return;
 
