@@ -6,7 +6,9 @@
     { "src": "character/**", "use": "@vercel/static" },
     { "src": "zombies/**", "use": "@vercel/static" },
     { "src": "dragon/**", "use": "@vercel/static" },
-    { "src": "skeleton/**", "use": "@vercel/static" }
+    { "src": "skeleton/**", "use": "@vercel/static" },
+    { "src": "css/**", "use": "@vercel/static" },
+    { "src": "js/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/editor", "dest": "/editor.html" },
