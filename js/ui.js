@@ -668,17 +668,24 @@ function drawHUD() {
       const bg  = active ? activeCol + '33' : ready ? readyCol + '18' : '#0d0d18';
       pixelSlot(ctx, slotX, abilSlotY, ABIL_SW, abilSlotH, bg, ready || active);
 
-      // Arc track
-      const aR = Math.min(ABIL_SW, abilSlotH) * 0.30;
-      const aCy = abilSlotY + abilSlotH * 0.58;
+      // Layout: icon top ~30%, cooldown ring bottom ~60%
+      const iconY  = abilSlotY + abilSlotH * 0.20; // icon centre
+      const aR     = Math.min(ABIL_SW, abilSlotH) * 0.24;
+      const aCy    = abilSlotY + abilSlotH * 0.70; // ring centre
+
+      // Icon — always full opacity, large
+      ctx.font = '20px Segoe UI';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 1;
+      ctx.fillText(icon, cx2, iconY);
+
+      // Cooldown arc track
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(cx2, aCy, aR, 0, Math.PI * 2); ctx.stroke();
-      // Fill
-      ctx.strokeStyle = ready
-        ? (active ? activeCol : readyCol)
-        : cdCol;
+      // Fill arc
+      ctx.strokeStyle = ready ? (active ? activeCol : readyCol) : cdCol;
       ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.arc(cx2, aCy, aR, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
@@ -686,15 +693,8 @@ function drawHUD() {
       if (ready) { ctx.shadowColor = readyCol; ctx.shadowBlur = 7; ctx.stroke(); ctx.shadowBlur = 0; }
       ctx.restore();
 
-      // Icon above arc
-      ctx.font = '14px Segoe UI';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.globalAlpha = ready ? 1 : 0.4 + frac * 0.4;
-      ctx.fillText(icon, cx2, abilSlotY + 3);
-      ctx.globalAlpha = 1;
-
-      // Status (READY / Xs / ACTIVE) — centred inside the ring
-      ctx.font = "12px 'VT323'";
+      // Status text centred inside ring
+      ctx.font = "11px 'VT323'";
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (active) {
         ctx.fillStyle = activeCol;
@@ -707,7 +707,7 @@ function drawHUD() {
         ctx.fillText(labelCd, cx2, aCy);
       }
 
-      // Key hint
+      // Key hint at bottom
       ctx.font = "10px 'VT323'";
       ctx.fillStyle = 'rgba(180,200,220,0.4)';
       ctx.textBaseline = 'bottom';

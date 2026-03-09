@@ -78,55 +78,100 @@ function drawBarrier() {
   if (player.barrierTimer <= 0) return;
   player.barrierTimer--;
 
-  const cx   = player.cx * TW;
-  const cy   = player.cy * TH;
-  const frac = player.barrierTimer / BARRIER_DURATION;
-  const R    = TW * 1.05; // bubble radius
-  const now  = performance.now();
-  const pulse = 0.88 + Math.sin(now / 180) * 0.12;
+  const cx  = player.cx * TW;
+  const cy  = player.cy * TH;
+  const R   = TW * 1.12;
+  const now = performance.now();
+  const frac  = player.barrierTimer / BARRIER_DURATION;
+  const pulse = 0.82 + Math.sin(now / 160) * 0.18;
+  const expiring = player.barrierTimer < 90;
+  const blinkOn  = !expiring || Math.floor(now / 100) % 2 === 0;
 
   ctx.save();
 
-  // Soft inner fill
-  const fill = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
-  fill.addColorStop(0,   `rgba(140,220,255,${0.06 * frac * pulse})`);
-  fill.addColorStop(0.6, `rgba(80,160,255,${0.10 * frac})`);
-  fill.addColorStop(1,   `rgba(40,100,255,${0.18 * frac * pulse})`);
-  ctx.fillStyle = fill;
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  // ── 1. Volumetric inner glow ───────────────────────────────────
+  const innerGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.1);
+  innerGlow.addColorStop(0,   `rgba(100,210,255,${0.04 * pulse})`);
+  innerGlow.addColorStop(0.55,`rgba(60,160,255,${0.07 * frac})`);
+  innerGlow.addColorStop(0.85,`rgba(30,100,255,${0.13 * frac * pulse})`);
+  innerGlow.addColorStop(1,   'rgba(10,40,180,0)');
+  ctx.fillStyle = innerGlow;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.1, 0, Math.PI * 2); ctx.fill();
 
-  // Outer glow ring
-  const glow = ctx.createRadialGradient(cx, cy, R * 0.85, cx, cy, R * 1.28);
-  glow.addColorStop(0,   `rgba(100,200,255,${0.22 * frac * pulse})`);
-  glow.addColorStop(0.5, `rgba(60,140,255,${0.12 * frac})`);
-  glow.addColorStop(1,   'rgba(20,60,200,0)');
-  ctx.fillStyle = glow;
-  ctx.beginPath(); ctx.arc(cx, cy, R * 1.28, 0, Math.PI * 2); ctx.fill();
+  // ── 2. Outer halo bloom ────────────────────────────────────────
+  const halo = ctx.createRadialGradient(cx, cy, R * 0.9, cx, cy, R * 1.55);
+  halo.addColorStop(0,   `rgba(80,200,255,${0.18 * frac * pulse})`);
+  halo.addColorStop(0.4, `rgba(40,120,255,${0.10 * frac})`);
+  halo.addColorStop(1,   'rgba(0,40,160,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.55, 0, Math.PI * 2); ctx.fill();
 
-  // Solid bubble edge
-  ctx.strokeStyle = `rgba(160,230,255,${0.75 * frac * pulse})`;
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = '#60cfff';
-  ctx.shadowBlur = 14 * frac;
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
-  ctx.shadowBlur = 0;
+  if (blinkOn) {
+    // ── 3. Main barrier ring (thick glowing edge) ──────────────────
+    ctx.shadowColor = expiring ? '#ff6060' : '#40d0ff';
+    ctx.shadowBlur  = 18 * frac * pulse;
+    ctx.strokeStyle = expiring
+      ? `rgba(255,120,120,${0.90 * frac})`
+      : `rgba(140,230,255,${0.88 * frac * pulse})`;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0;
 
-  // Two counter-rotating shimmer arcs
-  for (let i = 0; i < 2; i++) {
-    const offset = i * Math.PI;
-    const rot = now / 900 * (i === 0 ? 1 : -1) + offset;
-    ctx.strokeStyle = `rgba(200,240,255,${0.35 * frac})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, rot, rot + Math.PI * 0.6);
-    ctx.stroke();
+    // ── 4. Inner bright ring ───────────────────────────────────────
+    ctx.strokeStyle = `rgba(220,248,255,${0.30 * frac})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.88, 0, Math.PI * 2); ctx.stroke();
   }
 
-  // Expiry flash (last 60 frames blink)
-  if (player.barrierTimer < 60 && Math.floor(now / 120) % 2 === 0) {
-    ctx.strokeStyle = `rgba(255,100,100,${0.8 * frac})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  // ── 5. Rotating energy bands (3 bands, different speeds) ──────
+  const bands = [
+    { speed: 0.0008, span: 0.55, width: 2.5, alpha: 0.55 },
+    { speed:-0.0013, span: 0.38, width: 1.8, alpha: 0.40 },
+    { speed: 0.0020, span: 0.22, width: 1.2, alpha: 0.30 },
+  ];
+  bands.forEach(b => {
+    const rot = now * b.speed;
+    const col = expiring ? `rgba(255,160,160,${b.alpha * frac})` : `rgba(160,240,255,${b.alpha * frac})`;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = b.width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, rot, rot + Math.PI * b.span);
+    ctx.stroke();
+    // Opposite arc for symmetry
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, rot + Math.PI, rot + Math.PI + Math.PI * b.span * 0.6);
+    ctx.stroke();
+  });
+
+  // ── 6. Nodes (6 glowing anchor points on the ring) ────────────
+  const nodeCount = 6;
+  for (let i = 0; i < nodeCount; i++) {
+    const ang = (i / nodeCount) * Math.PI * 2 + now * 0.0005;
+    const nx  = cx + Math.cos(ang) * R;
+    const ny  = cy + Math.sin(ang) * R;
+    const ng  = ctx.createRadialGradient(nx, ny, 0, nx, ny, 7);
+    ng.addColorStop(0, `rgba(240,255,255,${0.95 * frac * pulse})`);
+    ng.addColorStop(0.4, expiring ? `rgba(255,100,100,${0.7 * frac})` : `rgba(60,200,255,${0.7 * frac})`);
+    ng.addColorStop(1, 'rgba(0,80,200,0)');
+    ctx.fillStyle = ng;
+    ctx.beginPath(); ctx.arc(nx, ny, 7, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── 7. Crackle arcs between adjacent nodes ────────────────────
+  if (frac > 0.15) {
+    for (let i = 0; i < nodeCount; i++) {
+      if (Math.sin(now * 0.003 + i * 1.7) < 0.3) continue; // random flicker per node
+      const a1  = (i / nodeCount) * Math.PI * 2 + now * 0.0005;
+      const a2  = ((i + 1) / nodeCount) * Math.PI * 2 + now * 0.0005;
+      const x1  = cx + Math.cos(a1) * R, y1 = cy + Math.sin(a1) * R;
+      const x2  = cx + Math.cos(a2) * R, y2 = cy + Math.sin(a2) * R;
+      const mx  = (x1 + x2) / 2 + (Math.sin(now * 0.007 + i) * R * 0.08);
+      const my  = (y1 + y2) / 2 + (Math.cos(now * 0.009 + i) * R * 0.08);
+      ctx.strokeStyle = `rgba(200,245,255,${0.35 * frac})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+    }
   }
 
   ctx.restore();
