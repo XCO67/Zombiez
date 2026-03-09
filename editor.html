@@ -66,6 +66,8 @@
     .tbarbtn.publish { border-color:#7a4a00; color:#ffcc44; background:#1e1400; }
     .tbarbtn.publish:hover { background:#2a1e00; color:#ffe88a; }
     .tbarbtn.publish:disabled { opacity:.5; cursor:default; }
+    .tbarbtn.danger { border-color:#7a1a1a; color:#f88; background:#1e0e0e; }
+    .tbarbtn.danger:hover { background:#2a1010; color:#faa; }
     #topbar-sep { width:1px; height:22px; background:var(--border); }
     #zoom-label { font-size:11px; color:var(--dim); min-width:36px; text-align:center; }
     .zbtn { width:24px; height:24px; background:#1a1a2e; border:1px solid var(--border2);
@@ -87,9 +89,39 @@
     .toast.err { background:#200e0e; border:1px solid #c84040; color:#e86060; }
     .toast.inf { background:#0e0e20; border:1px solid var(--accent); color:var(--accent-hi); }
     @keyframes tin { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+    /* ── AUTH WALL ── */
+    #auth-wall { position:fixed; inset:0; background:#0d0d14; z-index:99999;
+      display:flex; align-items:center; justify-content:center; }
+    #auth-box { background:#12121e; border:1px solid #2a2a44; border-radius:10px;
+      padding:36px 40px; display:flex; flex-direction:column; align-items:center; gap:16px;
+      min-width:300px; }
+    #auth-box h2 { color:#a090f8; font-size:16px; letter-spacing:2px; text-transform:uppercase;
+      font-weight:600; margin:0; }
+    #auth-box p  { color:#484868; font-size:12px; margin:0; }
+    #auth-pw { padding:9px 14px; background:#0e0e1a; border:1px solid #2a2a44;
+      color:#fff; border-radius:6px; font-size:14px; font-family:inherit; outline:none;
+      width:100%; text-align:center; letter-spacing:2px; }
+    #auth-pw:focus { border-color:rgba(130,200,255,.5); }
+    #auth-submit { padding:9px 28px; background:#1e1840; border:1px solid #7060c8;
+      color:#a090f8; border-radius:6px; font-size:13px; font-family:inherit;
+      cursor:pointer; width:100%; font-weight:600; }
+    #auth-submit:hover { background:#261e54; color:#fff; }
+    #auth-err { color:#e86060; font-size:12px; display:none; }
   </style>
 </head>
 <body>
+
+<!-- ── AUTH WALL ── -->
+<div id="auth-wall">
+  <div id="auth-box">
+    <h2>🔒 Map Editor</h2>
+    <p>Enter the editor password to continue</p>
+    <input id="auth-pw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doAuth()">
+    <button id="auth-submit" onclick="doAuth()">Enter</button>
+    <span id="auth-err">Wrong password — try again</span>
+  </div>
+</div>
 
 <!-- ── SIDEBAR ── -->
 <div id="sidebar">
@@ -211,6 +243,7 @@
     <button class="tbarbtn" onclick="newMap()">New</button>
     <button class="tbarbtn" onclick="loadDefault()">↺ Default</button>
     <button class="tbarbtn" onclick="undo()">↩ Undo</button>
+    <button class="tbarbtn danger" onclick="resetLeaderboard()">🗑 Reset Leaderboard</button>
     <div class="topbar-sep" style="width:1px;height:22px;background:var(--border)"></div>
     <button class="zbtn" onclick="setZoom(zoom-.25)">−</button>
     <span id="zoom-label">100%</span>
@@ -962,12 +995,52 @@ function toast(msg, type='inf') {
   setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),320); },2400);
 }
 
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+async function doAuth() {
+  const pw = document.getElementById('auth-pw').value;
+  const errEl = document.getElementById('auth-err');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch(API_URL + '/api/editor-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    if (res.ok) {
+      sessionStorage.setItem('editorAuth', pw);
+      document.getElementById('auth-wall').style.display = 'none';
+      runInit();
+    } else {
+      errEl.style.display = 'block';
+      document.getElementById('auth-pw').value = '';
+      document.getElementById('auth-pw').focus();
+    }
+  } catch(e) {
+    errEl.textContent = 'Server unreachable — try again';
+    errEl.style.display = 'block';
+  }
+}
+
+async function resetLeaderboard() {
+  if (!confirm('Reset the entire leaderboard? This cannot be undone.')) return;
+  const pw = sessionStorage.getItem('editorAuth') || '';
+  try {
+    const res = await fetch(API_URL + '/api/admin/reset-scores', {
+      method: 'DELETE',
+      headers: { 'x-admin-password': pw }
+    });
+    if (res.ok) toast('Leaderboard cleared!', 'ok');
+    else toast('Failed to reset leaderboard', 'err');
+  } catch(e) {
+    toast('Server unreachable', 'err');
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 buildToolbar();
 buildAssetList();
 
-// Check for ?id= URL param
-(async function init() {
+async function runInit() {
   const id = new URLSearchParams(location.search).get('id');
   if(id) {
     const m = await fetchMapFromServer(id);
@@ -975,7 +1048,16 @@ buildAssetList();
   }
   loadDefault();
   buildMapsList();
-})();
+}
+
+// Check if already authed this session
+if (sessionStorage.getItem('editorAuth')) {
+  document.getElementById('auth-wall').style.display = 'none';
+  runInit();
+} else {
+  // Focus password input
+  document.getElementById('auth-pw').focus();
+}
 </script>
 </body>
 </html>

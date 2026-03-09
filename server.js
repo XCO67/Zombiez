@@ -206,6 +206,30 @@ app.delete('/api/maps/:id', async (req, res) => {
   }
 });
 
+// ── POST /api/editor-auth ─────────────────────────────────────────────────────
+app.post('/api/editor-auth', (req, res) => {
+  const { password } = req.body || {};
+  if (password && password === process.env.EDITER_PASSWORD) {
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ error: 'Wrong password' });
+  }
+});
+
+// ── DELETE /api/admin/reset-scores ────────────────────────────────────────────
+app.delete('/api/admin/reset-scores', async (req, res) => {
+  const pw = req.headers['x-admin-password'];
+  if (!pw || pw !== process.env.EDITER_PASSWORD)
+    return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    await pool.query('DELETE FROM scores');
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── GET /api/leaderboard ──────────────────────────────────────────────────────
 app.get('/api/leaderboard', async (req, res) => {
   try {
