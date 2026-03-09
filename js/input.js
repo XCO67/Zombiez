@@ -63,6 +63,19 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
+      // Check pistol spread drops (boss loot orbs)
+      for (let si = SPREAD_DROPS.length - 1; si >= 0; si--) {
+        const drop = SPREAD_DROPS[si];
+        const distDrop = Math.hypot(player.cx - drop.cx, player.cy - drop.cy);
+        if (distDrop < SPREAD_DROP_RADIUS) {
+          if (player.pistolSpread < 2 && player.money >= SPREAD_DROP_COST) {
+            player.money -= SPREAD_DROP_COST;
+            player.pistolSpread++;
+            SPREAD_DROPS.splice(si, 1);
+          }
+          return;
+        }
+      }
       // Check doors
       for (const door of DOORS) {
         if (door.unlocked) continue;

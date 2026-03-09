@@ -1,4 +1,69 @@
 
+// ─── PISTOL SPREAD DROPS ──────────────────────────────────────────────────────
+// Dropped by bosses — player presses E + pays gold to unlock extra pistol bullets
+const SPREAD_DROPS      = [];
+let   firstBossDropped  = false;     // only drop tier-1 item once per run
+const SPREAD_DROP_RADIUS = 1.8;
+const SPREAD_DROP_COST   = 3000;     // cost for tier-1 (2-bullet spread)
+
+function spawnSpreadDrop(cx, cy) {
+  SPREAD_DROPS.push({ cx, cy, bob: 0 });
+}
+
+function updateSpreadDrops() {
+  SPREAD_DROPS.forEach(d => { d.bob += 0.055; });
+}
+
+function drawSpreadDrops() {
+  const tt = performance.now() / 1000;
+  SPREAD_DROPS.forEach(d => {
+    const px = d.cx * TW;
+    const py = d.cy * TH + Math.sin(d.bob) * TH * 0.13;
+    const pulse = Math.sin(tt * 3.5) * 0.5 + 0.5;
+
+    // Outer glow
+    const g = ctx.createRadialGradient(px, py, 0, px, py, TW * 2.2);
+    g.addColorStop(0, `rgba(80,160,255,${0.28 + pulse * 0.18})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, TW * 2.2, 0, Math.PI * 2); ctx.fill();
+
+    // Orb
+    const og = ctx.createRadialGradient(px - TW * 0.08, py - TH * 0.09, 0, px, py, TW * 0.42);
+    og.addColorStop(0, 'rgba(220,240,255,1)');
+    og.addColorStop(0.35, `rgba(60,140,255,${0.85 + pulse * 0.12})`);
+    og.addColorStop(1, 'rgba(10,60,200,0)');
+    ctx.fillStyle = og; ctx.beginPath(); ctx.arc(px, py, TW * 0.42, 0, Math.PI * 2); ctx.fill();
+
+    // Star icon inside
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.round(TW * 0.38)}px Segoe UI`;
+    ctx.fillStyle = '#fff'; ctx.shadowColor = '#60aaff'; ctx.shadowBlur = 8;
+    ctx.fillText('✦', px, py);
+    ctx.restore();
+
+    // Floating label
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `bold ${Math.round(TH * 0.26)}px Segoe UI`;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText('PISTOL UPGRADE', px + 1, py - TH * 0.58 + 1);
+    ctx.fillStyle = `rgba(120,190,255,${0.8 + pulse * 0.2})`; ctx.fillText('PISTOL UPGRADE', px, py - TH * 0.58);
+    ctx.restore();
+
+    // [E] prompt when player is near
+    const dist = Math.hypot(player.cx - d.cx, player.cy - d.cy);
+    if (dist < SPREAD_DROP_RADIUS) {
+      const maxed   = player.pistolSpread >= 2;
+      const afford  = player.money >= SPREAD_DROP_COST;
+      const label   = maxed ? 'Already maxed!' : `[E] +1 Bullet  $${SPREAD_DROP_COST}`;
+      const col     = maxed ? '#888' : (afford ? '#80c8ff' : '#ff5555');
+      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px + 1, py - TH * 1.02 + 1);
+      ctx.fillStyle = col; ctx.fillText(label, px, py - TH * 1.02);
+      ctx.restore();
+    }
+  });
+}
+
 // ─── EYE DEMON BOSS ────────────────────────────────────────────────────────────
 const BOSS_DEMONS = [];
 const BOSS_SHOTS  = [];
@@ -53,6 +118,11 @@ function hitBoss(b, wkey, papMult = 1) {
     }
     DROPPED_PERKS.push({ cx: b.cx - 1.0, cy: b.cy, type: 'doublePoints', bob: 0, life: 900 });
     DROPPED_PERKS.push({ cx: b.cx + 1.0, cy: b.cy, type: 'magnet',       bob: 0, life: 900 });
+    // First boss ever killed drops the pistol spread upgrade orb
+    if (!firstBossDropped) {
+      firstBossDropped = true;
+      spawnSpreadDrop(b.cx, b.cy + 2.5);
+    }
     if (player.perks.lifesteal > 0 && !player.dead) {
       const heal = LIFESTEAL_HP[player.perks.lifesteal] * 3;
       player.hp = Math.min(player.maxHp, player.hp + heal);

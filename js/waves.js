@@ -56,6 +56,7 @@ function restartGame() {
     secondaryKey:null, secondaryAmmo:0, regenTimer:0, regenAccum:0, heat:0, overheated:false,
     downed:false, downedTimer:0, reviveProgress:0});
   player.packedWeapons = new Set();
+  player.pistolSpread = 0;
   player.perks = { magnet:0, shield:0, lifesteal:0 };
   player.shield = 0; player.shieldRechargeTimer = 0;
   perkShopOpen = false;
@@ -64,7 +65,7 @@ function restartGame() {
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
   shopOpen=false; COINS.length=0; DROPPED_PERKS.length=0; effects.length=0;
   DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
-  BOSS_DEMONS.length=0; BOSS_SHOTS.length=0;
+  BOSS_DEMONS.length=0; BOSS_SHOTS.length=0; SPREAD_DROPS.length=0; firstBossDropped=false;
   activePerkTimers.doublePoints=0; activePerkTimers.magnet=0;
   startWave(1);
 }

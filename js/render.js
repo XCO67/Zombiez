@@ -38,6 +38,7 @@ function render(now) {
     updateFlames();
     updateBossDemons();
     updateBossShots();
+    updateSpreadDrops();
     updateLavaZombies();
     updateLavaShards();
     updateLavaPools();
@@ -104,6 +105,7 @@ function render(now) {
   drawEffects();
   drawProjectiles();
   drawBossShots();
+  drawSpreadDrops();
   drawLavaShards();
 
   ctx.restore(); // end camera transform

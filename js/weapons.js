@@ -22,6 +22,7 @@ const player = {
   secondaryKey:null, secondaryAmmo:0,
   regenTimer:0, regenAccum:0,
   heat:0, overheated:false,
+  pistolSpread: 0,        // 0=1 bullet, 1=2 bullets, 2=3 bullets (unlocked via boss drops)
   packedWeapons: new Set(),
   perks: { magnet:0, shield:0, lifesteal:0 },
   shield:0, shieldRechargeTimer:0,

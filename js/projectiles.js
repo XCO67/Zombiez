@@ -10,8 +10,8 @@ function getFireRate() {
   return Math.max(Math.round(base * 0.4), Math.round(base * Math.pow(0.85, player.upgrades.atkSpeed)));
 }
 function rollDamage(baseDmg) {
-  // Each damage level adds 20% of base damage to all weapons
-  const total = Math.round(baseDmg * (1 + player.upgrades.damage * 0.20));
+  // Exponential damage scaling: each level ×1.5 (L1=×1.5, L5=×7.6)
+  const total = Math.round(baseDmg * Math.pow(1.5, player.upgrades.damage));
   const crit = Math.random() < player.upgrades.crit * 0.1;
   return { dmg: crit ? total*2 : total, crit };
 }
@@ -55,9 +55,15 @@ function tryShoot() {
     // Thundergun: wind wave AoE, no projectile
     fireWindWave(sx, sy, baseAngle);
   } else {
-    for(let i=0;i<w.pellets;i++){
-      const ang = baseAngle + (Math.random()-.5)*w.spread*2;
-      spawnBullet(sx,sy,ang,player.weaponKey);
+    // Pistol spread upgrade: fixed-angle extra bullets (not random spread)
+    if (player.weaponKey === 'pistol' && player.pistolSpread >= 1) {
+      const offsets = player.pistolSpread >= 2 ? [-0.18, 0, 0.18] : [-0.13, 0.13];
+      for (const off of offsets) spawnBullet(sx, sy, baseAngle + off, 'pistol');
+    } else {
+      for(let i=0;i<w.pellets;i++){
+        const ang = baseAngle + (Math.random()-.5)*w.spread*2;
+        spawnBullet(sx,sy,ang,player.weaponKey);
+      }
     }
     muzzleFlash=6; muzzleColor=w.color;
   }
