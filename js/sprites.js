@@ -12,7 +12,7 @@ function loadFrames(base, dir, n) {
 
 const charWalk = {}, charIdle = {};
 DIRS.forEach(d => {
-  charWalk[d] = loadFrames('wizard/animations/walk', d, 6);
+  charWalk[d] = loadFrames('wizard/animations/walk-1', d, 6);
   const img = new Image(); img.src = `wizard/rotations/${d}.png`; charIdle[d] = img;
 });
 
