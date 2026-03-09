@@ -42,6 +42,26 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+
+  // Migration: deduplicate scores (keep best score per user) then enforce one row per user
+  await pool.query(`
+    DELETE FROM scores
+    WHERE id NOT IN (
+      SELECT DISTINCT ON (user_id) id
+      FROM scores
+      ORDER BY user_id, score DESC, id DESC
+    );
+  `);
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'scores_user_id_unique'
+      ) THEN
+        ALTER TABLE scores ADD CONSTRAINT scores_user_id_unique UNIQUE (user_id);
+      END IF;
+    END $$;
+  `);
+
   console.log('[DB] tables ready');
 }
 initDB().catch(err => console.error('[DB] init error', err));
@@ -122,7 +142,11 @@ app.post('/api/scores', authMiddleware, async (req, res) => {
   const { round, kills, gold, score } = req.body || {};
   try {
     await pool.query(
-      'INSERT INTO scores (user_id, round, kills, gold, score) VALUES ($1,$2,$3,$4,$5)',
+      `INSERT INTO scores (user_id, round, kills, gold, score)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id) DO UPDATE
+         SET round=$2, kills=$3, gold=$4, score=$5, created_at=NOW()
+         WHERE scores.score < EXCLUDED.score`,
       [req.user.id, round|0, kills|0, gold|0, score|0]
     );
     res.json({ ok: true });
@@ -140,7 +164,7 @@ app.get('/api/leaderboard', async (req, res) => {
              to_char(s.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date
       FROM   scores s
       JOIN   users  u ON s.user_id = u.id
-      ORDER  BY s.round DESC, s.kills DESC, s.score DESC
+      ORDER  BY s.score DESC, s.round DESC, s.kills DESC
       LIMIT  20
     `);
     res.json(rows);
