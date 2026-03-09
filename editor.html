@@ -125,7 +125,13 @@
         <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#ff4444')">❤ Red</button>
         <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#ffffff')">🤍 White</button>
       </div>
-      <div style="font-size:10px;color:var(--dim);line-height:1.5">Left-click → place/toggle torch<br>Color applies to new torches only</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)">
+        Opacity
+        <input id="torch-opacity" type="range" min="5" max="100" value="100"
+          style="flex:1;accent-color:var(--accent)" oninput="document.getElementById('torch-opacity-label').textContent=this.value+'%'">
+        <span id="torch-opacity-label" style="font-size:10px;min-width:32px">100%</span>
+      </div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5">Left-click → place/toggle torch<br>Color &amp; opacity apply to new torches</div>
     </div>
   </div>
 
@@ -542,7 +548,9 @@ function placeAsset(e, rightClick) {
     if(idx>=0){ torches.splice(idx,1); mapData[r][c]=0; }
     else {
       const col = document.getElementById('torch-color')?.value || '#ff8833';
-      torches.push([r,c,col]); mapData[r][c]=4;
+      const opPct = parseInt(document.getElementById('torch-opacity')?.value || '100');
+      const op = +(opPct / 100).toFixed(2);
+      torches.push([r,c,col,op]); mapData[r][c]=4;
     }
     redraw();
   } else if(type==='door') {

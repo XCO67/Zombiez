@@ -74,7 +74,7 @@ function render(now) {
 
   // Torches — support optional [r, c, '#color'] format
   const flickers=TORCHES.map((_,i)=>Math.sin(t*2.8+i*1.87)*.5+.5);
-  TORCHES.forEach(([r,c,color],i)=>drawTorch(r,c,flickers[i],color));
+  TORCHES.forEach(([r,c,color,opacity],i)=>drawTorch(r,c,flickers[i],color,opacity));
 
   // Entities — Y-sorted
   drawFlames();

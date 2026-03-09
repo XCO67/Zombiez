@@ -149,17 +149,17 @@ function drawWallShadows() {
   }
 }
 
-function drawTorch(r,c,flicker,color) {
+function drawTorch(r,c,flicker,color,opacity) {
+  const op = (opacity !== undefined ? opacity : 1.0);
   const x=c*TW+TW*.5,y=r*TH+TH*.5,rad=TW*.15+flicker*TW*.06;
-  // Parse hex color to rgb; default warm orange
   let cr=255,cg=150,cb=40;
   if (color && color.length>=7) {
     cr=parseInt(color.slice(1,3),16)||255;
     cg=parseInt(color.slice(3,5),16)||150;
     cb=parseInt(color.slice(5,7),16)||40;
   }
-  const bright=`rgba(${Math.min(255,cr+80)},${Math.min(255,cg+80)},${Math.min(255,cb+60)},1)`;
-  const mid=`rgba(${cr},${cg},${cb},.9)`;
+  const bright=`rgba(${Math.min(255,cr+80)},${Math.min(255,cg+80)},${Math.min(255,cb+60)},${op})`;
+  const mid=`rgba(${cr},${cg},${cb},${(0.9*op).toFixed(2)})`;
   const edge=`rgba(${Math.round(cr*.6)},${Math.round(cg*.3)},${Math.round(cb*.2)},0)`;
   const g=ctx.createRadialGradient(x,y,0,x,y,rad*2.8);
   g.addColorStop(0,bright); g.addColorStop(.35,mid); g.addColorStop(1,edge);
