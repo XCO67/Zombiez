@@ -309,12 +309,16 @@ function getMapById(id) { return getMaps().find(m=>m.id===id)||null; }
 
 async function saveMapToServer(m) {
   try {
-    await fetch(API_URL + '/api/maps', {
+    const res = await fetch(API_URL + '/api/maps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(m)
     });
-  } catch(e) { console.warn('Could not save map to server:', e); }
+    return res.ok;
+  } catch(e) {
+    console.warn('Could not save map to server:', e);
+    return false;
+  }
 }
 
 async function fetchMapsFromServer() {
@@ -332,7 +336,11 @@ async function fetchMapsFromServer() {
 
 async function fetchMapFromServer(id) {
   const local = getMapById(id);
-  if (local) return local;
+  if (local) {
+    // Auto-migrate: push localStorage map to server in background
+    saveMapToServer(local).catch(() => {});
+    return local;
+  }
   try {
     const maps = await fetchMapsFromServer();
     return maps.find(m => m.id === id) || null;
@@ -455,19 +463,20 @@ async function saveMap() {
   const m = buildMapObj();
   editId = m.id;
   upsertMapLocal(m);
-  await saveMapToServer(m);
+  const ok = await saveMapToServer(m);
   buildMapsList();
-  toast(`Saved "${m.name}"`, 'ok');
+  if (ok) toast(`Saved "${m.name}"`, 'ok');
+  else toast(`Saved locally — server sync failed! Check connection.`, 'err');
 }
 
 async function saveAndPlay() {
   const m = buildMapObj();
   editId = m.id;
   upsertMapLocal(m);
-  await saveMapToServer(m);
+  const ok = await saveMapToServer(m);
   localStorage.setItem('deadsurge_active', m.id);
-  toast(`Saved & set active: "${m.name}"`, 'ok');
-  setTimeout(()=>{ window.location.href='/'; }, 800);
+  if (!ok) toast(`Warning: server sync failed — friends won't see this map`, 'err');
+  setTimeout(()=>{ window.location.href='/'; }, ok ? 800 : 2000);
 }
 
 // ── UNDO ─────────────────────────────────────────────────────────────────────
@@ -531,7 +540,14 @@ function buildAssetList() {
 async function buildMapsList() {
   const list = document.getElementById('maps-list');
   list.innerHTML = '<div style="padding:8px 7px;font-size:11px;color:var(--dim)">Loading…</div>';
-  const maps = await fetchMapsFromServer();
+  const serverMaps = await fetchMapsFromServer();
+  // Auto-migrate any localStorage maps not yet on server
+  const localMaps = getMaps();
+  const serverIds = new Set(serverMaps.map(m => m.id));
+  for (const lm of localMaps) {
+    if (!serverIds.has(lm.id)) saveMapToServer(lm).catch(() => {});
+  }
+  const maps = serverMaps.length ? serverMaps : localMaps;
   if(!maps.length) { list.innerHTML='<div style="padding:8px 7px;font-size:11px;color:var(--dim)">No saved maps yet</div>'; return; }
   list.innerHTML = maps.map(m=>`
     <div class="mrow">
