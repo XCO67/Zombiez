@@ -44,6 +44,25 @@ function drawFloor(r,c,type) {
   }
 }
 
+function drawColorFloor(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  const cf = COLOR_FLOORS.find(f=>f[0]===r&&f[1]===c);
+  const hex = cf?.[2] || '#44aacc';
+  const cr=parseInt(hex.slice(1,3),16)||68, cg=parseInt(hex.slice(3,5),16)||170, cb=parseInt(hex.slice(5,7),16)||204;
+  const bv = 0.45 + v*0.02;
+  const r0=Math.round(cr*bv),  g0=Math.round(cg*bv),  b0=Math.round(cb*bv);
+  const r1=Math.round(cr*(bv+0.08)), g1=Math.round(cg*(bv+0.08)), b1=Math.round(cb*(bv+0.08));
+  const rh=Math.min(255,Math.round(cr*(bv+0.22))), gh=Math.min(255,Math.round(cg*(bv+0.22))), bh=Math.min(255,Math.round(cb*(bv+0.22)));
+  const rd=Math.round(cr*(bv-0.12)), gd=Math.round(cg*(bv-0.12)), bd=Math.round(cb*(bv-0.12));
+  ctx.fillStyle=`rgb(${r0},${g0},${b0})`; ctx.fillRect(x,y,TW,TH);
+  ctx.fillStyle=`rgb(${r1},${g1},${b1})`; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  ctx.fillStyle=`rgb(${rh},${gh},${bh})`; ctx.fillRect(x+1,y+1,TW-2,1); ctx.fillRect(x+1,y+1,1,TH-2);
+  ctx.fillStyle=`rgb(${rd},${gd},${bd})`; ctx.fillRect(x+1,y+TH-2,TW-2,1); ctx.fillRect(x+TW-2,y+1,1,TH-2);
+  // Subtle color shimmer lines
+  const v2=variant(r+5,c+2);
+  ctx.fillStyle=`rgba(${rh},${gh},${bh},0.12)`; ctx.fillRect(x+v2%TW,y+TH*.3,1,TH*.4);
+}
+
 function drawPillar(r,c) {
   const x=c*TW,y=r*TH;
   ctx.fillStyle='#242032'; ctx.fillRect(x,y,TW,TH);

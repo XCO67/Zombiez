@@ -158,6 +158,30 @@
     </div>
   </div>
 
+  <!-- Color Floor picker — shown only when color floor tile is active -->
+  <div id="colorfloor-cfg" style="display:none;border-bottom:1px solid var(--border)">
+    <div class="s-sec" style="border-bottom:none">Floor Color</div>
+    <div style="padding:6px 10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)">
+        Color
+        <input id="colorfloor-color" type="color" value="#44aacc"
+          style="width:40px;height:24px;border:1px solid var(--border2);background:none;cursor:pointer;border-radius:3px;padding:1px">
+        <span id="colorfloor-color-label" style="font-size:10px;color:#44aacc">#44aacc</span>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#44aacc')">🔵 Cyan</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#cc4444')">🔴 Red</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#44cc66')">🟢 Green</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#cc8833')">🟠 Gold</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#9944cc')">🟣 Purple</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#4466cc')">💙 Blue</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#cc4488')">🩷 Pink</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setColorFloorPreset('#888888')">⚪ Grey</button>
+      </div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5">Paint freely — each tile keeps<br>its own color when placed</div>
+    </div>
+  </div>
+
   <div class="s-sec">Saved Maps</div>
   <div id="maps-list"></div>
 
@@ -217,15 +241,16 @@ const TILES = [
   { id:6, name:'Player Start', key:'7', fill:'#2e2810', hi:'#c8a030', label:'@' },
   { id:7, name:'Boss Spawn',   key:'8', fill:'#1a0015', hi:'#880022', label:'B' },
   { id:8, name:'Dark Floor',   key:'9', fill:'#1a0d2e', hi:'#3a1a5c', label:'d' },
+  { id:9, name:'Color Floor',  key:'0', fill:'#1e3340', hi:'#44aacc', label:'c' },
 ];
 
 // Editor tile id → game tile value (saved in map files)
-// Editor: 0=Wall 1=Floor 2=Pillar 3=Spawn 4=Torch(wall) 5=Door 6=PlayerStart 7=BossSpawn 8=DarkFloor
-// Game:   0=WALL 1=FLOOR 2=PILLAR 3=SPAWN               4=DOOR               5=BOSS_SPAWN 6=FLOOR2
-const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6];
+// Editor: 0=Wall 1=Floor 2=Pillar 3=Spawn 4=Torch(wall) 5=Door 6=PlayerStart 7=BossSpawn 8=DarkFloor 9=ColorFloor
+// Game:   0=WALL 1=FLOOR 2=PILLAR 3=SPAWN               4=DOOR               5=BOSS_SPAWN 6=FLOOR2   7=COLOR_FLOOR
+const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6, 7];
 
 // Reverse: game tile value → editor tile id (used when loading saved maps)
-const GAME_TO_EDITOR = { 0:0, 1:1, 2:2, 3:3, 4:5, 5:7, 6:8 };
+const GAME_TO_EDITOR = { 0:0, 1:1, 2:2, 3:3, 4:5, 5:7, 6:8, 7:9 };
 
 // ── ASSET DEFINITIONS ────────────────────────────────────────────────────────
 // Assets are placed as floating objects on the map (snap to 0.5-tile centres)
@@ -247,6 +272,8 @@ let mapData = [];           // 2D array of editor tile ids
 let objects = {};           // { shop:{cx,cy}, ammo:{cx,cy}, ... }
 let torches = [];           // [[r,c], ...]
 let editId  = null;         // id of map being edited (null = new)
+
+let colorFloors = [];       // [[r,c,'#hexcolor'], ...]
 
 let currentTile  = 0;       // selected tile id (for tile mode)
 let activeTool   = 'tile';  // 'tile' | 'erase' | asset type string
@@ -278,6 +305,7 @@ function initDefaultObjects() {
   objects = {};
   ASSETS.filter(a=>!a.multi).forEach(a=>{ objects[a.type]={cx:a.default.cx, cy:a.default.cy}; });
   torches = [];
+  colorFloors = [];
   objects.doors = [];
 }
 
@@ -335,6 +363,8 @@ function loadMapFromData(m) {
   mapData = Array.from({length:mapH},(_,r)=>Array.from({length:mapW},(_,c)=>GAME_TO_EDITOR[m.tiles[r]?.[c]??0]??0));
   // Restore torches into tile data (support [r,c] and [r,c,color])
   (m.torches||[]).forEach(t=>{ const [r,c]=t; if(mapData[r]?.[c]===0) mapData[r][c]=4; });
+  // Restore color floor positions (game tile 7 → editor 9, already converted above)
+  // Also handle any stored colorFloors array for tiles that map back to 9
   // Restore player start into tile data (find from stored playerStart)
   if(m.playerStart) {
     const pr=Math.round(m.playerStart[1]-.5), pc=Math.round(m.playerStart[0]-.5);
@@ -345,6 +375,7 @@ function loadMapFromData(m) {
   if(m.objects) { Object.assign(objects, m.objects); }
   objects.doors = (m.objects?.doors || m.doors || []).slice();
   if(m.torches) { torches = m.torches.slice(); }
+  colorFloors = (m.colorFloors || []).slice();
   document.getElementById('map-name-inp').value = m.name || 'Map';
   editId = m.id;
   syncSizeInputs();
@@ -357,6 +388,7 @@ function buildMapObj() {
   const id   = editId || ('map_' + Date.now());
   const gameTiles = [];
   const newTorches = [];
+  const newColorFloors = [];
   let playerStart = [19.5, 13.5];
 
   for(let r=0;r<mapH;r++) {
@@ -365,6 +397,7 @@ function buildMapObj() {
       const t = mapData[r][c];
       if(t===4){ const tc=torches.find(x=>x[0]===r&&x[1]===c); newTorches.push(tc||[r,c]); row.push(0); } // torch → wall tile + torch list (preserve color)
       else if(t===6){ playerStart=[c+0.5,r+0.5]; row.push(1); } // player start → floor
+      else if(t===9){ const cf=colorFloors.find(x=>x[0]===r&&x[1]===c); newColorFloors.push(cf||[r,c,'#44aacc']); row.push(7); } // color floor → game 7
       else row.push(EDITOR_TO_GAME[t]??0);
     }
     gameTiles.push(row);
@@ -376,7 +409,7 @@ function buildMapObj() {
     else obj[k]={...objects[k]};
   });
 
-  return { id, name, mapW, mapH, tiles:gameTiles, torches:newTorches, playerStart, objects:obj, doors:obj.doors||[] };
+  return { id, name, mapW, mapH, tiles:gameTiles, torches:newTorches, colorFloors:newColorFloors, playerStart, objects:obj, doors:obj.doors||[] };
 }
 
 function saveMap() {
@@ -490,6 +523,7 @@ function selectTile(id) {
   document.querySelectorAll('.abtn').forEach(b=>b.classList.remove('active'));
   document.getElementById('st-tool').textContent = TILES[id].name;
   document.getElementById('door-cfg').style.display = 'none';
+  document.getElementById('colorfloor-cfg').style.display = id===9 ? 'block' : 'none';
 }
 
 function selectAsset(type) {
@@ -499,8 +533,9 @@ function selectAsset(type) {
   document.getElementById('abtn-'+type)?.classList.add('active');
   const a = ASSETS.find(x=>x.type===type);
   document.getElementById('st-tool').textContent = a ? a.label : type;
-  document.getElementById('door-cfg').style.display  = type==='door'  ? 'block' : 'none';
-  document.getElementById('torch-cfg').style.display = type==='torch' ? 'block' : 'none';
+  document.getElementById('door-cfg').style.display       = type==='door'  ? 'block' : 'none';
+  document.getElementById('torch-cfg').style.display      = type==='torch' ? 'block' : 'none';
+  document.getElementById('colorfloor-cfg').style.display = 'none';
 }
 
 function setTorchPreset(hex) {
@@ -508,11 +543,21 @@ function setTorchPreset(hex) {
   document.getElementById('torch-color-label').textContent = hex;
   document.getElementById('torch-color-label').style.color = hex;
 }
+function setColorFloorPreset(hex) {
+  document.getElementById('colorfloor-color').value = hex;
+  document.getElementById('colorfloor-color-label').textContent = hex;
+  document.getElementById('colorfloor-color-label').style.color = hex;
+}
 document.addEventListener('DOMContentLoaded', ()=>{
   const inp = document.getElementById('torch-color');
   if (inp) inp.addEventListener('input', ()=>{
     document.getElementById('torch-color-label').textContent = inp.value;
     document.getElementById('torch-color-label').style.color = inp.value;
+  });
+  const cfInp = document.getElementById('colorfloor-color');
+  if (cfInp) cfInp.addEventListener('input', ()=>{
+    document.getElementById('colorfloor-color-label').textContent = cfInp.value;
+    document.getElementById('colorfloor-color-label').style.color = cfInp.value;
   });
 });
 
@@ -538,7 +583,17 @@ function paintAt(r, c, erase) {
   if(!erase && currentTile===6) {
     for(let row of mapData) for(let i=0;i<row.length;i++) if(row[i]===6) row[i]=1;
   }
+  // Remove any color floor data when erasing or overwriting a color floor tile
+  if(erase || mapData[r][c]===9) {
+    const idx = colorFloors.findIndex(x=>x[0]===r&&x[1]===c);
+    if(idx>=0) colorFloors.splice(idx,1);
+  }
   mapData[r][c] = erase ? 0 : currentTile;
+  // Store color for color floor tiles
+  if(!erase && currentTile===9) {
+    const col = document.getElementById('colorfloor-color')?.value || '#44aacc';
+    colorFloors.push([r, c, col]);
+  }
   drawTile(r,c);
 }
 
@@ -592,9 +647,20 @@ function drawTile(r, c) {
   const tid = mapData[r]?.[c] ?? 0;
   const tile = TILES[tid] || TILES[0];
 
-  ctx.fillStyle = tile.fill;
+  // Color floor: use stored per-tile color instead of static fill
+  let tileFill = tile.fill, tileHi = tile.hi;
+  if(tid===9) {
+    const cf = colorFloors.find(x=>x[0]===r&&x[1]===c);
+    const col = cf?.[2] || document.getElementById('colorfloor-color')?.value || '#44aacc';
+    const cr2=parseInt(col.slice(1,3),16)||68, cg2=parseInt(col.slice(3,5),16)||170, cb2=parseInt(col.slice(5,7),16)||204;
+    const bv = 0.55;
+    tileFill = `rgb(${Math.round(cr2*bv)},${Math.round(cg2*bv)},${Math.round(cb2*bv)})`;
+    tileHi   = `rgb(${Math.min(255,Math.round(cr2*(bv+0.25)))},${Math.min(255,Math.round(cg2*(bv+0.25)))},${Math.min(255,Math.round(cb2*(bv+0.25)))})`;
+  }
+
+  ctx.fillStyle = tileFill;
   ctx.fillRect(x, y, ts, ts);
-  ctx.fillStyle = tile.hi;
+  ctx.fillStyle = tileHi;
   ctx.fillRect(x, y, ts, 1);
   ctx.fillRect(x, y, 1, ts);
   ctx.fillStyle = 'rgba(0,0,0,.45)';

@@ -62,12 +62,13 @@ function render(now) {
 
   for (let r=0;r<MAP_H;r++) for (let c=0;c<MAP_W;c++) {
     const type=MAP[r][c];
-    if      (type===T.WALL)       drawWall(r,c);
-    else if (type===T.PILLAR)     drawPillar(r,c);
-    else if (type===T.DOOR)       drawDoor(r,c);
-    else if (type===T.BOSS_SPAWN) drawBossSpawnTile(r,c);
-    else if (type===T.FLOOR2)     drawFloor(r,c,T.FLOOR2);
-    else                          drawFloor(r,c,type);
+    if      (type===T.WALL)         drawWall(r,c);
+    else if (type===T.PILLAR)       drawPillar(r,c);
+    else if (type===T.DOOR)         drawDoor(r,c);
+    else if (type===T.BOSS_SPAWN)   drawBossSpawnTile(r,c);
+    else if (type===T.FLOOR2)       drawFloor(r,c,T.FLOOR2);
+    else if (type===T.COLOR_FLOOR)  drawColorFloor(r,c);
+    else                            drawFloor(r,c,type);
   }
   drawWallShadows();
   drawDoorPrompts();

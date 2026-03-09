@@ -1,7 +1,7 @@
 
 // ─── MAP ──────────────────────────────────────────────────────────────────────
 let MAP_W = 40, MAP_H = 28;
-const T = { WALL: 0, FLOOR: 1, PILLAR: 2, SPAWN: 3, DOOR: 4, BOSS_SPAWN: 5, FLOOR2: 6 };
+const T = { WALL: 0, FLOOR: 1, PILLAR: 2, SPAWN: 3, DOOR: 4, BOSS_SPAWN: 5, FLOOR2: 6, COLOR_FLOOR: 7 };
 
 function buildMap() {
   const m = Array.from({ length: MAP_H }, () => new Uint8Array(MAP_W));
@@ -21,6 +21,8 @@ function buildMap() {
   return m;
 }
 let MAP = buildMap();
+
+let COLOR_FLOORS = []; // [[r, c, '#hexcolor'], ...]
 
 let TORCHES = [
   [7,16],[7,23],[20,16],[20,23],[11,9],[16,9],[11,30],[16,30],
@@ -72,6 +74,7 @@ function applyMapData(data) {
     MAP.push(row);
   }
   TORCHES = data.torches || [];
+  COLOR_FLOORS = data.colorFloors || [];
   if (data.playerStart) { PLAYER_START.cx=data.playerStart[0]; PLAYER_START.cy=data.playerStart[1]; }
   // Rebuild doors from custom markers, or unlock hardcoded ones if no custom doors
   const customDoors = data.doors || data.objects?.doors || [];
