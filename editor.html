@@ -219,8 +219,13 @@ const TILES = [
   { id:8, name:'Dark Floor',   key:'9', fill:'#1a0d2e', hi:'#3a1a5c', label:'d' },
 ];
 
-// Editor tile → game tile value:  Wall=0,Floor=1,Pillar=2,Spawn=3,Torch→Wall+torch list,Door=4,PlayerStart→Floor+record,BossSpawn=5,Floor2=6
+// Editor tile id → game tile value (saved in map files)
+// Editor: 0=Wall 1=Floor 2=Pillar 3=Spawn 4=Torch(wall) 5=Door 6=PlayerStart 7=BossSpawn 8=DarkFloor
+// Game:   0=WALL 1=FLOOR 2=PILLAR 3=SPAWN               4=DOOR               5=BOSS_SPAWN 6=FLOOR2
 const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6];
+
+// Reverse: game tile value → editor tile id (used when loading saved maps)
+const GAME_TO_EDITOR = { 0:0, 1:1, 2:2, 3:3, 4:5, 5:7, 6:8 };
 
 // ── ASSET DEFINITIONS ────────────────────────────────────────────────────────
 // Assets are placed as floating objects on the map (snap to 0.5-tile centres)
@@ -327,7 +332,7 @@ function loadDefault() {
 
 function loadMapFromData(m) {
   mapW = m.mapW; mapH = m.mapH;
-  mapData = Array.from({length:mapH},(_,r)=>Array.from({length:mapW},(_,c)=>m.tiles[r]?.[c]??0));
+  mapData = Array.from({length:mapH},(_,r)=>Array.from({length:mapW},(_,c)=>GAME_TO_EDITOR[m.tiles[r]?.[c]??0]??0));
   // Restore torches into tile data (support [r,c] and [r,c,color])
   (m.torches||[]).forEach(t=>{ const [r,c]=t; if(mapData[r]?.[c]===0) mapData[r][c]=4; });
   // Restore player start into tile data (find from stored playerStart)
