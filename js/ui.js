@@ -605,7 +605,7 @@ function drawHUD() {
 
     const wepEndX = wepStartX + slotW * 2 + slotGap + ipd + 4;
     const moneyW = 100;
-    const abilSecW = 82; // abilities section
+    const abilSecW = 168; // abilities section (2 slots × 78px + 12px gap)
     const statAreaW = W - wepEndX - moneyW - abilSecW - ipd * 7;
     const statTileW = Math.min(76, Math.floor((statAreaW - stats.length * 4) / stats.length));
     const statStartX = wepEndX + 4;
@@ -714,6 +714,60 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(140,180,220,0.45)';
     ctx.textBaseline = 'bottom';
     ctx.fillText('[SPACE]', arcCx, dashSlotY + dashSlotH - 3);
+
+    // ── Fire Ring slot ─────────────────────────────
+    const fireSlotX = abilX + 78 + 12;
+    const fireReady  = player.fireCooldown <= 0;
+    const fireActive = player.fireRingTimer > 0;
+    const fireFrac   = fireReady ? 1 : 1 - player.fireCooldown / FIRE_RING_COOLDOWN;
+    const fireBg     = fireActive ? '#1e0800' : fireReady ? '#180a00' : '#0d0d18';
+    pixelSlot(ctx, fireSlotX, dashSlotY, 78, dashSlotH, fireBg, fireReady || fireActive);
+
+    // Cooldown arc
+    const farcCx = fireSlotX + 39, farcCy = dashSlotY + dashSlotH / 2;
+    const farcR  = Math.min(78, dashSlotH) * 0.36;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(farcCx, farcCy, farcR, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = fireReady
+      ? (fireActive ? '#ffaa44' : '#ff6622')
+      : `rgba(200,80,20,${0.35 + fireFrac * 0.55})`;
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(farcCx, farcCy, farcR, -Math.PI / 2, -Math.PI / 2 + fireFrac * Math.PI * 2);
+    ctx.stroke();
+    if (fireReady) {
+      ctx.shadowColor = '#ff6622'; ctx.shadowBlur = 8;
+      ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    // Icon
+    ctx.font = '17px Segoe UI';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = fireReady ? 1.0 : 0.35 + fireFrac * 0.45;
+    ctx.fillText('🔥', farcCx, dashSlotY + 10);
+    ctx.globalAlpha = 1;
+
+    // Status text
+    ctx.font = "13px 'VT323'";
+    ctx.textAlign = 'center';
+    if (fireReady) {
+      ctx.fillStyle = fireActive ? '#ffaa44' : '#ff8844';
+      ctx.textBaseline = 'top';
+      ctx.fillText(fireActive ? 'ACTIVE!' : 'READY', farcCx, dashSlotY + 20);
+    } else {
+      ctx.fillStyle = '#ffaa44';
+      ctx.textBaseline = 'top';
+      ctx.fillText(Math.ceil(player.fireCooldown / 60) + 's', farcCx, dashSlotY + 20);
+    }
+
+    // Key hint
+    ctx.font = "11px 'VT323'";
+    ctx.fillStyle = 'rgba(255,180,100,0.45)';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('[4]', farcCx, dashSlotY + dashSlotH - 3);
 
     vDiv(abilX + abilSecW + ipd + 2);
 

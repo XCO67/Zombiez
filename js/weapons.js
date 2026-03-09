@@ -31,4 +31,7 @@ const player = {
   dashCooldown: 0,   // frames remaining on cooldown (360 = 6s)
   dashTimer: 0,      // frames remaining in active dash burst
   dashTrail: [],     // [{cx,cy,facing,frame,a}] afterimage positions
+  fireCooldown: 0,   // frames remaining on fire ring cooldown (1200 = 20s)
+  fireRingTimer: 0,  // frames remaining of active fire ring
+  fireRingAngle: 0,  // current orbit angle (radians)
 };

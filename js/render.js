@@ -41,6 +41,7 @@ function render(now) {
     updateSpiderBosses();
     updateSpiderMinions();
     updateSpiderWebShots();
+    updateFireRing();
     updateSpreadDrops();
     updateLavaZombies();
     updateLavaShards();
@@ -85,6 +86,7 @@ function render(now) {
   // Entities — Y-sorted
   drawFlames();
   drawLavaPools();
+  drawFireRing();
   const entities=[
     {y:player.cy*TH, draw:drawPlayer},
     ...ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawZombie(z)})),

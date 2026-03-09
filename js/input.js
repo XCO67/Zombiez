@@ -43,6 +43,13 @@ document.addEventListener('keydown', e => {
     player.dashCooldown = DASH_COOLDOWN;
     player.dashTrail    = [];
   }
+  // Fire Ring ability (4)
+  if (e.key === '4' && game.state === 'playing' && !player.dead && !player.downed
+      && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
+    player.fireRingTimer = FIRE_RING_DURATION;
+    player.fireCooldown  = FIRE_RING_COOLDOWN;
+    player.fireRingAngle = 0;
+  }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
     clickTarget = null;
