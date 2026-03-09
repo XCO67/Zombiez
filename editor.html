@@ -63,6 +63,9 @@
     .tbarbtn:hover { background:#1c1c34; color:#fff; }
     .tbarbtn.save { border-color:#4a7a4a; color:#8fa; background:#0e1e14; }
     .tbarbtn.save:hover { background:#162a16; color:#fff; }
+    .tbarbtn.publish { border-color:#7a4a00; color:#ffcc44; background:#1e1400; }
+    .tbarbtn.publish:hover { background:#2a1e00; color:#ffe88a; }
+    .tbarbtn.publish:disabled { opacity:.5; cursor:default; }
     #topbar-sep { width:1px; height:22px; background:var(--border); }
     #zoom-label { font-size:11px; color:var(--dim); min-width:36px; text-align:center; }
     .zbtn { width:24px; height:24px; background:#1a1a2e; border:1px solid var(--border2);
@@ -203,6 +206,7 @@
   <div id="topbar">
     <input id="map-name-inp" type="text" placeholder="Map name…" maxlength="36" value="My Map">
     <button class="tbarbtn save" onclick="saveMap()">💾 Save</button>
+    <button class="tbarbtn publish" id="publish-btn" onclick="publishMap()">🌐 Publish</button>
     <button class="tbarbtn" onclick="saveAndPlay()">▶ Save &amp; Play</button>
     <button class="tbarbtn" onclick="newMap()">New</button>
     <button class="tbarbtn" onclick="loadDefault()">↺ Default</button>
@@ -477,6 +481,24 @@ async function saveAndPlay() {
   localStorage.setItem('deadsurge_active', m.id);
   if (!ok) toast(`Warning: server sync failed — friends won't see this map`, 'err');
   setTimeout(()=>{ window.location.href='/'; }, ok ? 800 : 2000);
+}
+
+async function publishMap() {
+  const btn = document.getElementById('publish-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Publishing…';
+  const m = buildMapObj();
+  editId = m.id;
+  upsertMapLocal(m);
+  const ok = await saveMapToServer(m);
+  btn.disabled = false;
+  btn.textContent = '🌐 Publish';
+  if (ok) {
+    toast(`✅ "${m.name}" is live — friends can see it now!`, 'ok');
+    buildMapsList();
+  } else {
+    toast(`❌ Publish failed — server not reachable`, 'err');
+  }
 }
 
 // ── UNDO ─────────────────────────────────────────────────────────────────────
