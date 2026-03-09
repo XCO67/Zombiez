@@ -143,12 +143,46 @@ function hitBoss(b, wkey, papMult = 1) {
   }
 }
 
+const BOSS_MOVE_SPEED   = 0.009;  // base tiles/frame
+const BOSS_CONTACT_DMG  = 25;
+const BOSS_PREFERRED_DIST = 4.5;  // tiles — tries to stay at this range while circling
+
 function updateBossDemons() {
   BOSS_DEMONS.forEach(b => {
     if (b.dead) { if (b.deathTimer > 0) b.deathTimer--; return; }
     b.hitFlash = Math.max(0, b.hitFlash - 1);
+
+    // ── Chase / orbit movement ─────────────────────────────────────────────
+    const tgt = nearestPlayerTo(b.cx, b.cy);
+    const dx = tgt.cx - b.cx, dy = tgt.cy - b.cy, dist = Math.hypot(dx, dy) || 1;
+    const hpFrac = b.hp / b.maxHp;
+    // Speed ramps up as HP drops (enrages below 40%)
+    const spd = BOSS_MOVE_SPEED * (hpFrac < 0.4 ? 1.8 : 1.0);
+    if (dist > BOSS_PREFERRED_DIST) {
+      // Move straight at player when far
+      const nx = b.cx + (dx / dist) * spd;
+      const ny = b.cy + (dy / dist) * spd;
+      if (!isBlocked(nx, b.cy)) b.cx = nx;
+      if (!isBlocked(b.cx, ny)) b.cy = ny;
+    } else if (dist > 1.8) {
+      // Orbit player clockwise at preferred distance
+      const perpX = -dy / dist, perpY = dx / dist;
+      const nx = b.cx + perpX * spd * 1.2;
+      const ny = b.cy + perpY * spd * 1.2;
+      if (!isBlocked(nx, b.cy)) b.cx = nx;
+      if (!isBlocked(b.cx, ny)) b.cy = ny;
+    }
+    // Contact damage if player runs into the boss
+    if (dist < 1.8 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
+      applyDamage(tgt, BOSS_CONTACT_DMG);
+      if (tgt === player) { if (tgt.hp <= 0) playerGoDown(); }
+      else                { if (tgt.hp <= 0) remoteGoDown(tgt); }
+    }
+
+    // ── Rotating shot burst ────────────────────────────────────────────────
     b.shootTimer++;
-    if (b.shootTimer >= BOSS_SHOOT_INTERVAL) {
+    const shootInterval = hpFrac < 0.4 ? Math.round(BOSS_SHOOT_INTERVAL * 0.6) : BOSS_SHOOT_INTERVAL;
+    if (b.shootTimer >= shootInterval) {
       b.shootTimer = 0;
       const offset = (b.shootPhase * Math.PI / BOSS_SHOT_COUNT);
       for (let i = 0; i < BOSS_SHOT_COUNT; i++) {
@@ -592,13 +626,19 @@ function updateSpiderBosses() {
       }
       if (b.chargeDuration <= 0) b.chargeActive = false;
     } else {
-      // Slow creep toward player between charges
+      // Chase player between charges — faster when enraged
       const dist = Math.hypot(dx, dy) || 1;
-      if (dist > 2.5) {
-        const spd = 0.006;
+      if (dist > 1.2) {
+        const spd = b.enraged ? 0.022 : 0.013;
         const nx = b.cx + (dx / dist) * spd, ny = b.cy + (dy / dist) * spd;
         if (!isBlocked(nx, b.cy)) b.cx = nx;
         if (!isBlocked(b.cx, ny)) b.cy = ny;
+      }
+      // Contact damage when close
+      if (dist < 1.8 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
+        applyDamage(tgt, 30);
+        if (tgt === player) { if (tgt.hp <= 0) playerGoDown(); }
+        else                { if (tgt.hp <= 0) remoteGoDown(tgt); }
       }
     }
 
