@@ -63,6 +63,37 @@ function drawColorFloor(r, c) {
   ctx.fillStyle=`rgba(${rh},${gh},${bh},0.12)`; ctx.fillRect(x+v2%TW,y+TH*.3,1,TH*.4);
 }
 
+function drawSpiderSpawnTile(r, c) {
+  drawFloor(r, c, T.FLOOR);
+  const x = c * TW, y = r * TH;
+  const cx2 = x + TW / 2, cy2 = y + TH / 2;
+  const rad = Math.min(TW, TH) * 0.38;
+  ctx.save();
+  ctx.globalAlpha = 0.52;
+  // Web ring
+  ctx.strokeStyle = '#005500';
+  ctx.lineWidth = Math.max(1, TW * 0.09);
+  ctx.beginPath(); ctx.arc(cx2, cy2, rad, 0, Math.PI * 2); ctx.stroke();
+  // Radial web lines
+  ctx.strokeStyle = 'rgba(0,130,0,0.55)';
+  ctx.lineWidth = Math.max(1, TW * 0.04);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx2, cy2);
+    ctx.lineTo(cx2 + Math.cos(a) * rad, cy2 + Math.sin(a) * rad);
+    ctx.stroke();
+  }
+  // Second inner ring
+  ctx.strokeStyle = 'rgba(0,110,0,0.40)';
+  ctx.lineWidth = Math.max(1, TW * 0.03);
+  ctx.beginPath(); ctx.arc(cx2, cy2, rad * 0.55, 0, Math.PI * 2); ctx.stroke();
+  // Center dot
+  ctx.fillStyle = 'rgba(0,180,0,0.65)';
+  ctx.beginPath(); ctx.arc(cx2, cy2, rad * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 function drawPillar(r,c) {
   const x=c*TW,y=r*TH;
   ctx.fillStyle='#242032'; ctx.fillRect(x,y,TW,TH);

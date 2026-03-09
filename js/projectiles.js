@@ -169,6 +169,26 @@ function fireWindWave(sx, sy, angle) {
     if(Math.abs(diff)>WAVE_HALFANG) return;
     hitBoss(b,'thundergun',1);
   });
+  // Spider boss hit by wave
+  SPIDER_BOSSES.forEach(b => {
+    if(b.dead) return;
+    const dx=b.cx*TW-sx, dy=b.cy*TH-sy, dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const bAng=Math.atan2(dy,dx); let diff=bAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitSpiderBoss(b,'thundergun',1);
+  });
+  // Spider minions hit by wave
+  SPIDER_MINIONS.forEach(m=>{
+    if(m.dead) return;
+    const dx=m.cx*TW-sx,dy=m.cy*TH-sy,dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const mAng=Math.atan2(dy,dx); let diff=mAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitSpiderMinion(m,'thundergun',1);
+  });
   // Lava zombies hit by wave
   LAVA_ZOMBIES.forEach(lz=>{
     if(lz.dead) return;
@@ -254,6 +274,24 @@ function updateProjectiles() {
       const b=BOSS_DEMONS[bi]; if(b.dead) continue;
       if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*1.6){
         hitBoss(b,p.wkey,p.papped?3:1); hitAny=true;
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Spider boss hits
+    for(let bi=0;bi<SPIDER_BOSSES.length;bi++){
+      const b=SPIDER_BOSSES[bi]; if(b.dead) continue;
+      if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*2.0){
+        hitSpiderBoss(b,p.wkey,p.papped?3:1); hitAny=true;
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Spider minion hits
+    for(let mi=0;mi<SPIDER_MINIONS.length;mi++){
+      const m=SPIDER_MINIONS[mi]; if(m.dead) continue;
+      if(Math.hypot(p.x-m.cx*TW,p.y-m.cy*TH)<TW*w.hitR){
+        hitSpiderMinion(m,p.wkey,p.papped?3:1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }

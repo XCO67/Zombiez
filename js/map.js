@@ -1,7 +1,7 @@
 
 // ─── MAP ──────────────────────────────────────────────────────────────────────
 let MAP_W = 40, MAP_H = 28;
-const T = { WALL: 0, FLOOR: 1, PILLAR: 2, SPAWN: 3, DOOR: 4, BOSS_SPAWN: 5, FLOOR2: 6, COLOR_FLOOR: 7 };
+const T = { WALL: 0, FLOOR: 1, PILLAR: 2, SPAWN: 3, DOOR: 4, BOSS_SPAWN: 5, FLOOR2: 6, COLOR_FLOOR: 7, SPIDER_SPAWN: 8 };
 
 function buildMap() {
   const m = Array.from({ length: MAP_H }, () => new Uint8Array(MAP_W));

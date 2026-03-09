@@ -24,6 +24,7 @@ const player = {
   heat:0, overheated:false,
   pistolSpread: 0,        // 0=1 bullet, 1=2 bullets, 2=3 bullets (unlocked via boss drops)
   spreadOrbs: 0,          // collected orbs waiting to be spent at Pistol Upgrade Vendor
+  webSlowTimer: 0,        // frames remaining of Venom Queen web slow effect
   packedWeapons: new Set(),
   perks: { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 },
   shield:0, shieldRechargeTimer:0,

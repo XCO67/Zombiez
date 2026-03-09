@@ -38,6 +38,9 @@ function render(now) {
     updateFlames();
     updateBossDemons();
     updateBossShots();
+    updateSpiderBosses();
+    updateSpiderMinions();
+    updateSpiderWebShots();
     updateSpreadDrops();
     updateLavaZombies();
     updateLavaShards();
@@ -67,6 +70,7 @@ function render(now) {
     else if (type===T.PILLAR)       drawPillar(r,c);
     else if (type===T.DOOR)         drawDoor(r,c);
     else if (type===T.BOSS_SPAWN)   drawBossSpawnTile(r,c);
+    else if (type===T.SPIDER_SPAWN) drawSpiderSpawnTile(r,c);
     else if (type===T.FLOOR2)       drawFloor(r,c,T.FLOOR2);
     else if (type===T.COLOR_FLOOR)  drawColorFloor(r,c);
     else                            drawFloor(r,c,type);
@@ -87,6 +91,8 @@ function render(now) {
     ...SKELETONS.map(s=>({y:s.cy*TH, draw:()=>drawSkeleton(s)})),
     ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)})),
     ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)})),
+    ...SPIDER_BOSSES.map(b=>({y:b.cy*TH, draw:()=>drawSpiderBoss(b)})),
+    ...SPIDER_MINIONS.map(m=>({y:m.cy*TH, draw:()=>drawSpiderMinion(m)})),
     ...LAVA_ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawLavaZombie(z)}))
   ];
   entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
@@ -106,6 +112,7 @@ function render(now) {
   drawEffects();
   drawProjectiles();
   drawBossShots();
+  drawSpiderWebShots();
   drawSpreadDrops();
   drawLavaShards();
 
@@ -113,6 +120,22 @@ function render(now) {
 
   // ── Screen-space overlays ─────────────────────────────────────────────────────
   applyLighting(flickers);
+  // Web slow vignette (Venom Queen)
+  if (player.webSlowTimer > 0) {
+    const wAlpha = Math.min(1, player.webSlowTimer / 60) * 0.38;
+    const wg = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height*0.28, canvas.width/2, canvas.height/2, canvas.height*0.75);
+    wg.addColorStop(0, 'rgba(0,0,0,0)');
+    wg.addColorStop(1, `rgba(0,180,30,${wAlpha})`);
+    ctx.fillStyle = wg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // "WEBBED" text
+    const wPulse = Math.sin(performance.now() / 250) * 0.4 + 0.6;
+    ctx.save(); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = `bold ${Math.round(canvas.height * 0.026)}px Segoe UI`;
+    ctx.fillStyle = `rgba(80,255,100,${wPulse * 0.9})`;
+    ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 10;
+    ctx.fillText('🕸 WEBBED', Math.round(canvas.width * 0.01), Math.round(canvas.height * 0.60));
+    ctx.restore();
+  }
   drawDmgNums();
   drawHUD();
   drawWeaponInfo();
