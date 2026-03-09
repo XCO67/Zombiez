@@ -605,7 +605,9 @@ function drawHUD() {
 
     const wepEndX = wepStartX + slotW * 2 + slotGap + ipd + 4;
     const moneyW = 100;
-    const abilSecW = 168; // abilities section (2 slots × 78px + 12px gap)
+    const ABIL_SW   = 70;  // each ability slot width
+    const ABIL_GAP  = 6;   // gap between slots
+    const abilSecW  = ABIL_SW * 2 + ABIL_GAP; // 146px total
     const statAreaW = W - wepEndX - moneyW - abilSecW - ipd * 7;
     const statTileW = Math.min(76, Math.floor((statAreaW - stats.length * 4) / stats.length));
     const statStartX = wepEndX + 4;
@@ -649,125 +651,83 @@ function drawHUD() {
     vDiv(afterStats);
 
     // ── 4. Abilities ───────────────────────────────
-    const abilX = afterStats + ipd + 2;
+    const abilX    = afterStats + ipd + 2;
+    const abilSlotY = BY + 14;
+    const abilSlotH = HUD_H - 18;
 
-    // Section label
+    // Section label centred over both slots
     ctx.font = "6px 'Press Start 2P'";
     ctx.fillStyle = 'rgba(100,180,255,0.55)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText('ABILITIES', abilX + abilSecW/2, BY + 4);
+    ctx.fillText('ABILITIES', abilX + abilSecW / 2, BY + 4);
 
-    // Dash slot
-    const dashReady = player.dashCooldown <= 0;
+    // helper: draw one ability slot
+    function drawAbilSlot(slotX, icon, labelReady, labelCd, keyhint,
+                          ready, active, frac, readyCol, activeCol, cdCol, arcCol) {
+      const cx2 = slotX + ABIL_SW / 2;
+      const bg  = active ? activeCol + '33' : ready ? readyCol + '18' : '#0d0d18';
+      pixelSlot(ctx, slotX, abilSlotY, ABIL_SW, abilSlotH, bg, ready || active);
+
+      // Arc track
+      const aR = Math.min(ABIL_SW, abilSlotH) * 0.30;
+      const aCy = abilSlotY + abilSlotH * 0.58;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx2, aCy, aR, 0, Math.PI * 2); ctx.stroke();
+      // Fill
+      ctx.strokeStyle = ready
+        ? (active ? activeCol : readyCol)
+        : cdCol;
+      ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx2, aCy, aR, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.stroke();
+      if (ready) { ctx.shadowColor = readyCol; ctx.shadowBlur = 7; ctx.stroke(); ctx.shadowBlur = 0; }
+      ctx.restore();
+
+      // Icon above arc
+      ctx.font = '14px Segoe UI';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.globalAlpha = ready ? 1 : 0.4 + frac * 0.4;
+      ctx.fillText(icon, cx2, abilSlotY + 3);
+      ctx.globalAlpha = 1;
+
+      // Status (READY / Xs / ACTIVE)
+      ctx.font = "12px 'VT323'";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      if (active) {
+        ctx.fillStyle = activeCol;
+        ctx.fillText(labelReady, cx2, abilSlotY + 19);
+      } else if (ready) {
+        ctx.fillStyle = readyCol;
+        ctx.fillText('READY', cx2, abilSlotY + 19);
+      } else {
+        ctx.fillStyle = cdCol;
+        ctx.fillText(labelCd, cx2, abilSlotY + 19);
+      }
+
+      // Key hint
+      ctx.font = "10px 'VT323'";
+      ctx.fillStyle = 'rgba(180,200,220,0.4)';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(keyhint, cx2, abilSlotY + abilSlotH - 2);
+    }
+
+    // Dash
+    const dashReady  = player.dashCooldown <= 0;
     const dashActive = player.dashTimer > 0;
     const dashFrac   = dashReady ? 1 : 1 - player.dashCooldown / DASH_COOLDOWN;
-    const dashSlotY  = BY + 14;
-    const dashSlotH  = HUD_H - 18;
-    const dashBg     = dashActive ? '#0a1e34' : dashReady ? '#0a1628' : '#0d0d18';
-    pixelSlot(ctx, abilX, dashSlotY, abilSecW, dashSlotH, dashBg, dashReady || dashActive);
+    drawAbilSlot(abilX, '💨', 'DASH!', Math.ceil(player.dashCooldown/60)+'s', '[SPC]',
+      dashReady, dashActive, dashFrac, '#44aaff', '#88eeff', '#ff8844', 'rgba(80,140,220,0.8)');
 
-    // Cooldown arc (drawn before icon so icon sits on top)
-    const arcCx = abilX + abilSecW / 2, arcCy = dashSlotY + dashSlotH / 2;
-    const arcR  = Math.min(abilSecW, dashSlotH) * 0.36;
-    ctx.save();
-    // Track (faint full ring)
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(arcCx, arcCy, arcR, 0, Math.PI * 2); ctx.stroke();
-    // Fill arc (progress)
-    ctx.strokeStyle = dashReady
-      ? (dashActive ? '#88eeff' : '#44aaff')
-      : `rgba(80,140,220,${0.35 + dashFrac * 0.55})`;
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(arcCx, arcCy, arcR, -Math.PI / 2, -Math.PI / 2 + dashFrac * Math.PI * 2);
-    ctx.stroke();
-    if (dashReady) {
-      ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 8;
-      ctx.stroke(); ctx.shadowBlur = 0;
-    }
-    ctx.restore();
-
-    // Icon (wind/dash emoji)
-    ctx.font = '17px Segoe UI';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.globalAlpha = dashReady ? 1.0 : 0.35 + dashFrac * 0.45;
-    ctx.fillText('💨', arcCx, dashSlotY + 10);
-    ctx.globalAlpha = 1;
-
-    // Status text
-    ctx.font = "13px 'VT323'";
-    ctx.textAlign = 'center';
-    if (dashReady) {
-      ctx.fillStyle = dashActive ? '#88eeff' : '#44ff99';
-      ctx.textBaseline = 'top';
-      ctx.fillText(dashActive ? 'DASH!' : 'READY', arcCx, dashSlotY + 20);
-    } else {
-      ctx.fillStyle = '#ff8844';
-      ctx.textBaseline = 'top';
-      ctx.fillText(Math.ceil(player.dashCooldown / 60) + 's', arcCx, dashSlotY + 20);
-    }
-
-    // Key hint
-    ctx.font = "11px 'VT323'";
-    ctx.fillStyle = 'rgba(140,180,220,0.45)';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('[SPACE]', arcCx, dashSlotY + dashSlotH - 3);
-
-    // ── Fire Ring slot ─────────────────────────────
-    const fireSlotX = abilX + 78 + 12;
+    // Fire Ring
+    const fireSlotX  = abilX + ABIL_SW + ABIL_GAP;
     const fireReady  = player.fireCooldown <= 0;
     const fireActive = player.fireRingTimer > 0;
     const fireFrac   = fireReady ? 1 : 1 - player.fireCooldown / FIRE_RING_COOLDOWN;
-    const fireBg     = fireActive ? '#1e0800' : fireReady ? '#180a00' : '#0d0d18';
-    pixelSlot(ctx, fireSlotX, dashSlotY, 78, dashSlotH, fireBg, fireReady || fireActive);
-
-    // Cooldown arc
-    const farcCx = fireSlotX + 39, farcCy = dashSlotY + dashSlotH / 2;
-    const farcR  = Math.min(78, dashSlotH) * 0.36;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(farcCx, farcCy, farcR, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = fireReady
-      ? (fireActive ? '#ffaa44' : '#ff6622')
-      : `rgba(200,80,20,${0.35 + fireFrac * 0.55})`;
-    ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(farcCx, farcCy, farcR, -Math.PI / 2, -Math.PI / 2 + fireFrac * Math.PI * 2);
-    ctx.stroke();
-    if (fireReady) {
-      ctx.shadowColor = '#ff6622'; ctx.shadowBlur = 8;
-      ctx.stroke(); ctx.shadowBlur = 0;
-    }
-    ctx.restore();
-
-    // Icon
-    ctx.font = '17px Segoe UI';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.globalAlpha = fireReady ? 1.0 : 0.35 + fireFrac * 0.45;
-    ctx.fillText('🔥', farcCx, dashSlotY + 10);
-    ctx.globalAlpha = 1;
-
-    // Status text
-    ctx.font = "13px 'VT323'";
-    ctx.textAlign = 'center';
-    if (fireReady) {
-      ctx.fillStyle = fireActive ? '#ffaa44' : '#ff8844';
-      ctx.textBaseline = 'top';
-      ctx.fillText(fireActive ? 'ACTIVE!' : 'READY', farcCx, dashSlotY + 20);
-    } else {
-      ctx.fillStyle = '#ffaa44';
-      ctx.textBaseline = 'top';
-      ctx.fillText(Math.ceil(player.fireCooldown / 60) + 's', farcCx, dashSlotY + 20);
-    }
-
-    // Key hint
-    ctx.font = "11px 'VT323'";
-    ctx.fillStyle = 'rgba(255,180,100,0.45)';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('[4]', farcCx, dashSlotY + dashSlotH - 3);
+    drawAbilSlot(fireSlotX, '🔥', 'ACTIVE!', Math.ceil(player.fireCooldown/60)+'s', '[4]',
+      fireReady, fireActive, fireFrac, '#ff6622', '#ffaa44', '#ffaa44', 'rgba(200,80,20,0.8)');
 
     vDiv(abilX + abilSecW + ipd + 2);
 
