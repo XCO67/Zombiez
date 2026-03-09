@@ -65,6 +65,30 @@ function upsertMap(m) { const a=getMaps(); const i=a.findIndex(x=>x.id===m.id); 
 function deleteMap(id) { saveMaps(getMaps().filter(m=>m.id!==id)); if(getActiveMapId()===id)setActiveMapId('default'); }
 function getMapById(id) { return getMaps().find(m=>m.id===id) || null; }
 
+async function fetchMapsFromServer() {
+  try {
+    const res = await fetch(API_URL + '/api/maps');
+    if (!res.ok) throw new Error('Server error');
+    const maps = await res.json();
+    saveMaps(maps); // cache locally
+    return maps;
+  } catch (e) {
+    console.warn('[Dead Surge] Could not fetch maps from server:', e);
+    return getMaps();
+  }
+}
+
+async function fetchMapFromServer(id) {
+  const local = getMapById(id);
+  if (local) return local;
+  try {
+    const maps = await fetchMapsFromServer();
+    return maps.find(m => m.id === id) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function applyMapData(data) {
   MAP_W = data.mapW; MAP_H = data.mapH;
   MAP.length = 0;
@@ -104,11 +128,11 @@ function applyMapData(data) {
 }
 
 // Load active map on startup
-(function loadActiveMap() {
+(async function loadActiveMap() {
   try {
     const id = getActiveMapId();
     if (id === 'default') return; // use buildMap() result
-    const m = getMapById(id);
+    const m = await fetchMapFromServer(id);
     if (m) { applyMapData(m); console.log('[Dead Surge] Loaded map:', m.name); }
     else { setActiveMapId('default'); }
   } catch(e) { console.warn('[Dead Surge] Map load failed:', e); }

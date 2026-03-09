@@ -1,11 +1,12 @@
 
 // ─── MAP SELECTOR ─────────────────────────────────────────────────────────────
-function openMapSelect() {
+async function openMapSelect() {
   const modal = document.getElementById('mapSelectModal');
   const list  = document.getElementById('mapSelectList');
   modal.style.display = 'flex';
+  list.innerHTML = '<p style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:16px">Loading maps…</p>';
 
-  const maps = getMaps();
+  const maps = await fetchMapsFromServer();
   const activeId = getActiveMapId();
   let html = '';
 
@@ -34,10 +35,13 @@ function openMapSelect() {
 }
 function closeMapSelect() { document.getElementById('mapSelectModal').style.display='none'; }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function selectAndPlay(id) {
+async function selectAndPlay(id) {
   setActiveMapId(id);
   if (id === 'default') { applyDefaultMap(); }
-  else { const m=getMapById(id); if(m) applyMapData(m); }
+  else {
+    const m = await fetchMapFromServer(id);
+    if (m) applyMapData(m);
+  }
   closeMapSelect();
   startGame();
 }
@@ -49,6 +53,10 @@ function applyDefaultMap() {
   PLAYER_START.cx=19.5; PLAYER_START.cy=13.5;
   DOORS.forEach(d=>{ d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
 }
-function confirmDeleteMap(id, name) {
-  if (confirm(`Delete map "${name}"?`)) { deleteMap(id); openMapSelect(); }
+async function confirmDeleteMap(id, name) {
+  if (confirm(`Delete map "${name}"?`)) {
+    try { await fetch(API_URL + '/api/maps/' + id, { method: 'DELETE' }); } catch(e) {}
+    deleteMap(id);
+    openMapSelect();
+  }
 }

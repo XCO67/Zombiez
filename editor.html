@@ -295,12 +295,49 @@ const ctx        = canvas.getContext('2d');
 const canvasWrap = document.getElementById('canvas-wrap');
 const gridChk    = document.getElementById('grid-chk');
 
+// ── API URL ───────────────────────────────────────────────────────────────────
+const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000'
+  : 'https://zombiez-production.up.railway.app';
+
 // ── STORAGE ──────────────────────────────────────────────────────────────────
 function getMaps()      { return JSON.parse(localStorage.getItem('deadsurge_maps') || '[]'); }
 function saveMaps(arr)  { localStorage.setItem('deadsurge_maps', JSON.stringify(arr)); }
-function upsertMap(m)   { const a=getMaps(); const i=a.findIndex(x=>x.id===m.id); if(i>=0)a[i]=m; else a.push(m); saveMaps(a); }
+function upsertMapLocal(m) { const a=getMaps(); const i=a.findIndex(x=>x.id===m.id); if(i>=0)a[i]=m; else a.push(m); saveMaps(a); }
 function deleteMapById(id) { saveMaps(getMaps().filter(m=>m.id!==id)); if(localStorage.getItem('deadsurge_active')===id) localStorage.setItem('deadsurge_active','default'); }
 function getMapById(id) { return getMaps().find(m=>m.id===id)||null; }
+
+async function saveMapToServer(m) {
+  try {
+    await fetch(API_URL + '/api/maps', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(m)
+    });
+  } catch(e) { console.warn('Could not save map to server:', e); }
+}
+
+async function fetchMapsFromServer() {
+  try {
+    const res = await fetch(API_URL + '/api/maps');
+    if (!res.ok) throw new Error('Server error');
+    const maps = await res.json();
+    saveMaps(maps);
+    return maps;
+  } catch(e) {
+    console.warn('Could not fetch maps from server:', e);
+    return getMaps();
+  }
+}
+
+async function fetchMapFromServer(id) {
+  const local = getMapById(id);
+  if (local) return local;
+  try {
+    const maps = await fetchMapsFromServer();
+    return maps.find(m => m.id === id) || null;
+  } catch(e) { return null; }
+}
 
 // ── MAP INIT ─────────────────────────────────────────────────────────────────
 function initDefaultObjects() {
@@ -414,18 +451,20 @@ function buildMapObj() {
   return { id, name, mapW, mapH, tiles:gameTiles, torches:newTorches, colorFloors:newColorFloors, playerStart, objects:obj, doors:obj.doors||[] };
 }
 
-function saveMap() {
+async function saveMap() {
   const m = buildMapObj();
   editId = m.id;
-  upsertMap(m);
+  upsertMapLocal(m);
+  await saveMapToServer(m);
   buildMapsList();
   toast(`Saved "${m.name}"`, 'ok');
 }
 
-function saveAndPlay() {
+async function saveAndPlay() {
   const m = buildMapObj();
   editId = m.id;
-  upsertMap(m);
+  upsertMapLocal(m);
+  await saveMapToServer(m);
   localStorage.setItem('deadsurge_active', m.id);
   toast(`Saved & set active: "${m.name}"`, 'ok');
   setTimeout(()=>{ window.location.href='/'; }, 800);
@@ -489,9 +528,10 @@ function buildAssetList() {
   });
 }
 
-function buildMapsList() {
+async function buildMapsList() {
   const list = document.getElementById('maps-list');
-  const maps = getMaps();
+  list.innerHTML = '<div style="padding:8px 7px;font-size:11px;color:var(--dim)">Loading…</div>';
+  const maps = await fetchMapsFromServer();
   if(!maps.length) { list.innerHTML='<div style="padding:8px 7px;font-size:11px;color:var(--dim)">No saved maps yet</div>'; return; }
   list.innerHTML = maps.map(m=>`
     <div class="mrow">
@@ -501,16 +541,17 @@ function buildMapsList() {
     </div>`).join('');
 }
 
-function loadSaved(id) {
-  const m = getMapById(id);
+async function loadSaved(id) {
+  const m = await fetchMapFromServer(id);
   if(!m) { toast('Map not found','err'); return; }
   saveUndo();
   loadMapFromData(m);
   toast(`Loaded "${m.name}"`, 'inf');
 }
 
-function deleteSaved(id, name) {
+async function deleteSaved(id, name) {
   if(!confirm(`Delete "${name}"?`)) return;
+  try { await fetch(API_URL + '/api/maps/' + id, { method: 'DELETE' }); } catch(e) {}
   deleteMapById(id);
   if(editId===id) { editId=null; }
   buildMapsList();
@@ -888,10 +929,10 @@ buildToolbar();
 buildAssetList();
 
 // Check for ?id= URL param
-(function init() {
+(async function init() {
   const id = new URLSearchParams(location.search).get('id');
   if(id) {
-    const m = getMapById(id);
+    const m = await fetchMapFromServer(id);
     if(m) { loadMapFromData(m); buildMapsList(); toast(`Loaded "${m.name}"`, 'inf'); return; }
   }
   loadDefault();

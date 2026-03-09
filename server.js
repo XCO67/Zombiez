@@ -43,6 +43,17 @@ async function initDB() {
     );
   `);
 
+  // Maps table (public, shared across all players)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS maps (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      data       JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+
   // Migration: deduplicate scores (keep best score per user) then enforce one row per user
   await pool.query(`
     DELETE FROM scores
@@ -149,6 +160,45 @@ app.post('/api/scores', authMiddleware, async (req, res) => {
          WHERE scores.score < EXCLUDED.score`,
       [req.user.id, round|0, kills|0, gold|0, score|0]
     );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── GET /api/maps ─────────────────────────────────────────────────────────────
+app.get('/api/maps', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, name, data FROM maps ORDER BY updated_at DESC');
+    res.json(rows.map(r => ({ ...r.data, id: r.id, name: r.name })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── POST /api/maps ────────────────────────────────────────────────────────────
+app.post('/api/maps', async (req, res) => {
+  const { id, name } = req.body || {};
+  if (!id || !name) return res.status(400).json({ error: 'id and name required' });
+  try {
+    await pool.query(
+      `INSERT INTO maps (id, name, data) VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO UPDATE SET name=$2, data=$3, updated_at=NOW()`,
+      [id, name, JSON.stringify(req.body)]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── DELETE /api/maps/:id ──────────────────────────────────────────────────────
+app.delete('/api/maps/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM maps WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
