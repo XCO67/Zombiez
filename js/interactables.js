@@ -340,6 +340,21 @@ function updateEffects() {
 function drawEffects() {
   effects.forEach(e=>{
     const p=1-e.life/e.maxLife, a=e.life/e.maxLife;
+    if(e.type==='explosion') {
+      const p2=1-e.life/e.maxLife, a2=e.life/e.maxLife;
+      const r=p2*e.radius*1.3;
+      ctx.save();
+      const g2=ctx.createRadialGradient(e.x,e.y,r*0.1,e.x,e.y,r);
+      g2.addColorStop(0,`rgba(255,220,60,${a2*0.9})`);
+      g2.addColorStop(0.45,`rgba(255,100,0,${a2*0.6})`);
+      g2.addColorStop(1,'rgba(200,20,0,0)');
+      ctx.fillStyle=g2;
+      ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=`rgba(255,180,0,${a2*0.7})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
     if(e.type==='thunder') {
       // Legacy ring (unused now, kept for safety)
       const r1=p*TW*3.5, r2=p*TW*5;

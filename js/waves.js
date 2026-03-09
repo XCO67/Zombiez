@@ -10,10 +10,14 @@ function dragonCount(round) {
 }
 
 function bossCount(round) {
-  return round === 15 ? 1 : 0;  // Eye Demon appears on round 15 only
+  if (round === 15) return 1;                        // Eye Demon debut
+  if (round > 20 && round % 5 === 0) return 1;      // every 5 rounds: r25, r30, r35...
+  return 0;
 }
 function spiderBossCount(round) {
-  return round === 20 ? 1 : 0;  // Venom Queen appears on round 20 only
+  if (round === 20) return 1;                        // Venom Queen debut
+  if (round > 20 && round % 10 === 0) return 1;     // every 10 rounds paired with Eye Demon
+  return 0;
 }
 
 function lavaZombieCount(round) {
@@ -25,6 +29,7 @@ function startWave(round) {
   ZOMBIES.length=0; DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
   BOSS_DEMONS.length=0; BOSS_SHOTS.length=0;
   SPIDER_BOSSES.length=0; SPIDER_WEB_SHOTS.length=0; SPIDER_MINIONS.length=0;
+  EXPLODERS.length=0; PHANTOMS.length=0;
   projectiles.length=0; dmgNums.length=0;
   spawnRemaining=5+round*2; spawnTimer=20;
   const nd=dragonCount(round);
@@ -35,6 +40,10 @@ function startWave(round) {
   if(spiderBossCount(round)>0) SPIDER_BOSSES.push(spawnSpiderBoss());
   const nlv=lavaZombieCount(round);
   for(let i=0;i<nlv;i++) LAVA_ZOMBIES.push(spawnLavaZombie());
+  const ne=exploderCount(round);
+  for(let i=0;i<ne;i++) EXPLODERS.push(spawnExploder());
+  const np=phantomCount(round);
+  for(let i=0;i<np;i++) PHANTOMS.push(spawnPhantom());
 }
 
 function updateWave() {
@@ -51,7 +60,7 @@ function updateWave() {
     if(spawnTimer>=spawnInterval){spawnTimer=0;spawnRemaining--;ZOMBIES.push(spawnZombie());}
   }
   // Check clear — all enemies and bosses must be dead (spiderlings don't count)
-  if(spawnRemaining===0&&ZOMBIES.every(z=>z.dead)&&DRAGONS.every(d=>d.dead)&&SKELETONS.every(s=>s.dead)&&BOSS_DEMONS.every(b=>b.dead)&&LAVA_ZOMBIES.every(z=>z.dead)&&SPIDER_BOSSES.every(b=>b.dead)){
+  if(spawnRemaining===0&&ZOMBIES.every(z=>z.dead)&&DRAGONS.every(d=>d.dead)&&SKELETONS.every(s=>s.dead)&&BOSS_DEMONS.every(b=>b.dead)&&LAVA_ZOMBIES.every(z=>z.dead)&&SPIDER_BOSSES.every(b=>b.dead)&&EXPLODERS.every(e=>e.dead)&&PHANTOMS.every(p=>p.dead)){
     game.state='wave_clear';game.waveTimer=180;
   }
 }
@@ -78,6 +87,7 @@ function restartGame() {
   DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
   BOSS_DEMONS.length=0; BOSS_SHOTS.length=0; SPREAD_DROPS.length=0; firstBossDropped=false;
   SPIDER_BOSSES.length=0; SPIDER_WEB_SHOTS.length=0; SPIDER_MINIONS.length=0; secondSpiderDropped=false;
+  EXPLODERS.length=0; PHANTOMS.length=0;
   activePerkTimers.doublePoints=0; activePerkTimers.magnet=0;
   startWave(1);
 }

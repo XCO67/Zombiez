@@ -47,6 +47,8 @@ function render(now) {
     updateLavaZombies();
     updateLavaShards();
     updateLavaPools();
+    updateExploders();
+    updatePhantoms();
     updateProjectiles();
     updateDmgNums();
     updateCoins();
@@ -97,7 +99,9 @@ function render(now) {
     ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)})),
     ...SPIDER_BOSSES.map(b=>({y:b.cy*TH, draw:()=>drawSpiderBoss(b)})),
     ...SPIDER_MINIONS.map(m=>({y:m.cy*TH, draw:()=>drawSpiderMinion(m)})),
-    ...LAVA_ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawLavaZombie(z)}))
+    ...LAVA_ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawLavaZombie(z)})),
+    ...EXPLODERS.map(e=>({y:e.cy*TH, draw:()=>drawExploder(e)})),
+    ...PHANTOMS.map(ph=>({y:ph.cy*TH, draw:()=>drawPhantom(ph)}))
   ];
   entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   drawRemotePlayers();

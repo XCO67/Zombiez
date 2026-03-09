@@ -360,11 +360,13 @@ const LAVA_SHARD_RANGE        = 4.5;  // tiles shards travel before pooling
 const LAVA_POOL_LIFE          = 420;
 const LAVA_POOL_DMG           = 6;
 const LAVA_POOL_DMG_INTERVAL  = 30;   // frames between pool damage ticks
+const LAVA_INVINC_DURATION    = 240;  // 4 s invincible
+const LAVA_INVINC_INTERVAL    = 480;  // 8 s between activations
 
 function spawnLavaZombie() {
   const pts = getSpawnTiles();
   const sp  = pts[Math.floor(Math.random() * pts.length)];
-  const hp  = Math.round((100 + game.round * 25) * enemyHpScale(game.round));
+  const hp  = Math.round((300 + game.round * 50) * enemyHpScale(game.round));
   return {
     cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
     frame: Math.random()*8|0, ft: Math.random()*.1,
@@ -372,12 +374,18 @@ function spawnLavaZombie() {
     dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0,
     abilityTimer: Math.random() * 80 | 0,
     chargeTimer: 0,
-    state: 'walk'
+    state: 'walk',
+    invincTimer: 0,
+    invincCooldown: Math.random() * 300 | 0,
   };
 }
 
 function hitLavaZombie(z, wkey, papMult) {
   papMult = papMult || 1;
+  if (z.invincTimer > 0) {
+    spawnDmgNum(z.cx*TW, z.cy*TH - TH*.5, 0, '#ff8800');
+    return;
+  }
   const {dmg:rawDmg, crit} = rollDamage(WEAPONS[wkey].baseDmg);
   const dmg = Math.round(rawDmg * papMult);
   z.hp -= dmg; z.hitFlash = 7;
@@ -440,6 +448,16 @@ function updateLavaZombies() {
         z.chargeTimer = 0;
       }
     } else {
+      // Invincibility cycle
+      if (z.invincTimer > 0) {
+        z.invincTimer--;
+      } else {
+        z.invincCooldown++;
+        if (z.invincCooldown >= LAVA_INVINC_INTERVAL) {
+          z.invincCooldown = 0;
+          z.invincTimer = LAVA_INVINC_DURATION;
+        }
+      }
       const spd = LAVA_SPEED + game.round * 0.0006;
       if (dist > 0.4) { z.cx += (dx/dist)*spd; z.cy += (dy/dist)*spd; }
       const lavaContactDmg = LAVA_CONTACT_DMG + Math.floor(game.round / 4) * 3;
@@ -611,6 +629,36 @@ function drawLavaZombie(z) {
   ctx.save(); ctx.globalAlpha = .4*alpha; ctx.fillStyle = '#000';
   ctx.beginPath(); ctx.ellipse(px, py+sz*.44, sz*.3, sz*.1, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
 
+  // Invincibility shield glow
+  if (z.invincTimer > 0) {
+    const invFrac = z.invincTimer / LAVA_INVINC_DURATION;
+    const shieldPulse = 0.7 + Math.sin(performance.now() / 80) * 0.3;
+    ctx.save();
+    ctx.globalAlpha = 0.55 * invFrac * shieldPulse * alpha;
+    const sg = ctx.createRadialGradient(px, py, sz*0.3, px, py, sz*0.95);
+    sg.addColorStop(0, 'rgba(255,255,100,0.8)');
+    sg.addColorStop(0.5, 'rgba(255,200,0,0.4)');
+    sg.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(px, py, sz*0.95, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = `rgba(255,240,0,${0.9 * invFrac * shieldPulse})`;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(px, py, sz*0.72, 0, Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    // IMMUNE label
+    ctx.save();
+    ctx.globalAlpha = invFrac * (0.7 + shieldPulse * 0.3);
+    ctx.fillStyle = '#ffee00';
+    ctx.font = `bold ${Math.round(TH*0.24)}px Segoe UI`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 8;
+    ctx.fillText('⚡ IMMUNE', px, py - sz*0.72);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
   // Charge ground FX (drawn under sprite)
   if (z.state === 'charging') drawLavaChargeFX(px, py, z.chargeTimer/LAVA_CHARGE_FRAMES);
 
@@ -646,4 +694,313 @@ function drawLavaZombie(z) {
     ctx.fillText('\uD83C\uDF0B LAVA', px, py - sz*.62);
     ctx.restore();
   }
+}
+
+// ─── EXPLODERS ─────────────────────────────────────────────────────────────────
+// Fast suicide bombers — chase player and explode on contact
+const EXPLODERS = [];
+const EXPLODER_SPEED         = 0.030;
+const EXPLODER_EXPLODE_RADIUS = 2.6;  // tiles AoE
+const EXPLODER_TRIGGER_DIST  = 0.85; // tiles — explode when this close
+const EXPLODER_DMG           = 50;
+
+function exploderCount(round) {
+  if (round < 8) return 0;
+  return Math.floor((round - 8) / 5) + 1;  // r8:1  r13:2  r18:3 ...
+}
+
+function spawnExploder() {
+  const pts = getSpawnTiles();
+  const sp  = pts[Math.floor(Math.random() * pts.length)];
+  const hp  = Math.round((30 + game.round * 8) * enemyHpScale(game.round));
+  return {
+    cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
+    hp, maxHp: hp,
+    dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0,
+    exploded: false,
+  };
+}
+
+function triggerExplosion(e) {
+  if (e.exploded) return;
+  e.exploded = true; e.dead = true; e.deathTimer = 30;
+  const falloffMin = 0.3;
+  if (!player.dead && !player.downed) {
+    const d = Math.hypot(player.cx - e.cx, player.cy - e.cy);
+    if (d < EXPLODER_EXPLODE_RADIUS) {
+      const falloff = Math.max(falloffMin, 1 - d / EXPLODER_EXPLODE_RADIUS);
+      const dmg = Math.round(EXPLODER_DMG * falloff);
+      applyDamage(player, dmg);
+      if (player.hp <= 0) playerGoDown();
+    }
+  }
+  spawnEffect('explosion', e.cx * TW, e.cy * TH, { radius: EXPLODER_EXPLODE_RADIUS * TW });
+}
+
+function hitExploder(e, wkey, papMult) {
+  papMult = papMult || 1;
+  if (e.exploded) return;
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const dmg = Math.round(rawDmg * papMult);
+  e.hp -= dmg; e.hitFlash = 7;
+  spawnDmgNum(e.cx*TW, e.cy*TH - TH*.4, dmg, crit ? '#cc44ff' : '#ff6600');
+  if (e.hp <= 0) {
+    triggerExplosion(e);
+    game.kills++; game.score += 25;
+    spawnCoin(e.cx + (Math.random()-.5)*.4, e.cy + (Math.random()-.5)*.4, 20 + game.round * 5);
+    spawnPerk(e.cx, e.cy);
+    if (player.perks.lifesteal > 0 && !player.dead) {
+      const heal = LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      spawnDmgNum(player.cx*TW, player.cy*TH - TH*.6, heal, '#44ff88');
+    }
+  }
+}
+
+function updateExploders() {
+  EXPLODERS.forEach(e => {
+    if (e.dead) { if (e.deathTimer > 0) e.deathTimer--; return; }
+    if (e.hitFlash > 0) e.hitFlash--;
+    if (e.vx || e.vy) {
+      const nx = e.cx + e.vx, ny = e.cy + e.vy;
+      if (!isBlocked(nx, e.cy)) e.cx = nx; else e.vx = 0;
+      if (!isBlocked(e.cx, ny)) e.cy = ny; else e.vy = 0;
+      e.vx *= 0.78; e.vy *= 0.78;
+      if (Math.abs(e.vx) < 0.005) e.vx = 0;
+      if (Math.abs(e.vy) < 0.005) e.vy = 0;
+    }
+    const tgt = nearestPlayerTo(e.cx, e.cy);
+    const dx = tgt.cx - e.cx, dy = tgt.cy - e.cy, dist = Math.hypot(dx, dy) || 1;
+    const spd = EXPLODER_SPEED + game.round * 0.001;
+    if (dist > 0.4) { e.cx += (dx/dist)*spd; e.cy += (dy/dist)*spd; }
+    if (dist < EXPLODER_TRIGGER_DIST && !tgt.dead && !tgt.downed && game.state === 'playing') {
+      triggerExplosion(e);
+    }
+  });
+  for (let i = EXPLODERS.length-1; i >= 0; i--) {
+    if (EXPLODERS[i].dead && EXPLODERS[i].deathTimer <= 0) EXPLODERS.splice(i, 1);
+  }
+}
+
+function drawExploder(e) {
+  if (e.dead && e.deathTimer <= 0) return;
+  const px = e.cx * TW, py = e.cy * TH;
+
+  // Expanding explosion ring on death
+  if (e.dead && e.exploded) {
+    const p2 = 1 - e.deathTimer / 30;
+    const r  = p2 * EXPLODER_EXPLODE_RADIUS * TW * 1.4;
+    const a2 = e.deathTimer / 30;
+    ctx.save();
+    const g2 = ctx.createRadialGradient(px, py, r*0.2, px, py, r);
+    g2.addColorStop(0,   `rgba(255,220,60,${a2*0.95})`);
+    g2.addColorStop(0.4, `rgba(255,100,0,${a2*0.7})`);
+    g2.addColorStop(1,   'rgba(200,30,0,0)');
+    ctx.fillStyle = g2;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = `rgba(255,180,0,${a2*0.8})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  const dist   = Math.hypot(player.cx - e.cx, player.cy - e.cy);
+  const fuse   = Math.max(0, 1 - dist / 5.0);       // 0→1 as it closes in
+  const pulse  = 0.85 + Math.sin(performance.now() / Math.max(20, 120 - fuse*100)) * 0.15;
+  const alpha2 = e.dead ? (e.deathTimer / 25) : 1;
+
+  ctx.save();
+  ctx.globalAlpha = alpha2;
+
+  // Danger glow — intensifies as it approaches
+  const glowR = TW * (0.9 + fuse*1.8) * pulse;
+  const glow2 = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+  glow2.addColorStop(0, `rgba(255,160,0,${0.25 + fuse*0.55})`);
+  glow2.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = glow2;
+  ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI*2); ctx.fill();
+
+  // Body
+  const bodyR = TW * 0.50;
+  const bg2 = ctx.createRadialGradient(px - TW*.1, py - TH*.1, 0, px, py, bodyR);
+  bg2.addColorStop(0, `rgb(255,${Math.round(180 - fuse*160)},0)`);
+  bg2.addColorStop(1, `rgb(${Math.round(180 - fuse*100)},0,0)`);
+  ctx.fillStyle = bg2;
+  ctx.beginPath(); ctx.arc(px, py, bodyR, 0, Math.PI*2); ctx.fill();
+
+  // Shadow
+  ctx.globalAlpha = 0.35 * alpha2;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(px, py + bodyR*0.8, bodyR*0.65, bodyR*0.18, 0, 0, Math.PI*2); ctx.fill();
+
+  // Warning label
+  ctx.globalAlpha = (0.8 + fuse*0.2) * alpha2;
+  ctx.fillStyle = fuse > 0.5 ? '#fff' : '#ffdd44';
+  ctx.font = `bold ${Math.round(TW * 0.42)}px monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(fuse > 0.6 ? '!!!' : '!', px, py);
+
+  // HP bar
+  if (e.hp < e.maxHp) {
+    const bw = TW, bh = Math.max(3, TH*.09), bx = px - bw/2, by = py - bodyR - bh - 3;
+    ctx.globalAlpha = alpha2;
+    ctx.fillStyle = '#1a0000'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#ff4400'; ctx.fillRect(bx, by, bw*(e.hp/e.maxHp), bh);
+  }
+
+  ctx.restore();
+}
+
+
+// ─── PHANTOMS ──────────────────────────────────────────────────────────────────
+// Ghostly enemies that phase through walls and go temporarily invincible
+const PHANTOMS = [];
+const PHANTOM_SPEED           = 0.024;
+const PHANTOM_INVINC_INTERVAL = 220;  // frames between phase shifts
+const PHANTOM_INVINC_DURATION = 90;   // 1.5 s invincible
+
+function phantomCount(round) {
+  if (round < 13) return 0;
+  return Math.floor((round - 13) / 5) + 1;  // r13:1  r18:2  r23:3 ...
+}
+
+function spawnPhantom() {
+  const pts = getSpawnTiles();
+  const sp  = pts[Math.floor(Math.random() * pts.length)];
+  const hp  = Math.round((70 + game.round * 15) * enemyHpScale(game.round));
+  return {
+    cx: sp.cx, cy: sp.cy,
+    hp, maxHp: hp,
+    dead: false, deathTimer: 0, hitFlash: 0,
+    invincTimer: 0,
+    phaseTimer: Math.random() * PHANTOM_INVINC_INTERVAL | 0,
+  };
+}
+
+function hitPhantom(ph, wkey, papMult) {
+  papMult = papMult || 1;
+  if (ph.invincTimer > 0) return;  // phasing — untouchable
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const dmg = Math.round(rawDmg * papMult);
+  ph.hp -= dmg; ph.hitFlash = 7;
+  spawnDmgNum(ph.cx*TW, ph.cy*TH - TH*.4, dmg, crit ? '#cc44ff' : '#aaddff');
+  if (ph.hp <= 0) {
+    ph.dead = true; ph.deathTimer = 25;
+    game.kills++; game.score += 30;
+    spawnCoin(ph.cx, ph.cy, 25 + game.round * 6);
+    spawnPerk(ph.cx, ph.cy);
+    if (player.perks.lifesteal > 0 && !player.dead) {
+      const heal = LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      spawnDmgNum(player.cx*TW, player.cy*TH - TH*.6, heal, '#44ff88');
+    }
+  }
+}
+
+function updatePhantoms() {
+  PHANTOMS.forEach(ph => {
+    if (ph.dead) { if (ph.deathTimer > 0) ph.deathTimer--; return; }
+    if (ph.hitFlash > 0) ph.hitFlash--;
+    // Invincibility cycle
+    if (ph.invincTimer > 0) {
+      ph.invincTimer--;
+    } else {
+      ph.phaseTimer++;
+      if (ph.phaseTimer >= PHANTOM_INVINC_INTERVAL) {
+        ph.phaseTimer = 0;
+        ph.invincTimer = PHANTOM_INVINC_DURATION;
+      }
+    }
+    // Moves through walls (no isBlocked)
+    const tgt = nearestPlayerTo(ph.cx, ph.cy);
+    const dx = tgt.cx - ph.cx, dy = tgt.cy - ph.cy, dist = Math.hypot(dx, dy) || 1;
+    const spd = PHANTOM_SPEED + game.round * 0.0007;
+    if (dist > 0.35) { ph.cx += (dx/dist)*spd; ph.cy += (dy/dist)*spd; }
+    // Contact: damage player then teleport away
+    if (dist < 0.6 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
+      const dmg = 15 + Math.floor(game.round / 3) * 3;
+      applyDamage(tgt, dmg);
+      if (tgt === player && tgt.hp <= 0) playerGoDown();
+      // Teleport to random spawn point
+      const spPts = getSpawnTiles();
+      const sp2 = spPts[Math.floor(Math.random() * spPts.length)];
+      ph.cx = sp2.cx + (Math.random()-.5)*.6;
+      ph.cy = sp2.cy + (Math.random()-.5)*.6;
+    }
+  });
+  for (let i = PHANTOMS.length-1; i >= 0; i--) {
+    if (PHANTOMS[i].dead && PHANTOMS[i].deathTimer <= 0) PHANTOMS.splice(i, 1);
+  }
+}
+
+function drawPhantom(ph) {
+  if (ph.dead && ph.deathTimer <= 0) return;
+  const px = ph.cx * TW, py = ph.cy * TH;
+  const sz = TW * 1.3;
+  const isInvinc = ph.invincTimer > 0;
+  const baseAlpha = ph.dead
+    ? (ph.deathTimer / 25)
+    : isInvinc
+      ? 0.22 + Math.abs(Math.sin(performance.now() / 55)) * 0.20
+      : 0.88;
+
+  ctx.save();
+  ctx.globalAlpha = baseAlpha;
+
+  // Ethereal outer glow
+  const eg = ctx.createRadialGradient(px, py, 0, px, py, sz*1.2);
+  eg.addColorStop(0, isInvinc ? 'rgba(200,240,255,0.35)' : 'rgba(120,160,255,0.28)');
+  eg.addColorStop(1, 'rgba(40,60,200,0)');
+  ctx.fillStyle = eg;
+  ctx.beginPath(); ctx.arc(px, py, sz*1.2, 0, Math.PI*2); ctx.fill();
+
+  // Ghost body
+  const bg3 = ctx.createRadialGradient(px, py - sz*.1, 0, px, py + sz*.15, sz*.55);
+  bg3.addColorStop(0, isInvinc ? 'rgba(230,245,255,0.98)' : 'rgba(170,200,255,0.95)');
+  bg3.addColorStop(0.55, isInvinc ? 'rgba(140,200,255,0.65)' : 'rgba(80,120,255,0.7)');
+  bg3.addColorStop(1, 'rgba(20,40,180,0)');
+  ctx.fillStyle = bg3;
+  ctx.beginPath(); ctx.ellipse(px, py, sz*0.38, sz*0.55, 0, 0, Math.PI*2); ctx.fill();
+
+  // Wispy tail (three wavy bumps at bottom)
+  ctx.fillStyle = isInvinc ? 'rgba(200,230,255,0.45)' : 'rgba(80,120,255,0.35)';
+  const tailY = py + sz * 0.42;
+  for (let t = 0; t < 3; t++) {
+    const tx2 = px + (t - 1) * sz * 0.28;
+    const wobble = Math.sin(performance.now() / 180 + t * 1.5) * sz * 0.06;
+    ctx.beginPath(); ctx.ellipse(tx2, tailY + wobble, sz*0.12, sz*0.16, 0, 0, Math.PI*2); ctx.fill();
+  }
+
+  if (!isInvinc) {
+    // Dark hollow eyes
+    ctx.fillStyle = 'rgba(5,0,35,0.95)';
+    ctx.beginPath(); ctx.ellipse(px - sz*0.12, py - sz*0.05, sz*0.07, sz*0.09, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + sz*0.12, py - sz*0.05, sz*0.07, sz*0.09, 0, 0, Math.PI*2); ctx.fill();
+    // Eye glow
+    ctx.fillStyle = 'rgba(150,80,255,0.6)';
+    ctx.beginPath(); ctx.ellipse(px - sz*0.12, py - sz*0.05, sz*0.03, sz*0.04, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + sz*0.12, py - sz*0.05, sz*0.03, sz*0.04, 0, 0, Math.PI*2); ctx.fill();
+  } else {
+    // IMMUNE label while phasing
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#c0e8ff';
+    ctx.font = `bold ${Math.round(TH*0.22)}px Segoe UI`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.shadowColor = '#80c0ff'; ctx.shadowBlur = 8;
+    ctx.fillText('PHASING', px, py - sz*0.65);
+    ctx.shadowBlur = 0;
+  }
+
+  // HP bar (only when not phasing)
+  if (!ph.dead && ph.hp < ph.maxHp && !isInvinc) {
+    const bw = sz*.9, bh = Math.max(3, TH*.09), bx = px-bw/2, by = py-sz*.75;
+    ctx.globalAlpha = baseAlpha;
+    ctx.fillStyle = '#0a0a20'; ctx.fillRect(bx, by, bw, bh);
+    const f = ph.hp/ph.maxHp;
+    ctx.fillStyle = f>.5 ? '#6699ff' : f>.25 ? '#9966ff' : '#cc44ff';
+    ctx.fillRect(bx, by, bw*f, bh);
+  }
+
+  ctx.restore();
 }

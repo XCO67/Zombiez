@@ -201,6 +201,26 @@ function fireWindWave(sx, sy, angle) {
     hitLavaZombie(lz,'thundergun',1);
     const nd=dist||1; lz.vx=(dx/nd)*.8; lz.vy=(dy/nd)*.8;
   });
+  // Exploders hit by wave
+  EXPLODERS.forEach(ex=>{
+    if(ex.dead) return;
+    const dx=ex.cx*TW-sx,dy=ex.cy*TH-sy,dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const eAng=Math.atan2(dy,dx); let diff=eAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitExploder(ex,'thundergun',1);
+  });
+  // Phantoms hit by wave
+  PHANTOMS.forEach(ph=>{
+    if(ph.dead) return;
+    const dx=ph.cx*TW-sx,dy=ph.cy*TH-sy,dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const pAng=Math.atan2(dy,dx); let diff=pAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitPhantom(ph,'thundergun',1);
+  });
   // Remove dead zombies killed by wave
   for (let i = ZOMBIES.length-1; i >= 0; i--) {
     if (ZOMBIES[i].hp <= 0) ZOMBIES.splice(i, 1);
@@ -302,6 +322,24 @@ function updateProjectiles() {
       const lz=LAVA_ZOMBIES[li]; if(lz.dead) continue;
       if(Math.hypot(p.x-lz.cx*TW,p.y-lz.cy*TH)<TW*w.hitR){
         hitLavaZombie(lz,p.wkey,p.papped?3:1); hitAny=true;
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Exploder hits
+    for(let ei=0;ei<EXPLODERS.length;ei++){
+      const ex=EXPLODERS[ei]; if(ex.dead) continue;
+      if(Math.hypot(p.x-ex.cx*TW,p.y-ex.cy*TH)<TW*w.hitR){
+        hitExploder(ex,p.wkey,p.papped?3:1); hitAny=true;
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Phantom hits
+    for(let phi=0;phi<PHANTOMS.length;phi++){
+      const ph=PHANTOMS[phi]; if(ph.dead) continue;
+      if(Math.hypot(p.x-ph.cx*TW,p.y-ph.cy*TH)<TW*w.hitR){
+        hitPhantom(ph,p.wkey,p.papped?3:1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }

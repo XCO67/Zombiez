@@ -47,6 +47,18 @@ function updateFireRing() {
     if (Math.hypot(lz.cx - player.cx, lz.cy - player.cy) < range)
       hitLavaZombie(lz, 'pistol');
   });
+  // Exploders
+  for (let i = EXPLODERS.length - 1; i >= 0; i--) {
+    const ex = EXPLODERS[i]; if (ex.dead) continue;
+    if (Math.hypot(ex.cx - player.cx, ex.cy - player.cy) < range)
+      hitExploder(ex, 'pistol');
+  }
+  // Phantoms
+  for (let i = PHANTOMS.length - 1; i >= 0; i--) {
+    const ph = PHANTOMS[i]; if (ph.dead) continue;
+    if (Math.hypot(ph.cx - player.cx, ph.cy - player.cy) < range)
+      hitPhantom(ph, 'pistol');
+  }
   // Boss demons
   BOSS_DEMONS.forEach(b => {
     if (b.dead) return;
