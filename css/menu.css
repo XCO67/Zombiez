@@ -95,16 +95,16 @@
       from { transform: translateY(0px);    filter: drop-shadow(0 0 18px rgba(80,60,255,.60)) drop-shadow(0 0 40px rgba(140,80,255,.35)); }
       to   { transform: translateY(-12px);  filter: drop-shadow(0 0 28px rgba(100,80,255,.85)) drop-shadow(0 0 60px rgba(160,100,255,.55)); }
     }
-    .menu-spider {
+    .menu-zombie {
       position: absolute; bottom: 0; left: clamp(20px, 5vw, 100px); z-index: 3;
-      height: clamp(140px, 26vh, 300px); width: auto;
+      height: clamp(200px, 38vh, 420px); width: auto;
       image-rendering: pixelated;
-      filter: drop-shadow(0 0 14px rgba(0,200,40,.45)) drop-shadow(0 0 32px rgba(0,120,20,.30));
+      filter: drop-shadow(0 0 14px rgba(60,200,40,.45)) drop-shadow(0 0 32px rgba(30,120,10,.30));
       opacity: 0.88;
-      animation: spiderCreep 3.4s ease-in-out infinite alternate;
+      animation: zombieSway 4.6s ease-in-out infinite alternate;
       pointer-events: none;
     }
-    @keyframes spiderCreep {
-      from { transform: translateY(0px)   scaleX(1);    filter: drop-shadow(0 0 14px rgba(0,200,40,.45)) drop-shadow(0 0 32px rgba(0,120,20,.30)); }
-      to   { transform: translateY(-8px)  scaleX(-1);   filter: drop-shadow(0 0 22px rgba(0,255,60,.70)) drop-shadow(0 0 50px rgba(0,160,30,.50)); }
+    @keyframes zombieSway {
+      from { transform: translateY(0px)  rotate(-1.5deg); filter: drop-shadow(0 0 14px rgba(60,200,40,.45)) drop-shadow(0 0 32px rgba(30,120,10,.30)); }
+      to   { transform: translateY(-8px) rotate( 1.5deg); filter: drop-shadow(0 0 22px rgba(80,255,50,.70)) drop-shadow(0 0 50px rgba(40,160,20,.50)); }
     }
