@@ -82,16 +82,29 @@
     .login-corner:hover { border-color:rgba(255,255,255,.5); color:#ccc; transform:translate(1px,1px); box-shadow:2px 2px 0 rgba(0,0,0,.8); }
     .menu-ver    { position:absolute; bottom:12px; right:16px; z-index:3; font-family:'Press Start 2P',monospace; color:rgba(255,255,255,.12); font-size:7px; }
     .menu-credit { position:absolute; bottom:12px; left:16px;  z-index:3; font-family:'Press Start 2P',monospace; color:rgba(255,255,255,.18); font-size:7px; }
-    .menu-knight {
+    .menu-wizard {
       position: absolute; bottom: 0; right: clamp(20px, 6vw, 120px); z-index: 3;
-      height: clamp(260px, 48vh, 540px); width: auto;
+      height: clamp(220px, 42vh, 480px); width: auto;
       image-rendering: pixelated;
-      filter: drop-shadow(0 0 18px rgba(180,30,30,.55)) drop-shadow(0 0 40px rgba(120,0,0,.35));
-      opacity: 0.88;
-      animation: knightFloat 3.8s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 18px rgba(80,60,255,.60)) drop-shadow(0 0 40px rgba(140,80,255,.35));
+      opacity: 0.92;
+      animation: wizardFloat 4.2s ease-in-out infinite alternate;
       pointer-events: none;
     }
-    @keyframes knightFloat {
-      from { transform: translateY(0px); filter: drop-shadow(0 0 18px rgba(180,30,30,.55)) drop-shadow(0 0 40px rgba(120,0,0,.35)); }
-      to   { transform: translateY(-10px); filter: drop-shadow(0 0 26px rgba(220,40,40,.75)) drop-shadow(0 0 60px rgba(140,0,0,.5)); }
+    @keyframes wizardFloat {
+      from { transform: translateY(0px);    filter: drop-shadow(0 0 18px rgba(80,60,255,.60)) drop-shadow(0 0 40px rgba(140,80,255,.35)); }
+      to   { transform: translateY(-12px);  filter: drop-shadow(0 0 28px rgba(100,80,255,.85)) drop-shadow(0 0 60px rgba(160,100,255,.55)); }
+    }
+    .menu-spider {
+      position: absolute; bottom: 0; left: clamp(20px, 5vw, 100px); z-index: 3;
+      height: clamp(140px, 26vh, 300px); width: auto;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 14px rgba(0,200,40,.45)) drop-shadow(0 0 32px rgba(0,120,20,.30));
+      opacity: 0.88;
+      animation: spiderCreep 3.4s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes spiderCreep {
+      from { transform: translateY(0px)   scaleX(1);    filter: drop-shadow(0 0 14px rgba(0,200,40,.45)) drop-shadow(0 0 32px rgba(0,120,20,.30)); }
+      to   { transform: translateY(-8px)  scaleX(-1);   filter: drop-shadow(0 0 22px rgba(0,255,60,.70)) drop-shadow(0 0 50px rgba(0,160,30,.50)); }
     }
