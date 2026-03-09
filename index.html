@@ -566,6 +566,8 @@ const player = {
   regenTimer:0, regenAccum:0,
   heat:0, overheated:false,
   packedWeapons: new Set(),
+  perks: { magnet:0, shield:0, lifesteal:0 },
+  shield:0, shieldRechargeTimer:0,
 };
 
 // ─── SHOP ─────────────────────────────────────────────────────────────────────
@@ -589,7 +591,28 @@ const SHOP_ITEMS = [
     price: l => (l+1)*175, maxLevel:5 },
 ];
 let shopOpen = false;
+let perkShopOpen = false;
 let weaponInfoOpen = false;
+
+// ─── PERK VENDOR ──────────────────────────────────────────────────────────────
+const PERK_VENDOR_POS = { cx:24.5, cy:18 };
+const PERK_VENDOR_RADIUS = 2.0;
+const SHIELD_MAXHP = [0, 25,  50,  75,  100, 150];
+const SHIELD_DELAY = [0, 300, 270, 240, 210, 180]; // frames before recharge
+const SHIELD_RATE  = [0, 8,   12,  15,  18,  25 ]; // HP regen per second
+const LIFESTEAL_HP = [0, 2,   5,   8,   12,  16 ];
+const MAGNET_RADII = [8, 10,  12,  14,  16,  18 ]; // index 0 = base (temp perk), 1-5 = bought levels
+const PERK_SHOP_ITEMS = [
+  { key:'magnet',    name:'MAGNET',    icon:'🧲', color:'#60ccff',
+    desc: l => `Radius ${MAGNET_RADII[l]}→${MAGNET_RADII[l+1]} tiles  •  Always active`,
+    price: l => (l+1)*200, maxLevel:5 },
+  { key:'shield',    name:'SHIELD',    icon:'🛡', color:'#4499ff',
+    desc: l => `${SHIELD_MAXHP[l]}→${SHIELD_MAXHP[l+1]} HP shield  •  Recharges after ${['-',5,4.5,4,3.5,3][l+1]}s`,
+    price: l => (l+1)*300, maxLevel:5 },
+  { key:'lifesteal', name:'LIFESTEAL', icon:'🩸', color:'#ff4466',
+    desc: l => `${LIFESTEAL_HP[l]}→${LIFESTEAL_HP[l+1]} HP healed per kill`,
+    price: l => (l+1)*250, maxLevel:5 },
+];
 
 // ─── COINS ────────────────────────────────────────────────────────────────────
 const COINS = [];
@@ -602,10 +625,12 @@ function updateCoins() {
   for (let i=COINS.length-1;i>=0;i--) {
     const c=COINS[i]; c.bob+=0.08; c.life--;
     // Magnet: pull coins within radius toward player
-    if (activePerkTimers.magnet > 0) {
+    const magnetActive = activePerkTimers.magnet > 0 || player.perks.magnet > 0;
+    const magnetRadius = player.perks.magnet > 0 ? MAGNET_RADII[player.perks.magnet] : MAGNET_RADII[0];
+    if (magnetActive) {
       const dx=player.cx-c.cx, dy=player.cy-c.cy;
       const dist=Math.hypot(dx,dy);
-      if (dist < MAGNET_RADIUS && dist > 0.01) {
+      if (dist < magnetRadius && dist > 0.01) {
         c.cx += (dx/dist)*MAGNET_SPEED;
         c.cy += (dy/dist)*MAGNET_SPEED;
       }
@@ -964,6 +989,69 @@ function drawPapMachine() {
   }
 }
 
+// ─── PERK VENDOR ──────────────────────────────────────────────────────────────
+function drawPerkVendor() {
+  const px = PERK_VENDOR_POS.cx * TW, py = PERK_VENDOR_POS.cy * TH;
+  const sz = Math.min(TW,TH) * 0.58, tt = performance.now() / 1000;
+  const pulse = Math.sin(tt * 2.8) * 0.5 + 0.5;
+
+  ctx.save();
+
+  // Outer glow — soft teal/green
+  const gg = ctx.createRadialGradient(px,py,sz*.2,px,py,sz*2.4);
+  gg.addColorStop(0, `rgba(40,255,160,${0.15+pulse*0.1})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(px,py,sz*2.4,0,Math.PI*2); ctx.fill();
+
+  // Body
+  ctx.fillStyle='#071a12';
+  roundRect(ctx, px-sz, py-sz*.7, sz*2, sz*1.4, sz*.12, true, false);
+  ctx.strokeStyle=`rgba(40,220,130,${0.5+pulse*0.3})`; ctx.lineWidth=2;
+  roundRect(ctx, px-sz, py-sz*.7, sz*2, sz*1.4, sz*.12, false, true);
+
+  // Crystal orb in centre
+  const og = ctx.createRadialGradient(px, py-sz*.08, sz*.05, px, py-sz*.08, sz*.38);
+  og.addColorStop(0, 'rgba(200,255,230,1)');
+  og.addColorStop(0.4, 'rgba(40,220,150,0.85)');
+  og.addColorStop(1, 'rgba(0,80,40,0)');
+  ctx.fillStyle=og; ctx.beginPath(); ctx.arc(px, py-sz*.08, sz*.38, 0, Math.PI*2); ctx.fill();
+
+  // Inner sparkle
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(px-sz*.1, py-sz*.18, sz*.07, 0, Math.PI*2); ctx.fill();
+
+  // Orbiting perk icons
+  ['🧲','🛡','🩸'].forEach((icon, k) => {
+    const a = tt * 0.9 + k * (Math.PI*2/3);
+    const ix = px + Math.cos(a)*sz*.72, iy = py-sz*.08 + Math.sin(a)*sz*.38;
+    ctx.font = `${Math.round(sz*.28)}px Segoe UI`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha = 0.75 + Math.sin(tt*2+k)*0.2;
+    ctx.fillText(icon, ix, iy);
+    ctx.globalAlpha = 1;
+  });
+
+  // Label
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.font=`bold ${Math.round(sz*.22)}px Segoe UI`;
+  ctx.fillStyle=`rgba(60,255,160,${0.7+pulse*0.25})`;
+  ctx.shadowColor='#20ff90'; ctx.shadowBlur=6;
+  ctx.fillText('PERK SHOP', px, py+sz*.72);
+  ctx.shadowBlur=0;
+
+  ctx.restore();
+
+  // [E] prompt
+  const dist = Math.hypot(player.cx-PERK_VENDOR_POS.cx, player.cy-PERK_VENDOR_POS.cy);
+  if (dist < PERK_VENDOR_RADIUS) {
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.font=`${Math.round(TH*.26)}px Segoe UI`;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillText('[E] Perk Shop', px+1, py-sz*.78+1);
+    ctx.fillStyle='#44ffaa'; ctx.fillText('[E] Perk Shop', px, py-sz*.78);
+    ctx.restore();
+  }
+}
+
 // ─── MYSTERY BOX ──────────────────────────────────────────────────────────────
 const BOX_POS = { cx:28.5, cy:13.5 };
 const BOX_RADIUS = 2.0, BOX_COST = 500;
@@ -1226,7 +1314,7 @@ document.addEventListener('keydown', e => {
   // ESC toggles pause (single-player only)
   if (e.key === 'Escape' && !mp.active && gameStarted && (game.state === 'playing' || game.state === 'wave_clear' || game.state === 'paused')) {
     game.state = game.state === 'paused' ? game._prevState || 'playing' : (game._prevState = game.state, 'paused');
-    shopOpen = false; weaponInfoOpen = false;
+    shopOpen = false; perkShopOpen = false; weaponInfoOpen = false;
     return;
   }
   if (game.state === 'paused') return; // block all other keys while paused
@@ -1243,6 +1331,7 @@ document.addEventListener('keydown', e => {
   // Shop, mystery box & door interaction
   if (e.key.toLowerCase() === 'e') {
     if (shopOpen) { shopOpen=false; return; }
+    if (perkShopOpen) { perkShopOpen=false; return; }
     if (!player.dead && game.state==='playing') {
       const distShop=Math.hypot(player.cx-SHOP_POS.cx,player.cy-SHOP_POS.cy);
       const distBox =Math.hypot(player.cx-BOX_POS.cx, player.cy-BOX_POS.cy);
@@ -1265,6 +1354,8 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
+      const distPerk = Math.hypot(player.cx-PERK_VENDOR_POS.cx, player.cy-PERK_VENDOR_POS.cy);
+      if (distPerk < PERK_VENDOR_RADIUS) { perkShopOpen=true; return; }
       const distAmmo = Math.hypot(player.cx-AMMO_POS.cx, player.cy-AMMO_POS.cy);
       if (distAmmo<AMMO_RADIUS && player.secondaryKey) {
         const sec = WEAPONS[player.secondaryKey];
@@ -1299,6 +1390,22 @@ document.addEventListener('keydown', e => {
         if (lvl<item.maxLevel) {
           const cost=item.price(lvl);
           if (player.money>=cost) { player.money-=cost; player.upgrades[item.key]++; }
+        }
+      }
+    }
+  }
+  if (perkShopOpen) {
+    const idx=parseInt(e.key)-1;
+    if (idx>=0&&idx<PERK_SHOP_ITEMS.length) {
+      const item=PERK_SHOP_ITEMS[idx];
+      const lvl=player.perks[item.key];
+      if (lvl<item.maxLevel) {
+        const cost=item.price(lvl);
+        if (player.money>=cost) {
+          player.money-=cost;
+          player.perks[item.key]++;
+          // Immediately apply shield max when buying shield
+          if (item.key==='shield') player.shield=SHIELD_MAXHP[player.perks.shield];
         }
       }
     }
@@ -1382,6 +1489,17 @@ function updatePlayer() {
       }
     }
   }
+  // Shield recharge
+  if (player.perks.shield > 0) {
+    const sMax = SHIELD_MAXHP[player.perks.shield];
+    if (player.shield < sMax) {
+      if (player.shieldRechargeTimer > 0) {
+        player.shieldRechargeTimer--;
+      } else {
+        player.shield = Math.min(sMax, player.shield + SHIELD_RATE[player.perks.shield] / 60);
+      }
+    }
+  }
   // Pistol heat cooldown
   if (player.heat > 0) {
     // overheated: drain 100→0 in exactly 5s (300 frames); idle: faster passive bleed
@@ -1434,6 +1552,19 @@ function spawnBullet(sx,sy,angle,wkey) {
     vx:Math.cos(angle)*w.speed, vy:Math.sin(angle)*w.speed,
     trail:[], life:90, wkey, papped,
   });
+}
+
+// Central damage function — routes through shield for the local player
+function applyDamage(tgt, amount) {
+  if (tgt === player && player.shield > 0) {
+    const absorbed = Math.min(player.shield, amount);
+    player.shield = Math.max(0, player.shield - absorbed);
+    player.shieldRechargeTimer = SHIELD_DELAY[player.perks.shield] || 0;
+    amount -= absorbed;
+    if (amount <= 0) { tgt.hurtTimer = 45; return; }
+  }
+  tgt.hp = Math.max(0, tgt.hp - amount);
+  tgt.hurtTimer = 45;
 }
 
 function tryShoot() {
@@ -1571,6 +1702,11 @@ function hitZombie(z, wkey, px, py, papMult=1) {
     const drop=5+Math.floor(Math.random()*game.round*3+10);
     spawnCoin(z.cx+(.5-Math.random())*.4, z.cy+(.5-Math.random())*.4, drop);
     spawnPerk(z.cx, z.cy);
+    if(player.perks.lifesteal>0&&!player.dead){
+      const heal=LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp=Math.min(player.maxHp,player.hp+heal);
+      spawnDmgNum(player.cx*TW,player.cy*TH-TH*.6,heal,'#44ff88');
+    }
   }
 }
 
@@ -1789,7 +1925,7 @@ function updateZombies() {
     if(dist>0.4){z.cx+=(dx/dist)*spd;z.cy+=(dy/dist)*spd;}
     // Hurt nearest player on contact
     if(dist<0.65&&tgt.hurtTimer<=0&&!tgt.dead&&!tgt.downed&&game.state==='playing'){
-      tgt.hp=Math.max(0,tgt.hp-8); tgt.hurtTimer=45;
+      applyDamage(tgt, 8);
       if(tgt===player){if(tgt.hp<=0)playerGoDown();}
       else{if(tgt.hp<=0)remoteGoDown(tgt);}
     }
@@ -1856,6 +1992,11 @@ function hitSkeleton(s, wkey, papMult=1) {
     spawnCoin(s.cx+(Math.random()-.5)*.4, s.cy+(Math.random()-.5)*.4,
               15+game.round*3);
     spawnPerk(s.cx, s.cy);
+    if(player.perks.lifesteal>0&&!player.dead){
+      const heal=LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp=Math.min(player.maxHp,player.hp+heal);
+      spawnDmgNum(player.cx*TW,player.cy*TH-TH*.6,heal,'#44ff88');
+    }
   }
 }
 
@@ -1878,7 +2019,7 @@ function updateSkeletons() {
       const stolen=Math.min(player.money,SKEL_STEAL);
       player.money=Math.max(0,player.money-stolen);
       if(stolen>0)spawnDmgNum(tgt.cx*TW,tgt.cy*TH-TH,stolen,'#f5c518');
-      tgt.hp=Math.max(0,tgt.hp-4); tgt.hurtTimer=45;
+      applyDamage(tgt, 4);
       if(tgt===player){if(tgt.hp<=0)playerGoDown();}
       else{if(tgt.hp<=0)remoteGoDown(tgt);}
     }
@@ -1951,6 +2092,11 @@ function hitDragon(d, wkey, papMult=1) {
     // Dragons always drop a perk
     const type=Math.random()<.5?'doublePoints':'magnet';
     DROPPED_PERKS.push({cx:d.cx, cy:d.cy, type, bob:0, life:600});
+    if(player.perks.lifesteal>0&&!player.dead){
+      const heal=LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp=Math.min(player.maxHp,player.hp+heal);
+      spawnDmgNum(player.cx*TW,player.cy*TH-TH*.6,heal,'#44ff88');
+    }
   }
 }
 
@@ -1969,7 +2115,7 @@ function updateDragons() {
     if(dist>0.5){d.cx+=(dx/dist)*DRAGON_SPEED;d.cy+=(dy/dist)*DRAGON_SPEED;}
     // Melee contact
     if(dist<0.9&&tgt.hurtTimer<=0&&!tgt.dead&&!tgt.downed&&game.state==='playing'){
-      tgt.hp=Math.max(0,tgt.hp-12); tgt.hurtTimer=45;
+      applyDamage(tgt, 12);
       if(tgt===player){if(tgt.hp<=0)playerGoDown();}
       else{if(tgt.hp<=0)remoteGoDown(tgt);}
     }
@@ -1992,7 +2138,7 @@ function updateFlames() {
     if(wallHit){FLAMES.splice(i,1);continue;}
     const ftgt=nearestPlayerTo(f.x/TW,f.y/TH);
     if(!ftgt.dead&&!ftgt.downed&&ftgt.hurtTimer<=0&&Math.hypot(f.x-ftgt.cx*TW,f.y-ftgt.cy*TH)<TW*.55){
-      ftgt.hp=Math.max(0,ftgt.hp-FLAME_DMG); ftgt.hurtTimer=45;
+      applyDamage(ftgt, FLAME_DMG);
       if(ftgt===player){if(ftgt.hp<=0)playerGoDown();}
       else{if(ftgt.hp<=0)remoteGoDown(ftgt);}
       FLAMES.splice(i,1);
@@ -2095,6 +2241,9 @@ function restartGame() {
     secondaryKey:null, secondaryAmmo:0, regenTimer:0, regenAccum:0, heat:0, overheated:false,
     downed:false, downedTimer:0, reviveProgress:0});
   player.packedWeapons = new Set();
+  player.perks = { magnet:0, shield:0, lifesteal:0 };
+  player.shield = 0; player.shieldRechargeTimer = 0;
+  perkShopOpen = false;
   Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false});
   Object.assign(box,{state:'idle',spinTimer:0,result:null,notifTimer:0,notifWeapon:''});
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
@@ -2143,6 +2292,76 @@ function drawShopMarker() {
     ctx.fillStyle='#ffffff'; ctx.fillText('[E] Open Shop',px,py-sz*1.3);
     ctx.restore();
   }
+}
+
+function drawPerkShopUI() {
+  if (!perkShopOpen) return;
+  const W=canvas.width, H=canvas.height;
+  const pw=Math.min(460,W*.44), ph=Math.min(310,H*.50);
+  const px=W/2-pw/2, py=H-ph-HUD_H-12;
+
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.78)';
+  roundRect(ctx,px,py,pw,ph,12,true,false);
+  ctx.strokeStyle='rgba(40,220,130,0.55)'; ctx.lineWidth=1.5;
+  roundRect(ctx,px,py,pw,ph,12,false,true);
+
+  // Title
+  ctx.fillStyle='#44ffaa'; ctx.font=`bold ${Math.round(H*.027)}px Segoe UI`;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.shadowColor='#20ee80'; ctx.shadowBlur=8;
+  ctx.fillText('✨  PERK SHOP  ✨', px+pw/2, py+14);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(px+16,py+44,pw-32,1);
+
+  // Money
+  ctx.fillStyle='#f5c518'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
+  ctx.textAlign='center'; ctx.fillText(`$${player.money}`, px+pw/2, py+52);
+
+  const itemH=(ph-108)/PERK_SHOP_ITEMS.length;
+  PERK_SHOP_ITEMS.forEach((item,i)=>{
+    const lvl=player.perks[item.key];
+    const maxed=lvl>=item.maxLevel;
+    const cost=maxed?0:item.price(lvl);
+    const canAfford=!maxed&&player.money>=cost;
+    const iy=py+88+i*itemH;
+
+    ctx.fillStyle=canAfford?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.025)';
+    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,true,false);
+    ctx.strokeStyle=canAfford?item.color+'88':'rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,false,true);
+
+    // Key hint
+    ctx.fillStyle=canAfford?item.color:'#555'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(`[${i+1}]`, px+22, iy+itemH*.35);
+
+    // Icon + name
+    ctx.fillStyle=maxed?'#888':item.color;
+    ctx.fillText(`${item.icon} ${item.name}`, px+58, iy+itemH*.35);
+
+    // Level pips
+    for (let l=0;l<item.maxLevel;l++) {
+      ctx.fillStyle=l<lvl?item.color:'rgba(255,255,255,0.15)';
+      ctx.beginPath(); ctx.arc(px+pw-28-l*16,iy+itemH*.35,5,0,Math.PI*2); ctx.fill();
+    }
+
+    // Description
+    ctx.fillStyle=maxed?'#555':'#aaa'; ctx.font=`${Math.round(H*.017)}px Segoe UI`;
+    ctx.textAlign='left';
+    ctx.fillText(maxed?'MAX LEVEL':item.desc(lvl), px+22, iy+itemH*.72);
+
+    // Price
+    if (!maxed) {
+      ctx.fillStyle=canAfford?'#f5c518':'#c84444'; ctx.textAlign='right';
+      ctx.fillText(`$${cost}`, px+pw-20, iy+itemH*.72);
+    }
+  });
+
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font=`${Math.round(H*.016)}px Segoe UI`;
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('[E] Close', px+pw/2, py+ph-8);
+  ctx.restore();
 }
 
 function drawShopUI() {
@@ -2413,6 +2632,12 @@ function drawMinimap() {
   ctx.arc(mmX + PAP_POS.cx * cW, mapOffY + PAP_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
   ctx.fill();
 
+  // Perk vendor marker (green)
+  ctx.fillStyle = '#44ffaa';
+  ctx.beginPath();
+  ctx.arc(mmX + PERK_VENDOR_POS.cx * cW, mapOffY + PERK_VENDOR_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
+  ctx.fill();
+
   // Player dot (bright white with pulse)
   const pulse = Math.sin(performance.now() / 200) * .3 + .7;
   ctx.fillStyle = `rgba(255,255,255,${pulse})`;
@@ -2658,20 +2883,40 @@ function drawHUD() {
     ctx.font = 'bold 9px Segoe UI'; ctx.textAlign='left'; ctx.textBaseline='top';
     ctx.fillText('HEALTH', hpX, BY+10);
 
-    const bx=hpX, by2=BY+22, bw=hpSecW-ipd, bh=16;
-    // track
+    const hasShield = player.perks.shield > 0;
+    const shieldMax = SHIELD_MAXHP[player.perks.shield] || 0;
+    const bx=hpX, bw=hpSecW-ipd;
+    // If shield exists, split vertical space: HP bar on top, shield bar below
+    const by2 = hasShield ? BY+20 : BY+22;
+    const bh  = hasShield ? 11 : 16;
+    // HP track
     ctx.fillStyle='#190808'; ctx.fillRect(bx,by2,bw,bh);
-    // fill
     ctx.fillStyle=hpColor; ctx.fillRect(bx,by2,bw*hf,bh);
-    // gloss
     ctx.fillStyle='rgba(255,255,255,0.10)'; ctx.fillRect(bx,by2,bw*hf,bh/3);
-    // border
     ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
     ctx.strokeRect(bx,by2,bw,bh);
-    // number
-    ctx.fillStyle='#fff'; ctx.font='bold 10px Segoe UI';
+    ctx.fillStyle='#fff'; ctx.font='bold 9px Segoe UI';
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(`${player.hp} / ${player.maxHp}`, bx+bw/2, by2+bh/2);
+
+    // Shield bar
+    if (hasShield) {
+      const sby = by2 + bh + 3;
+      const sbh = 9;
+      const sf = Math.max(0, player.shield / shieldMax);
+      const recharging = player.shield < shieldMax && player.shieldRechargeTimer <= 0;
+      const shieldCol = recharging ? `hsl(${Math.round(performance.now()/30)%360},80%,55%)` : '#4499ff';
+      ctx.fillStyle='rgba(0,0,30,0.7)'; ctx.fillRect(bx, sby, bw, sbh);
+      if (sf > 0) {
+        ctx.fillStyle = shieldCol; ctx.fillRect(bx, sby, bw*sf, sbh);
+        ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(bx, sby, bw*sf, sbh/2);
+      }
+      ctx.strokeStyle='rgba(68,153,255,0.4)'; ctx.lineWidth=1;
+      ctx.strokeRect(bx, sby, bw, sbh);
+      ctx.fillStyle='rgba(150,200,255,0.7)'; ctx.font='bold 7px Segoe UI';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`🛡 ${Math.ceil(player.shield)} / ${shieldMax}`, bx+bw/2, sby+sbh/2);
+    }
 
     vDiv(hpSecW + ipd*1.5);
 
@@ -2943,7 +3188,7 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke) {
 // ── Downed / revive helpers (single-player; MP uses server-side logic) ────────
 function playerGoDown() {
   if (player.downed || player.dead) return;
-  if (!mp.active) { player.dead=true; game.state='game_over'; shopOpen=false; return; }
+  if (!mp.active) { player.dead=true; game.state='game_over'; shopOpen=false; perkShopOpen=false; return; }
   // In MP mode the server drives downed state; client just reflects snapshot
 }
 function remoteGoDown(rp) {
@@ -2953,7 +3198,7 @@ function remoteGoDown(rp) {
 }
 function checkAllDead() {
   if (mp.active) return; // server handles in MP
-  if (player.dead) { game.state='game_over'; shopOpen=false; }
+  if (player.dead) { game.state='game_over'; shopOpen=false; perkShopOpen=false; }
 }
 
 // ─── MULTIPLAYER ──────────────────────────────────────────────────────────────
@@ -3507,6 +3752,7 @@ function render(now) {
   drawAmmoStation();
   drawDevChest();
   drawPapMachine();
+  drawPerkVendor();
   drawMysteryBox();
   drawCoins();
   drawPerks();
@@ -3522,6 +3768,7 @@ function render(now) {
   drawWeaponInfo();
   drawMinimap();
   drawShopUI();
+  drawPerkShopUI();
   drawDownedHUD();
   drawPingHUD();
   if (game.state === 'paused') drawPauseScreen();
