@@ -163,6 +163,17 @@ function fireWindWave(sx, sy, angle) {
     if(Math.abs(diff)>WAVE_HALFANG) return;
     hitBoss(b,'thundergun',1);
   });
+  // Lava zombies hit by wave
+  LAVA_ZOMBIES.forEach(lz=>{
+    if(lz.dead) return;
+    const dx=lz.cx*TW-sx,dy=lz.cy*TH-sy,dist=Math.hypot(dx,dy);
+    if(dist>WAVE_RANGE*TW) return;
+    const lAng=Math.atan2(dy,dx); let diff=lAng-angle;
+    while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>WAVE_HALFANG) return;
+    hitLavaZombie(lz,'thundergun',1);
+    const nd=dist||1; lz.vx=(dx/nd)*.8; lz.vy=(dy/nd)*.8;
+  });
   // Remove dead zombies killed by wave
   for (let i = ZOMBIES.length-1; i >= 0; i--) {
     if (ZOMBIES[i].hp <= 0) ZOMBIES.splice(i, 1);
@@ -237,6 +248,15 @@ function updateProjectiles() {
       const b=BOSS_DEMONS[bi]; if(b.dead) continue;
       if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*1.6){
         hitBoss(b,p.wkey,p.papped?3:1); hitAny=true;
+        if(!w.pierce){ projectiles.splice(i,1); break; }
+      }
+    }
+    if(hitAny) continue;
+    // Lava zombie hits
+    for(let li=0;li<LAVA_ZOMBIES.length;li++){
+      const lz=LAVA_ZOMBIES[li]; if(lz.dead) continue;
+      if(Math.hypot(p.x-lz.cx*TW,p.y-lz.cy*TH)<TW*w.hitR){
+        hitLavaZombie(lz,p.wkey,p.papped?3:1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }

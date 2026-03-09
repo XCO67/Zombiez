@@ -315,3 +315,306 @@ function drawFlames() {
     ctx.restore();
   });
 }
+
+// ─── LAVA ZOMBIES ─────────────────────────────────────────────────────────────
+const LAVA_ZOMBIES = [];
+const LAVA_SHARDS  = [];   // flying molten rocks
+const LAVA_POOLS   = [];   // ground lava puddles
+
+const LAVA_SPEED              = 0.015;
+const LAVA_CONTACT_DMG        = 15;
+const LAVA_ABILITY_COOLDOWN   = 180;  // frames between eruptions
+const LAVA_ABILITY_RANGE      = 5.5;  // tiles — must be this close to trigger
+const LAVA_CHARGE_FRAMES      = 55;
+const LAVA_SHARD_COUNT        = 10;
+const LAVA_SHARD_SPEED        = 4.2;
+const LAVA_SHARD_RANGE        = 4.5;  // tiles shards travel before pooling
+const LAVA_POOL_LIFE          = 420;
+const LAVA_POOL_DMG           = 6;
+const LAVA_POOL_DMG_INTERVAL  = 30;   // frames between pool damage ticks
+
+function spawnLavaZombie() {
+  const pts = getSpawnTiles();
+  const sp  = pts[Math.floor(Math.random() * pts.length)];
+  const hp  = 100 + game.round * 20;
+  return {
+    cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
+    frame: Math.random()*8|0, ft: Math.random()*.1,
+    hp, maxHp: hp,
+    dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0,
+    abilityTimer: Math.random() * 80 | 0,
+    chargeTimer: 0,
+    state: 'walk'
+  };
+}
+
+function hitLavaZombie(z, wkey, papMult) {
+  papMult = papMult || 1;
+  const {dmg:rawDmg, crit} = rollDamage(WEAPONS[wkey].baseDmg);
+  const dmg = Math.round(rawDmg * papMult);
+  z.hp -= dmg; z.hitFlash = 7;
+  const nc = papMult > 1 ? `hsl(${(performance.now()/4)%360},100%,65%)` : crit ? '#cc44ff' : '#ff8800';
+  spawnDmgNum(z.cx*TW, z.cy*TH - TH*.4, dmg, nc);
+  if (z.hp <= 0) {
+    z.dead = true; z.deathTimer = 28;
+    game.kills++; game.score += 20;
+    spawnCoin(z.cx + (Math.random()-.5)*.4, z.cy + (Math.random()-.5)*.4, 30 + game.round * 6);
+    spawnPerk(z.cx, z.cy);
+    // Death puddle
+    LAVA_POOLS.push({ cx: z.cx, cy: z.cy, life: 200, maxLife: 200, dmgTimer: 0, radius: 0.8 });
+    if (player.perks.lifesteal > 0 && !player.dead) {
+      const heal = LIFESTEAL_HP[player.perks.lifesteal];
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      spawnDmgNum(player.cx*TW, player.cy*TH - TH*.6, heal, '#44ff88');
+    }
+  }
+}
+
+function eruptLava(z) {
+  // Large central pool
+  LAVA_POOLS.push({ cx: z.cx, cy: z.cy, life: LAVA_POOL_LIFE, maxLife: LAVA_POOL_LIFE, dmgTimer: 0, radius: 1.1 });
+  // 10 shards in a ring with slight random spread
+  for (let i = 0; i < LAVA_SHARD_COUNT; i++) {
+    const angle = (i / LAVA_SHARD_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+    const maxLife = Math.round((LAVA_SHARD_RANGE * TW) / LAVA_SHARD_SPEED);
+    LAVA_SHARDS.push({
+      x: z.cx * TW, y: z.cy * TH,
+      vx: Math.cos(angle) * LAVA_SHARD_SPEED,
+      vy: Math.sin(angle) * LAVA_SHARD_SPEED,
+      life: maxLife, maxLife,
+      rot: Math.random() * Math.PI * 2,
+      rotSpd: (Math.random() - 0.5) * 0.25,
+      size: 5 + Math.random() * 5
+    });
+  }
+}
+
+function updateLavaZombies() {
+  LAVA_ZOMBIES.forEach(z => {
+    if (z.dead) { if (z.deathTimer > 0) z.deathTimer--; return; }
+    if (z.vx || z.vy) {
+      const nx = z.cx + z.vx, ny = z.cy + z.vy;
+      if (!isBlocked(nx, z.cy)) z.cx = nx; else z.vx = 0;
+      if (!isBlocked(z.cx, ny)) z.cy = ny; else z.vy = 0;
+      z.vx *= 0.78; z.vy *= 0.78;
+      if (Math.abs(z.vx) < 0.005) z.vx = 0;
+      if (Math.abs(z.vy) < 0.005) z.vy = 0;
+    }
+    const tgt = nearestPlayerTo(z.cx, z.cy);
+    const dx = tgt.cx - z.cx, dy = tgt.cy - z.cy, dist = Math.hypot(dx, dy);
+
+    if (z.state === 'charging') {
+      z.chargeTimer++;
+      if (z.chargeTimer >= LAVA_CHARGE_FRAMES) {
+        eruptLava(z);
+        z.state = 'walk';
+        z.abilityTimer = 0;
+        z.chargeTimer = 0;
+      }
+    } else {
+      const spd = LAVA_SPEED + game.round * 0.0006;
+      if (dist > 0.4) { z.cx += (dx/dist)*spd; z.cy += (dy/dist)*spd; }
+      if (dist < 0.65 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
+        applyDamage(tgt, LAVA_CONTACT_DMG);
+        if (tgt === player) { if (tgt.hp <= 0) playerGoDown(); }
+        else { if (tgt.hp <= 0) remoteGoDown(tgt); }
+      }
+      z.abilityTimer++;
+      if (z.abilityTimer >= LAVA_ABILITY_COOLDOWN && dist < LAVA_ABILITY_RANGE) {
+        z.state = 'charging';
+        z.chargeTimer = 0;
+      }
+      z.ft += 1/60; if (z.ft >= .11) { z.frame = (z.frame+1)%8; z.ft = 0; }
+    }
+    if (z.hitFlash > 0) z.hitFlash--;
+  });
+  for (let i = LAVA_ZOMBIES.length-1; i >= 0; i--) {
+    if (LAVA_ZOMBIES[i].dead && LAVA_ZOMBIES[i].deathTimer <= 0) LAVA_ZOMBIES.splice(i, 1);
+  }
+}
+
+function updateLavaShards() {
+  for (let i = LAVA_SHARDS.length-1; i >= 0; i--) {
+    const s = LAVA_SHARDS[i];
+    s.x += s.vx; s.y += s.vy; s.life--; s.rot += s.rotSpd;
+    const tr = Math.floor(s.y/TH), tc = Math.floor(s.x/TW);
+    const wallHit = tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR;
+    if (s.life <= 0 || wallHit) {
+      LAVA_POOLS.push({ cx: s.x/TW, cy: s.y/TH, life: LAVA_POOL_LIFE, maxLife: LAVA_POOL_LIFE, dmgTimer: 0, radius: 0.65 });
+      LAVA_SHARDS.splice(i, 1);
+    }
+  }
+}
+
+function updateLavaPools() {
+  for (let i = LAVA_POOLS.length-1; i >= 0; i--) {
+    const p = LAVA_POOLS[i];
+    p.life--; p.dmgTimer++;
+    if (p.life <= 0) { LAVA_POOLS.splice(i, 1); continue; }
+    if (p.dmgTimer >= LAVA_POOL_DMG_INTERVAL) {
+      p.dmgTimer = 0;
+      const tgt = nearestPlayerTo(p.cx, p.cy);
+      if (!tgt.dead && !tgt.downed && Math.hypot(tgt.cx-p.cx, tgt.cy-p.cy) < p.radius + 0.45) {
+        applyDamage(tgt, LAVA_POOL_DMG);
+        if (tgt === player) { if (tgt.hp <= 0) playerGoDown(); }
+        else { if (tgt.hp <= 0) remoteGoDown(tgt); }
+      }
+    }
+  }
+}
+
+function drawLavaPools() {
+  const now = performance.now();
+  LAVA_POOLS.forEach(p => {
+    const lifeFrac = p.life / p.maxLife;
+    const baseA = Math.min(lifeFrac * 4, 1) * 0.82;
+    const px2 = p.cx * TW, py2 = p.cy * TH;
+    const r = TW * p.radius;
+    ctx.save();
+    ctx.globalAlpha = baseA;
+    // Base lava gradient
+    const g = ctx.createRadialGradient(px2, py2, 0, px2, py2, r * 1.5);
+    g.addColorStop(0,   'rgba(255,210,40,0.95)');
+    g.addColorStop(0.3, 'rgba(255,80,0,0.8)');
+    g.addColorStop(0.65,'rgba(180,20,0,0.45)');
+    g.addColorStop(1,   'rgba(80,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(px2, py2, r * 1.5, r * 0.6, 0, 0, Math.PI*2); ctx.fill();
+    // Animated lava bubbles
+    for (let b = 0; b < 4; b++) {
+      const bAng = now/700 + b * Math.PI/2;
+      const bx = px2 + Math.cos(bAng) * r * 0.38;
+      const by = py2 + Math.sin(bAng) * r * 0.15;
+      const br = 2 + Math.abs(Math.sin(now/180 + b * 2.3)) * 3;
+      ctx.globalAlpha = baseA * 0.9;
+      ctx.fillStyle = 'rgba(255,230,80,0.95)';
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+function drawLavaShards() {
+  LAVA_SHARDS.forEach(s => {
+    const lf = s.life / s.maxLife;
+    ctx.save();
+    // Glow trail
+    ctx.globalAlpha = lf * 0.45;
+    const tg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 3);
+    tg.addColorStop(0, 'rgba(255,180,0,0.9)');
+    tg.addColorStop(1, 'rgba(200,40,0,0)');
+    ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(s.x, s.y, s.size*3, 0, Math.PI*2); ctx.fill();
+    // Tumbling rock
+    ctx.globalAlpha = lf * 0.95;
+    ctx.translate(s.x, s.y); ctx.rotate(s.rot);
+    ctx.fillStyle = '#4a1800';
+    ctx.fillRect(-s.size, -s.size*0.65, s.size*2, s.size*1.3);
+    const cg = ctx.createRadialGradient(0,0,0, 0,0, s.size*0.9);
+    cg.addColorStop(0,   'rgba(255,240,80,1)');
+    cg.addColorStop(0.45,'rgba(255,100,0,0.85)');
+    cg.addColorStop(1,   'rgba(180,30,0,0)');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0,0,s.size*0.9,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawLavaChargeFX(px, py, progress) {
+  const now = performance.now();
+  ctx.save();
+  const cracksCount = 8;
+  const maxLen = TW * 1.8 * progress;
+  for (let i = 0; i < cracksCount; i++) {
+    const baseAng = (i / cracksCount) * Math.PI * 2;
+    const j1 = Math.sin(i * 7.3 + now * 0.003) * 0.22;
+    const j2 = Math.sin(i * 3.7 + now * 0.004) * 0.18;
+    const ang = baseAng + j1;
+    const len = maxLen * (0.65 + Math.cos(i * 5.7) * 0.35);
+    const col = Math.round(180 - progress * 160);
+    ctx.strokeStyle = `rgba(255,${col},0,${0.4 + progress * 0.55})`;
+    ctx.lineWidth = 1.5 + progress * 2;
+    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 4 + progress * 10;
+    const sx2 = px, sy2 = py + TH * 0.26;
+    const m1x = sx2 + Math.cos(ang)*len*0.33 + Math.sin(ang)*len*j2;
+    const m1y = sy2 + Math.sin(ang)*len*0.33*0.5 - Math.cos(ang)*len*j2*0.5;
+    const m2x = sx2 + Math.cos(ang)*len*0.67 - Math.sin(ang)*len*j2*0.7;
+    const m2y = sy2 + Math.sin(ang)*len*0.67*0.5 + Math.cos(ang)*len*j2*0.35;
+    const ex = sx2 + Math.cos(ang)*len, ey = sy2 + Math.sin(ang)*len*0.5;
+    ctx.beginPath(); ctx.moveTo(sx2, sy2);
+    ctx.lineTo(m1x, m1y); ctx.lineTo(m2x, m2y); ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255,220,0,${0.7*progress})`;
+    ctx.beginPath(); ctx.arc(ex, ey, 2 + progress*3, 0, Math.PI*2); ctx.fill();
+  }
+  // Central eruption buildup
+  ctx.globalAlpha = progress * 0.55;
+  const cg = ctx.createRadialGradient(px, py+TH*0.26, 0, px, py+TH*0.26, TW*progress*1.2);
+  cg.addColorStop(0,   'rgba(255,220,0,0.95)');
+  cg.addColorStop(0.4, 'rgba(255,80,0,0.65)');
+  cg.addColorStop(1,   'rgba(200,20,0,0)');
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.ellipse(px, py+TH*0.26, TW*progress*1.2, TW*progress*0.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawLavaZombie(z) {
+  if (z.dead && z.deathTimer <= 0) return;
+  const px = z.cx*TW, py = z.cy*TH, sz = TW*1.5;
+  const alpha = z.dead ? (z.deathTimer/28) : 1;
+  const now = performance.now();
+  const facing = dir8(player.cx-z.cx, player.cy-z.cy);
+  const img = lavaWalk[facing]?.[z.frame];
+
+  // Ground lava aura
+  const auraA = z.state === 'charging'
+    ? 0.35 + Math.abs(Math.sin(now/70)) * 0.3
+    : 0.12 + Math.sin(now/400) * 0.06;
+  ctx.save();
+  ctx.globalAlpha = auraA * alpha;
+  const ag = ctx.createRadialGradient(px, py+sz*0.38, 0, px, py+sz*0.38, sz*1.0);
+  ag.addColorStop(0,   'rgba(255,120,0,0.95)');
+  ag.addColorStop(0.45,'rgba(200,40,0,0.5)');
+  ag.addColorStop(1,   'rgba(120,0,0,0)');
+  ctx.fillStyle = ag;
+  ctx.beginPath(); ctx.ellipse(px, py+sz*0.38, sz*1.0, sz*0.38, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Shadow
+  ctx.save(); ctx.globalAlpha = .4*alpha; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(px, py+sz*.44, sz*.3, sz*.1, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+
+  // Charge ground FX (drawn under sprite)
+  if (z.state === 'charging') drawLavaChargeFX(px, py, z.chargeTimer/LAVA_CHARGE_FRAMES);
+
+  // Sprite
+  ctx.save(); ctx.globalAlpha = alpha;
+  if (z.hitFlash > 0) ctx.filter = 'brightness(5) sepia(1) saturate(6) hue-rotate(10deg)';
+  if (img && img.complete && img.naturalWidth) ctx.drawImage(img, px-sz/2, py-sz/2, sz, sz);
+  ctx.filter = 'none';
+  // Charging orange tint overlay
+  if (z.state === 'charging') {
+    const chargePct = z.chargeTimer / LAVA_CHARGE_FRAMES;
+    ctx.globalAlpha = alpha * (0.2 + chargePct * 0.35);
+    ctx.fillStyle = `rgba(255,${Math.round(100 - chargePct*80)},0,1)`;
+    if (img && img.complete && img.naturalWidth) ctx.fillRect(px-sz/2, py-sz/2, sz, sz);
+  }
+  ctx.restore();
+
+  // HP bar
+  if (!z.dead && z.hp < z.maxHp) {
+    const bw = sz*.8, bh = Math.max(3, TH*.09), bx = px-bw/2, by = py-sz*.62;
+    ctx.fillStyle = '#1a0000'; ctx.fillRect(bx, by, bw, bh);
+    const f = z.hp/z.maxHp;
+    ctx.fillStyle = f>.5?'#ff6600':f>.25?'#ff2200':'#aa0000';
+    ctx.fillRect(bx, by, bw*f, bh);
+  }
+  // Name tag
+  if (!z.dead) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,100,0,0.95)';
+    ctx.font = `bold ${Math.round(TH*.22)}px Segoe UI`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 8;
+    ctx.fillText('\uD83C\uDF0B LAVA', px, py - sz*.62);
+    ctx.restore();
+  }
+}

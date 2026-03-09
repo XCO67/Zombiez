@@ -38,6 +38,9 @@ function render(now) {
     updateFlames();
     updateBossDemons();
     updateBossShots();
+    updateLavaZombies();
+    updateLavaShards();
+    updateLavaPools();
     updateProjectiles();
     updateDmgNums();
     updateCoins();
@@ -63,23 +66,26 @@ function render(now) {
     else if (type===T.PILLAR)     drawPillar(r,c);
     else if (type===T.DOOR)       drawDoor(r,c);
     else if (type===T.BOSS_SPAWN) drawBossSpawnTile(r,c);
+    else if (type===T.FLOOR2)     drawFloor(r,c,T.FLOOR2);
     else                          drawFloor(r,c,type);
   }
   drawWallShadows();
   drawDoorPrompts();
 
-  // Torches
+  // Torches — support optional [r, c, '#color'] format
   const flickers=TORCHES.map((_,i)=>Math.sin(t*2.8+i*1.87)*.5+.5);
-  TORCHES.forEach(([r,c],i)=>drawTorch(r,c,flickers[i]));
+  TORCHES.forEach(([r,c,color],i)=>drawTorch(r,c,flickers[i],color));
 
   // Entities — Y-sorted
   drawFlames();
+  drawLavaPools();
   const entities=[
     {y:player.cy*TH, draw:drawPlayer},
     ...ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawZombie(z)})),
     ...SKELETONS.map(s=>({y:s.cy*TH, draw:()=>drawSkeleton(s)})),
     ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)})),
-    ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)}))
+    ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)})),
+    ...LAVA_ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawLavaZombie(z)}))
   ];
   entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   drawRemotePlayers();
@@ -97,6 +103,7 @@ function render(now) {
   drawEffects();
   drawProjectiles();
   drawBossShots();
+  drawLavaShards();
 
   ctx.restore(); // end camera transform
 

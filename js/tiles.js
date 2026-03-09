@@ -26,12 +26,22 @@ function drawWall(r, c) {
 function drawFloor(r,c,type) {
   const x=c*TW,y=r*TH,v=variant(r,c);
   let h=248,s=13,L=26+v;
-  if (type===T.SPAWN){h=0;s=55;L=15+(v*.4|0);}
+  if (type===T.SPAWN) { h=0; s=55; L=15+(v*.4|0); }
+  if (type===T.FLOOR2) { h=270; s=28; L=14+(v*.5|0); }
   ctx.fillStyle=`hsl(${h},${s}%,${L}%)`; ctx.fillRect(x,y,TW,TH);
   ctx.fillStyle=`hsl(${h},${s-2}%,${L+6}%)`; ctx.fillRect(x+1,y+1,TW-2,TH-2);
   ctx.fillStyle=`hsl(${h},${s}%,${L+11}%)`; ctx.fillRect(x+1,y+1,TW-2,1); ctx.fillRect(x+1,y+1,1,TH-2);
   ctx.fillStyle=`hsl(${h},${s}%,${L-6}%)`; ctx.fillRect(x+1,y+TH-2,TW-2,1); ctx.fillRect(x+TW-2,y+1,1,TH-2);
-  if (type===T.SPAWN){ctx.strokeStyle='rgba(190,45,45,0.55)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,TW-1,TH-1);}
+  if (type===T.SPAWN) { ctx.strokeStyle='rgba(190,45,45,0.55)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,TW-1,TH-1); }
+  if (type===T.FLOOR2) {
+    // Dark runic cracks
+    const v2=variant(r+7,c+3);
+    ctx.strokeStyle=`rgba(${120+v2*3},0,${180+v2*2},0.22)`; ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(x+v2%TW,y+TH*.3); ctx.lineTo(x+TW-v2%8,y+TH*.7);
+    ctx.moveTo(x+TW*.2,y+(v2*3)%TH); ctx.lineTo(x+TW*.75,y+TH-(v2*2)%12);
+    ctx.stroke();
+  }
 }
 
 function drawPillar(r,c) {
@@ -139,9 +149,19 @@ function drawWallShadows() {
   }
 }
 
-function drawTorch(r,c,flicker) {
+function drawTorch(r,c,flicker,color) {
   const x=c*TW+TW*.5,y=r*TH+TH*.5,rad=TW*.15+flicker*TW*.06;
+  // Parse hex color to rgb; default warm orange
+  let cr=255,cg=150,cb=40;
+  if (color && color.length>=7) {
+    cr=parseInt(color.slice(1,3),16)||255;
+    cg=parseInt(color.slice(3,5),16)||150;
+    cb=parseInt(color.slice(5,7),16)||40;
+  }
+  const bright=`rgba(${Math.min(255,cr+80)},${Math.min(255,cg+80)},${Math.min(255,cb+60)},1)`;
+  const mid=`rgba(${cr},${cg},${cb},.9)`;
+  const edge=`rgba(${Math.round(cr*.6)},${Math.round(cg*.3)},${Math.round(cb*.2)},0)`;
   const g=ctx.createRadialGradient(x,y,0,x,y,rad*2.8);
-  g.addColorStop(0,'rgba(255,235,150,1)');g.addColorStop(.35,'rgba(255,150,40,.9)');g.addColorStop(1,'rgba(200,55,0,0)');
+  g.addColorStop(0,bright); g.addColorStop(.35,mid); g.addColorStop(1,edge);
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rad*2.8,0,Math.PI*2);ctx.fill();
 }

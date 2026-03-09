@@ -25,6 +25,9 @@ DIRS.forEach(d => { dragonWalk[d] = loadFrames('dragon/animations/scary-walk', d
 const skelWalk = {};
 DIRS.forEach(d => { skelWalk[d] = loadFrames('skeleton/animations/running-4-frames', d, 4); });
 
+const lavaWalk = {};
+DIRS.forEach(d => { lavaWalk[d] = loadFrames('Lava Zombie/animations/scary-walk', d, 8); });
+
 function dir8(dx, dy) {
   let a = Math.atan2(dy, dx) * 180 / Math.PI;
   if (a < 0) a += 360;

@@ -107,6 +107,28 @@
   <div class="s-sec">Assets</div>
   <div id="asset-list"></div>
 
+  <!-- Torch color picker — shown only when torch tool is active -->
+  <div id="torch-cfg" style="display:none;border-bottom:1px solid var(--border)">
+    <div class="s-sec" style="border-bottom:none">Torch Color</div>
+    <div style="padding:6px 10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)">
+        Color
+        <input id="torch-color" type="color" value="#ff8833"
+          style="width:40px;height:24px;border:1px solid var(--border2);background:none;cursor:pointer;border-radius:3px;padding:1px">
+        <span id="torch-color-label" style="font-size:10px;color:#ff8833">#ff8833</span>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#ff8833')">🔥 Orange</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#4488ff')">💙 Blue</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#44ff88')">💚 Green</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#cc44ff')">💜 Purple</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#ff4444')">❤ Red</button>
+        <button class="tbtn" style="width:auto;padding:3px 6px;font-size:10px" onclick="setTorchPreset('#ffffff')">🤍 White</button>
+      </div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5">Left-click → place/toggle torch<br>Color applies to new torches only</div>
+    </div>
+  </div>
+
   <!-- Door config — shown only when door tool is active -->
   <div id="door-cfg" style="display:none;border-bottom:1px solid var(--border)">
     <div class="s-sec" style="border-bottom:none">Door Settings</div>
@@ -188,10 +210,11 @@ const TILES = [
   { id:5, name:'Door',         key:'6', fill:'#3d1f0a', hi:'#8b5e28', label:'D' },
   { id:6, name:'Player Start', key:'7', fill:'#2e2810', hi:'#c8a030', label:'@' },
   { id:7, name:'Boss Spawn',   key:'8', fill:'#1a0015', hi:'#880022', label:'B' },
+  { id:8, name:'Dark Floor',   key:'9', fill:'#1a0d2e', hi:'#3a1a5c', label:'d' },
 ];
 
-// Editor tile → game tile value:  Wall=0,Floor=1,Pillar=2,Spawn=3,Torch→Wall+torch list,Door=4,PlayerStart→Floor+record,BossSpawn=5
-const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5];
+// Editor tile → game tile value:  Wall=0,Floor=1,Pillar=2,Spawn=3,Torch→Wall+torch list,Door=4,PlayerStart→Floor+record,BossSpawn=5,Floor2=6
+const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6];
 
 // ── ASSET DEFINITIONS ────────────────────────────────────────────────────────
 // Assets are placed as floating objects on the map (snap to 0.5-tile centres)
@@ -299,8 +322,8 @@ function loadDefault() {
 function loadMapFromData(m) {
   mapW = m.mapW; mapH = m.mapH;
   mapData = Array.from({length:mapH},(_,r)=>Array.from({length:mapW},(_,c)=>m.tiles[r]?.[c]??0));
-  // Restore torches into tile data
-  (m.torches||[]).forEach(([r,c])=>{ if(mapData[r]?.[c]===0) mapData[r][c]=4; });
+  // Restore torches into tile data (support [r,c] and [r,c,color])
+  (m.torches||[]).forEach(t=>{ const [r,c]=t; if(mapData[r]?.[c]===0) mapData[r][c]=4; });
   // Restore player start into tile data (find from stored playerStart)
   if(m.playerStart) {
     const pr=Math.round(m.playerStart[1]-.5), pc=Math.round(m.playerStart[0]-.5);
@@ -329,7 +352,7 @@ function buildMapObj() {
     const row = [];
     for(let c=0;c<mapW;c++) {
       const t = mapData[r][c];
-      if(t===4){ newTorches.push([r,c]); row.push(0); } // torch → wall tile + torch list
+      if(t===4){ const tc=torches.find(x=>x[0]===r&&x[1]===c); newTorches.push(tc||[r,c]); row.push(0); } // torch → wall tile + torch list (preserve color)
       else if(t===6){ playerStart=[c+0.5,r+0.5]; row.push(1); } // player start → floor
       else row.push(EDITOR_TO_GAME[t]??0);
     }
@@ -465,8 +488,22 @@ function selectAsset(type) {
   document.getElementById('abtn-'+type)?.classList.add('active');
   const a = ASSETS.find(x=>x.type===type);
   document.getElementById('st-tool').textContent = a ? a.label : type;
-  document.getElementById('door-cfg').style.display = type==='door' ? 'block' : 'none';
+  document.getElementById('door-cfg').style.display  = type==='door'  ? 'block' : 'none';
+  document.getElementById('torch-cfg').style.display = type==='torch' ? 'block' : 'none';
 }
+
+function setTorchPreset(hex) {
+  document.getElementById('torch-color').value = hex;
+  document.getElementById('torch-color-label').textContent = hex;
+  document.getElementById('torch-color-label').style.color = hex;
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const inp = document.getElementById('torch-color');
+  if (inp) inp.addEventListener('input', ()=>{
+    document.getElementById('torch-color-label').textContent = inp.value;
+    document.getElementById('torch-color-label').style.color = inp.value;
+  });
+});
 
 // ── TILE PAINTING ────────────────────────────────────────────────────────────
 function tileAt(e) {
@@ -503,7 +540,10 @@ function placeAsset(e, rightClick) {
     if(r<0||r>=mapH||c<0||c>=mapW) return;
     const idx = torches.findIndex(t=>t[0]===r&&t[1]===c);
     if(idx>=0){ torches.splice(idx,1); mapData[r][c]=0; }
-    else { torches.push([r,c]); mapData[r][c]=4; }
+    else {
+      const col = document.getElementById('torch-color')?.value || '#ff8833';
+      torches.push([r,c,col]); mapData[r][c]=4;
+    }
     redraw();
   } else if(type==='door') {
     const pos = assetPosAt(e);
@@ -555,12 +595,18 @@ function drawTile(r, c) {
     ctx.fillText(tile.label, x+ts/2, y+ts/2);
   }
 
-  // Torch glow
+  // Torch glow — use stored color if available
   if(tid===4 && ts>=8) {
     const cx=x+ts/2, cy=y+ts/2;
-    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,ts*.32);
-    g.addColorStop(0,'rgba(255,200,80,.85)'); g.addColorStop(1,'rgba(200,80,0,0)');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,ts*.32,0,Math.PI*2); ctx.fill();
+    const tc = torches.find(t=>t[0]===r&&t[1]===c);
+    const col = (tc&&tc[2]) ? tc[2] : '#ff8833';
+    const cr=parseInt(col.slice(1,3),16)||255;
+    const cg=parseInt(col.slice(3,5),16)||136;
+    const cb=parseInt(col.slice(5,7),16)||51;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,ts*.38);
+    g.addColorStop(0,`rgba(${Math.min(255,cr+80)},${Math.min(255,cg+80)},${Math.min(255,cb+60)},.9)`);
+    g.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,ts*.38,0,Math.PI*2); ctx.fill();
   }
   // Door X brace
   if(tid===5 && ts>=10) {

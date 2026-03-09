@@ -13,8 +13,13 @@ function bossCount(round) {
   return round >= 15 ? 1 : 0;
 }
 
+function lavaZombieCount(round) {
+  if (round < 12) return 0;
+  return Math.floor((round - 12) / 4) + 1; // r12:1  r16:2  r20:3 ...
+}
+
 function startWave(round) {
-  ZOMBIES.length=0; DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0;
+  ZOMBIES.length=0; DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
   BOSS_DEMONS.length=0; BOSS_SHOTS.length=0;
   projectiles.length=0; dmgNums.length=0;
   spawnRemaining=5+round*2; spawnTimer=20;
@@ -23,6 +28,8 @@ function startWave(round) {
   const ns=skeletonCount(round);
   for(let i=0;i<ns;i++) SKELETONS.push(spawnSkeleton());
   if(bossCount(round)>0) BOSS_DEMONS.push(spawnBossDemon());
+  const nlv=lavaZombieCount(round);
+  for(let i=0;i<nlv;i++) LAVA_ZOMBIES.push(spawnLavaZombie());
 }
 
 function updateWave() {
@@ -38,7 +45,7 @@ function updateWave() {
     if(spawnTimer>=28){spawnTimer=0;spawnRemaining--;ZOMBIES.push(spawnZombie());}
   }
   // Check clear — all zombies, dragons, skeletons AND bosses must be dead
-  if(spawnRemaining===0&&ZOMBIES.every(z=>z.dead)&&DRAGONS.every(d=>d.dead)&&SKELETONS.every(s=>s.dead)&&BOSS_DEMONS.every(b=>b.dead)){
+  if(spawnRemaining===0&&ZOMBIES.every(z=>z.dead)&&DRAGONS.every(d=>d.dead)&&SKELETONS.every(s=>s.dead)&&BOSS_DEMONS.every(b=>b.dead)&&LAVA_ZOMBIES.every(z=>z.dead)){
     game.state='wave_clear';game.waveTimer=180;
   }
 }
@@ -56,7 +63,7 @@ function restartGame() {
   Object.assign(box,{state:'idle',spinTimer:0,result:null,notifTimer:0,notifWeapon:''});
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
   shopOpen=false; COINS.length=0; DROPPED_PERKS.length=0; effects.length=0;
-  DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0;
+  DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
   BOSS_DEMONS.length=0; BOSS_SHOTS.length=0;
   activePerkTimers.doublePoints=0; activePerkTimers.magnet=0;
   startWave(1);
