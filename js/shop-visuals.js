@@ -40,248 +40,153 @@ function drawShopMarker() {
   }
 }
 
-function drawPerkShopUI() {
-  if (!perkShopOpen) return;
+// Shared helper for both shop UIs
+function _drawShopPanel(title, titleCol, items, getLvl, getMaxLevel, getPrice, getDesc) {
   const W=canvas.width, H=canvas.height;
-  const pw=500, ph=360;
-  const px=W/2-pw/2, py=H-ph-HUD_H-16;
+  const pw = Math.min(580, W - 40);
+  const ph = Math.min(420, H - HUD_H - 40);
+  const px = W/2 - pw/2;
+  const py = H - ph - HUD_H - 12;
 
   ctx.save();
-
-  // Main background panel
   pixelPanel(ctx, px, py, pw, ph, '#111120');
 
-  // Top strip (32px)
-  const stripH = 32;
+  // Top strip
+  const stripH = 38;
   ctx.fillStyle = '#0a0a1e';
   ctx.fillRect(px + 2, py + 2, pw - 4, stripH - 2);
-  ctx.fillStyle = '#1a1a3a';
-  ctx.fillRect(px + 2, py + 2 + stripH - 2, pw - 4, 1);
+  ctx.fillStyle = '#1e1e3e';
+  ctx.fillRect(px + 2, py + stripH, pw - 4, 1);
 
   // Title
-  ctx.font = "9px 'Press Start 2P'";
-  ctx.fillStyle = '#44ffaa';
+  ctx.font = "10px 'Press Start 2P'";
+  ctx.fillStyle = titleCol;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('\u2728 PERK SHOP', px + 14, py + 2 + stripH/2);
+  ctx.fillText(title, px + 14, py + 2 + stripH/2);
 
-  // Gold coin right-aligned in strip
-  ctx.font = "8px 'Press Start 2P'";
+  // Gold display
+  ctx.font = "18px 'VT323'";
   ctx.fillStyle = '#f5c518';
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText(`$${player.money}`, px + pw - 14, py + 2 + stripH/2);
+  ctx.fillText(`$ ${player.money}`, px + pw - 14, py + 2 + stripH/2);
 
-  // Horizontal divider
-  ctx.fillStyle = '#2a2a4e';
-  ctx.fillRect(px + 2, py + 2 + stripH, pw - 4, 2);
-
-  const itemAreaY = py + 2 + stripH + 2;
-  const itemAreaH = ph - stripH - 6 - 22; // leave room for close hint
-  const count = PERK_SHOP_ITEMS.length;
+  const itemAreaY = py + stripH + 3;
+  const itemAreaH = ph - stripH - 6 - 24;
+  const count = items.length;
   const rowH = Math.floor(itemAreaH / count);
 
-  PERK_SHOP_ITEMS.forEach((item, i) => {
-    const lvl = player.perks[item.key];
-    const maxed = lvl >= item.maxLevel;
-    const cost = maxed ? 0 : item.price(lvl);
+  items.forEach((item, i) => {
+    const lvl = getLvl(item);
+    const maxLvl = getMaxLevel(item);
+    const maxed = lvl >= maxLvl;
+    const cost = maxed ? 0 : getPrice(item, lvl);
     const canAfford = !maxed && player.money >= cost;
     const iy = itemAreaY + i * rowH;
 
-    // Row background
-    const rowBg = canAfford ? item.color + '18' : 'rgba(255,255,255,0.04)';
-    ctx.fillStyle = rowBg;
+    // Row background tint
+    ctx.fillStyle = canAfford ? item.color + '16' : 'rgba(255,255,255,0.03)';
     ctx.fillRect(px + 2, iy, pw - 4, rowH);
-
-    // Row separator
     if (i > 0) {
-      ctx.fillStyle = '#1e1e2e';
+      ctx.fillStyle = '#1c1c2e';
       ctx.fillRect(px + 2, iy, pw - 4, 1);
     }
 
-    // Key hint on far left
-    ctx.font = "6px 'Press Start 2P'";
-    ctx.fillStyle = canAfford ? item.color : 'rgba(100,100,120,0.6)';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`[${i+1}]`, px + 8, iy + rowH/2);
+    // Key hint [1][2]...
+    ctx.font = "15px 'VT323'";
+    ctx.fillStyle = canAfford ? item.color : 'rgba(100,100,130,0.55)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`[${i+1}]`, px + 18, iy + rowH/2);
 
-    // Icon slot (40x rowH, left side)
-    const iconSlotX = px + 30;
-    const iconSlotH = Math.min(40, rowH - 4);
-    const iconSlotY = iy + (rowH - iconSlotH) / 2;
-    pixelSlot(ctx, iconSlotX, iconSlotY, 40, iconSlotH, maxed ? '#141428' : item.color + '22', !maxed && canAfford);
-    ctx.font = '16px Segoe UI';
+    // Icon slot
+    const iconSize = Math.min(44, rowH - 8);
+    const iconSlotX = px + 32;
+    const iconSlotY = iy + (rowH - iconSize) / 2;
+    pixelSlot(ctx, iconSlotX, iconSlotY, iconSize, iconSize, maxed ? '#141428' : item.color + '22', !maxed && canAfford);
+    ctx.font = `${Math.round(iconSize * 0.52)}px Segoe UI`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = maxed ? '#555' : item.color;
-    ctx.fillText(item.icon, iconSlotX + 20, iconSlotY + iconSlotH/2);
+    ctx.fillText(item.icon, iconSlotX + iconSize/2, iconSlotY + iconSize/2);
 
-    // Item name
-    const textX = iconSlotX + 48;
-    ctx.font = "7px 'Press Start 2P'";
-    ctx.fillStyle = maxed ? '#444' : item.color;
+    // Text area
+    const textX = iconSlotX + iconSize + 10;
+    const textRight = px + pw - 90;
+
+    // Item name — Press Start 2P at 9px (smallest readable)
+    ctx.font = "9px 'Press Start 2P'";
+    ctx.fillStyle = maxed ? '#555' : item.color;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillText(item.name, textX, iy + 6);
 
-    // Level squares (5 squares, 8x8, 2px gap)
+    // Level squares (10px each, 2px gap) below name
     const sqY = iy + 20;
-    for (let l = 0; l < item.maxLevel; l++) {
-      ctx.fillStyle = l < lvl ? item.color : 'rgba(255,255,255,0.1)';
-      ctx.fillRect(textX + l * 10, sqY, 8, 8);
+    for (let l = 0; l < maxLvl; l++) {
+      ctx.fillStyle = l < lvl ? item.color : 'rgba(255,255,255,0.12)';
+      ctx.fillRect(textX + l * 12, sqY, 9, 6);
     }
 
-    // Description
-    ctx.font = "10px 'VT323', monospace";
-    ctx.fillStyle = maxed ? '#555' : 'rgba(180,170,210,0.75)';
+    // Description — VT323 16px
+    ctx.font = "16px 'VT323'";
+    ctx.fillStyle = maxed ? '#555' : 'rgba(190,180,220,0.85)';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(maxed ? 'MAX LEVEL' : item.desc(lvl), textX, iy + 33);
+    const desc = maxed ? 'MAX LEVEL' : getDesc(item, lvl);
+    // Clip description to fit
+    const maxDescW = textRight - textX;
+    let descText = desc;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(textX, iy + 30, maxDescW, rowH - 34);
+    ctx.clip();
+    ctx.fillText(descText, textX, iy + 30);
+    ctx.restore();
 
-    // Price badge (far right) — pixelPanel 56x22
+    // Price badge
+    const badgeW = 72, badgeH = 26;
+    const badgeX = px + pw - badgeW - 10;
+    const badgeY = iy + (rowH - badgeH) / 2;
     if (!maxed) {
-      const badgeX = px + pw - 70;
-      const badgeY = iy + (rowH - 22) / 2;
-      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1e1e00');
-      ctx.font = "7px 'Press Start 2P'";
-      ctx.fillStyle = canAfford ? '#f5c518' : '#cc4444';
+      pixelPanel(ctx, badgeX, badgeY, badgeW, badgeH, canAfford ? '#1a1a00' : '#200a0a');
+      ctx.font = "18px 'VT323'";
+      ctx.fillStyle = canAfford ? '#f5c518' : '#dd4444';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`$${cost}`, badgeX + 28, badgeY + 11);
+      ctx.fillText(`$${cost}`, badgeX + badgeW/2, badgeY + badgeH/2);
     } else {
-      // MAX badge
-      const badgeX = px + pw - 70;
-      const badgeY = iy + (rowH - 22) / 2;
-      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1a1a1a');
-      ctx.font = "7px 'Press Start 2P'";
-      ctx.fillStyle = '#888';
+      pixelPanel(ctx, badgeX, badgeY, badgeW, badgeH, '#1a1a1a');
+      ctx.font = "18px 'VT323'";
+      ctx.fillStyle = '#666';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('MAX', badgeX + 28, badgeY + 11);
+      ctx.fillText('MAX', badgeX + badgeW/2, badgeY + badgeH/2);
     }
   });
 
-  // Bottom close hint
-  ctx.font = "6px 'Press Start 2P'";
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  // Close hint
+  ctx.font = "15px 'VT323'";
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
   ctx.fillText('[E] CLOSE', px + pw/2, py + ph - 6);
 
   ctx.restore();
 }
 
+function drawPerkShopUI() {
+  if (!perkShopOpen) return;
+  _drawShopPanel(
+    '\u2728 PERK SHOP', '#44ffaa',
+    PERK_SHOP_ITEMS,
+    item => player.perks[item.key],
+    item => item.maxLevel,
+    (item, lvl) => item.price(lvl),
+    (item, lvl) => item.desc(lvl)
+  );
+}
+
 function drawShopUI() {
   if (!shopOpen) return;
-  const W=canvas.width, H=canvas.height;
-  const pw=500, ph=360;
-  const px=W/2-pw/2, py=H-ph-HUD_H-16;
-
-  ctx.save();
-
-  // Main background panel
-  pixelPanel(ctx, px, py, pw, ph, '#111120');
-
-  // Top strip (32px)
-  const stripH = 32;
-  ctx.fillStyle = '#0a0a1e';
-  ctx.fillRect(px + 2, py + 2, pw - 4, stripH - 2);
-  ctx.fillStyle = '#1a1a3a';
-  ctx.fillRect(px + 2, py + 2 + stripH - 2, pw - 4, 1);
-
-  // Title
-  ctx.font = "9px 'Press Start 2P'";
-  ctx.fillStyle = '#44ccff';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('\u2694 WEAPON SHOP', px + 14, py + 2 + stripH/2);
-
-  // Gold coin right-aligned in strip
-  ctx.font = "8px 'Press Start 2P'";
-  ctx.fillStyle = '#f5c518';
-  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText(`$${player.money}`, px + pw - 14, py + 2 + stripH/2);
-
-  // Horizontal divider
-  ctx.fillStyle = '#2a2a4e';
-  ctx.fillRect(px + 2, py + 2 + stripH, pw - 4, 2);
-
-  const itemAreaY = py + 2 + stripH + 2;
-  const itemAreaH = ph - stripH - 6 - 22;
-  const count = SHOP_ITEMS.length;
-  const rowH = Math.floor(itemAreaH / count);
-
-  SHOP_ITEMS.forEach((item, i) => {
-    const lvl = player.upgrades[item.key];
-    const maxed = lvl >= item.maxLevel;
-    const cost = maxed ? 0 : item.price(lvl);
-    const canAfford = !maxed && player.money >= cost;
-    const iy = itemAreaY + i * rowH;
-
-    // Row background
-    const rowBg = canAfford ? item.color + '18' : 'rgba(255,255,255,0.04)';
-    ctx.fillStyle = rowBg;
-    ctx.fillRect(px + 2, iy, pw - 4, rowH);
-
-    // Row separator
-    if (i > 0) {
-      ctx.fillStyle = '#1e1e2e';
-      ctx.fillRect(px + 2, iy, pw - 4, 1);
-    }
-
-    // Key hint on far left
-    ctx.font = "6px 'Press Start 2P'";
-    ctx.fillStyle = canAfford ? item.color : 'rgba(100,100,120,0.6)';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`[${i+1}]`, px + 8, iy + rowH/2);
-
-    // Icon slot (40x rowH, left side)
-    const iconSlotX = px + 30;
-    const iconSlotH = Math.min(40, rowH - 4);
-    const iconSlotY = iy + (rowH - iconSlotH) / 2;
-    pixelSlot(ctx, iconSlotX, iconSlotY, 40, iconSlotH, maxed ? '#141428' : item.color + '22', !maxed && canAfford);
-    ctx.font = '16px Segoe UI';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = maxed ? '#555' : item.color;
-    ctx.fillText(item.icon, iconSlotX + 20, iconSlotY + iconSlotH/2);
-
-    // Item name
-    const textX = iconSlotX + 48;
-    ctx.font = "7px 'Press Start 2P'";
-    ctx.fillStyle = maxed ? '#444' : item.color;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(item.name, textX, iy + 6);
-
-    // Level squares (5 squares, 8x8, 2px gap)
-    const sqY = iy + 20;
-    for (let l = 0; l < item.maxLevel; l++) {
-      ctx.fillStyle = l < lvl ? item.color : 'rgba(255,255,255,0.1)';
-      ctx.fillRect(textX + l * 10, sqY, 8, 8);
-    }
-
-    // Description
-    ctx.font = "10px 'VT323', monospace";
-    ctx.fillStyle = maxed ? '#555' : 'rgba(180,170,210,0.75)';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(maxed ? 'MAX LEVEL' : item.desc(lvl), textX, iy + 33);
-
-    // Price badge (far right) — pixelPanel 56x22
-    if (!maxed) {
-      const badgeX = px + pw - 70;
-      const badgeY = iy + (rowH - 22) / 2;
-      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1e1e00');
-      ctx.font = "7px 'Press Start 2P'";
-      ctx.fillStyle = canAfford ? '#f5c518' : '#cc4444';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`$${cost}`, badgeX + 28, badgeY + 11);
-    } else {
-      // MAX badge
-      const badgeX = px + pw - 70;
-      const badgeY = iy + (rowH - 22) / 2;
-      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1a1a1a');
-      ctx.font = "7px 'Press Start 2P'";
-      ctx.fillStyle = '#888';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('MAX', badgeX + 28, badgeY + 11);
-    }
-  });
-
-  // Bottom close hint
-  ctx.font = "6px 'Press Start 2P'";
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText('[E] CLOSE', px + pw/2, py + ph - 6);
-
-  ctx.restore();
+  _drawShopPanel(
+    '\u2694 WEAPON SHOP', '#44ccff',
+    SHOP_ITEMS,
+    item => player.upgrades[item.key],
+    item => item.maxLevel,
+    (item, lvl) => item.price(lvl),
+    (item, lvl) => item.desc(lvl)
+  );
 }
