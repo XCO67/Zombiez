@@ -107,6 +107,29 @@
   <div class="s-sec">Assets</div>
   <div id="asset-list"></div>
 
+  <!-- Door config — shown only when door tool is active -->
+  <div id="door-cfg" style="display:none;border-bottom:1px solid var(--border)">
+    <div class="s-sec" style="border-bottom:none">Door Settings</div>
+    <div style="padding:6px 10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim)">
+        Name
+        <input id="door-name" type="text" value="Locked Area" maxlength="24"
+          style="flex:1;background:#0e0e1a;border:1px solid var(--border2);color:#fff;padding:3px 6px;border-radius:4px;font-size:11px;font-family:inherit">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim)">
+        Price
+        <input id="door-cost" type="number" value="750" min="0" max="99999"
+          style="flex:1;background:#0e0e1a;border:1px solid var(--border2);color:#fff;padding:3px 6px;border-radius:4px;font-size:11px;font-family:inherit">
+        <span style="font-size:10px;color:var(--dim)">gold</span>
+      </div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5">
+        Left-click map → place marker<br>
+        Right-click marker → remove<br>
+        Paint Door tiles nearby to define which cells unlock
+      </div>
+    </div>
+  </div>
+
   <div class="s-sec">Saved Maps</div>
   <div id="maps-list"></div>
 
@@ -180,6 +203,7 @@ const ASSETS = [
   { type:'perkvendor', label:'Perk Vendor',   icon:'🧪', color:'#44ffcc', multi:false, default:{cx:24.5,cy:18}   },
   { type:'devchest',   label:'Dev Chest',     icon:'💎', color:'#ffd700', multi:false, default:{cx:19.5,cy:16}   },
   { type:'torch',      label:'Torch',         icon:'🔥', color:'#ff8833', multi:true,  default:null              },
+  { type:'door',       label:'Buyable Door',  icon:'🔒', color:'#ffd700', multi:true,  default:null              },
 ];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -219,6 +243,7 @@ function initDefaultObjects() {
   objects = {};
   ASSETS.filter(a=>!a.multi).forEach(a=>{ objects[a.type]={cx:a.default.cx, cy:a.default.cy}; });
   torches = [];
+  objects.doors = [];
 }
 
 function newMap() {
@@ -283,9 +308,8 @@ function loadMapFromData(m) {
   // Restore objects
   initDefaultObjects();
   if(m.objects) { Object.assign(objects, m.objects); }
-  if(m.torches) {
-    torches = m.torches.slice();
-  }
+  objects.doors = (m.objects?.doors || m.doors || []).slice();
+  if(m.torches) { torches = m.torches.slice(); }
   document.getElementById('map-name-inp').value = m.name || 'Map';
   editId = m.id;
   syncSizeInputs();
@@ -312,9 +336,12 @@ function buildMapObj() {
   }
 
   const obj = {};
-  Object.keys(objects).forEach(k=>{ obj[k]={...objects[k]}; });
+  Object.keys(objects).forEach(k=>{
+    if(k==='doors') obj.doors = objects.doors.map(d=>({...d}));
+    else obj[k]={...objects[k]};
+  });
 
-  return { id, name, mapW, mapH, tiles:gameTiles, torches:newTorches, playerStart, objects:obj };
+  return { id, name, mapW, mapH, tiles:gameTiles, torches:newTorches, playerStart, objects:obj, doors:obj.doors||[] };
 }
 
 function saveMap() {
@@ -427,6 +454,7 @@ function selectTile(id) {
   document.getElementById('tbtn-'+id)?.classList.add('active');
   document.querySelectorAll('.abtn').forEach(b=>b.classList.remove('active'));
   document.getElementById('st-tool').textContent = TILES[id].name;
+  document.getElementById('door-cfg').style.display = 'none';
 }
 
 function selectAsset(type) {
@@ -436,6 +464,7 @@ function selectAsset(type) {
   document.getElementById('abtn-'+type)?.classList.add('active');
   const a = ASSETS.find(x=>x.type===type);
   document.getElementById('st-tool').textContent = a ? a.label : type;
+  document.getElementById('door-cfg').style.display = type==='door' ? 'block' : 'none';
 }
 
 // ── TILE PAINTING ────────────────────────────────────────────────────────────
@@ -464,18 +493,29 @@ function paintAt(r, c, erase) {
   drawTile(r,c);
 }
 
-function placeAsset(e) {
+function placeAsset(e, rightClick) {
   const type = activeTool;
   const adef = ASSETS.find(a=>a.type===type);
   if(!adef) return;
   if(type==='torch') {
     const {r,c} = tileAt(e);
     if(r<0||r>=mapH||c<0||c>=mapW) return;
-    // Toggle torch on wall tile
     const idx = torches.findIndex(t=>t[0]===r&&t[1]===c);
     if(idx>=0){ torches.splice(idx,1); mapData[r][c]=0; }
     else { torches.push([r,c]); mapData[r][c]=4; }
     redraw();
+  } else if(type==='door') {
+    const pos = assetPosAt(e);
+    if(rightClick) {
+      // Remove nearest door marker within 2 tiles
+      const idx = objects.doors.findIndex(d=>Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
+      if(idx>=0) { objects.doors.splice(idx,1); redraw(); }
+    } else {
+      const name = document.getElementById('door-name').value.trim() || 'Locked Area';
+      const cost = Math.max(0, parseInt(document.getElementById('door-cost').value)||750);
+      objects.doors.push({ cx:pos.cx, cy:pos.cy, name, cost });
+      redraw();
+    }
   } else {
     const pos = assetPosAt(e);
     objects[type] = { cx:pos.cx, cy:pos.cy };
@@ -551,6 +591,37 @@ function drawTile(r, c) {
 
 function drawAssets() {
   const ts = TS();
+  // Draw door markers
+  (objects.doors||[]).forEach((d,i)=>{
+    const px=d.cx*ts, py=d.cy*ts;
+    const isActive = activeTool==='door';
+    ctx.save();
+    // Diamond shape
+    ctx.beginPath();
+    ctx.moveTo(px, py-ts*.55);
+    ctx.lineTo(px+ts*.4, py);
+    ctx.lineTo(px, py+ts*.55);
+    ctx.lineTo(px-ts*.4, py);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(200,140,0,.22)';
+    ctx.fill();
+    ctx.strokeStyle = isActive ? '#fff' : '#ffd700';
+    ctx.lineWidth = isActive ? 2 : 1.5;
+    ctx.stroke();
+    // Icon
+    ctx.font = `${Math.max(10,ts*.36)}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🔒', px, py);
+    // Label + price below
+    if(ts>=12) {
+      ctx.font = `bold ${Math.max(7,ts*.22)}px Segoe UI`;
+      ctx.fillStyle = '#ffd700';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${d.name} — ${d.cost}g`, px, py+ts*.58);
+    }
+    ctx.restore();
+  });
+
   ASSETS.filter(a=>!a.multi).forEach(a=>{
     const pos = objects[a.type];
     if(!pos) return;
@@ -597,8 +668,8 @@ canvas.addEventListener('mousedown', e=>{
   if(activeTool==='tile') {
     painting=true; erasing=e.button===2;
     const {r,c}=tileAt(e); paintAt(r,c,erasing); lastPainted={r,c};
-  } else if(e.button===0) {
-    placeAsset(e);
+  } else if(e.button===0 || (activeTool==='door' && e.button===2)) {
+    placeAsset(e, e.button===2);
   }
 });
 
