@@ -1,4 +1,19 @@
 
+// ─── DASH CONSTANTS ───────────────────────────────────────────────────────────
+const DASH_COOLDOWN = 360; // 6 s at 60 fps
+const DASH_FRAMES   = 10;  // burst duration frames
+const DASH_SPEED    = 0.24; // tiles per frame during dash
+const FACING_VEC = {
+  'east':       [ 1,      0     ],
+  'south-east': [ 0.7071, 0.7071],
+  'south':      [ 0,      1     ],
+  'south-west': [-0.7071, 0.7071],
+  'west':       [-1,      0     ],
+  'north-west': [-0.7071,-0.7071],
+  'north':      [ 0,     -1     ],
+  'north-east': [ 0.7071,-0.7071],
+};
+
 // ─── INPUT ────────────────────────────────────────────────────────────────────
 const keys = {};
 const mouse = { x:0, y:0, down:false };
@@ -21,6 +36,13 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 'q' && game.state === 'playing' && !shopOpen) swapWeapon();
   if (e.key.toLowerCase() === 'i' && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
     weaponInfoOpen = !weaponInfoOpen;
+  // Dash ability (Enter)
+  if (e.key === 'Enter' && game.state === 'playing' && !player.dead && !player.downed
+      && player.dashCooldown <= 0 && player.dashTimer <= 0) {
+    player.dashTimer    = DASH_FRAMES;
+    player.dashCooldown = DASH_COOLDOWN;
+    player.dashTrail    = [];
+  }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
     clickTarget = null;
@@ -183,6 +205,19 @@ function updatePlayer() {
     if (player.ft>=.095){player.frame=(player.frame+1)%6;player.ft=0;}
   }
   player.facing = dir8((mouse.x+camX)-player.cx*TW, (mouse.y+camY)-player.cy*TH);
+
+  // ── Dash burst movement
+  if (player.dashTimer > 0) {
+    player.dashTrail.push({ cx: player.cx, cy: player.cy, facing: player.facing, frame: player.frame,
+      a: player.dashTimer / DASH_FRAMES });
+    const [ddx, ddy] = FACING_VEC[player.facing] || [0, 0];
+    const dnx = player.cx + ddx * DASH_SPEED;
+    const dny = player.cy + ddy * DASH_SPEED;
+    if (!isBlocked(dnx, player.cy)) player.cx = dnx;
+    if (!isBlocked(player.cx, dny)) player.cy = dny;
+    player.dashTimer--;
+  }
+  if (player.dashCooldown > 0) player.dashCooldown--;
   if (player.hurtTimer>0) {
     player.hurtTimer--;
     player.regenTimer = 0;
@@ -223,6 +258,27 @@ function updatePlayer() {
 
 function drawPlayer() {
   const px=player.cx*TW, py=player.cy*TH, sz=TW*1.5;
+
+  // Dash afterimage trail
+  if (player.dashTrail && player.dashTrail.length > 0) {
+    for (let i = player.dashTrail.length - 1; i >= 0; i--) {
+      const t = player.dashTrail[i];
+      const timg = charIdle[t.facing];
+      if (timg && timg.complete && timg.naturalWidth) {
+        ctx.save();
+        ctx.globalAlpha = t.a * 0.45;
+        // Blue-white tint: draw with composite
+        ctx.drawImage(timg, t.cx*TW - sz/2, t.cy*TH - sz/2, sz, sz);
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = `rgba(100,180,255,${t.a * 0.55})`;
+        ctx.fillRect(t.cx*TW - sz/2, t.cy*TH - sz/2, sz, sz);
+        ctx.restore();
+      }
+      t.a -= 0.08;
+      if (t.a <= 0) { player.dashTrail.splice(i, 1); }
+    }
+  }
+
   const img = player.moving ? charWalk[player.facing]?.[player.frame] : charIdle[player.facing];
   // Shadow
   ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#000';

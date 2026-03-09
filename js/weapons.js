@@ -28,4 +28,7 @@ const player = {
   packedWeapons: new Set(),
   perks: { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 },
   shield:0, shieldRechargeTimer:0,
+  dashCooldown: 0,   // frames remaining on cooldown (360 = 6s)
+  dashTimer: 0,      // frames remaining in active dash burst
+  dashTrail: [],     // [{cx,cy,facing,frame,a}] afterimage positions
 };

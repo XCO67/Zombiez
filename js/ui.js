@@ -605,7 +605,8 @@ function drawHUD() {
 
     const wepEndX = wepStartX + slotW * 2 + slotGap + ipd + 4;
     const moneyW = 100;
-    const statAreaW = W - wepEndX - moneyW - ipd * 4;
+    const abilSecW = 82; // abilities section
+    const statAreaW = W - wepEndX - moneyW - abilSecW - ipd * 7;
     const statTileW = Math.min(76, Math.floor((statAreaW - stats.length * 4) / stats.length));
     const statStartX = wepEndX + 4;
 
@@ -647,8 +648,77 @@ function drawHUD() {
     const afterStats = statStartX + stats.length * (statTileW + 4) + ipd;
     vDiv(afterStats);
 
-    // ── 4. Money ──────────────────────────────────
-    const monX = afterStats + ipd;
+    // ── 4. Abilities ───────────────────────────────
+    const abilX = afterStats + ipd + 2;
+
+    // Section label
+    ctx.font = "6px 'Press Start 2P'";
+    ctx.fillStyle = 'rgba(100,180,255,0.55)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('ABILITIES', abilX + abilSecW/2, BY + 4);
+
+    // Dash slot
+    const dashReady = player.dashCooldown <= 0;
+    const dashActive = player.dashTimer > 0;
+    const dashFrac   = dashReady ? 1 : 1 - player.dashCooldown / DASH_COOLDOWN;
+    const dashSlotY  = BY + 14;
+    const dashSlotH  = HUD_H - 18;
+    const dashBg     = dashActive ? '#0a1e34' : dashReady ? '#0a1628' : '#0d0d18';
+    pixelSlot(ctx, abilX, dashSlotY, abilSecW, dashSlotH, dashBg, dashReady || dashActive);
+
+    // Cooldown arc (drawn before icon so icon sits on top)
+    const arcCx = abilX + abilSecW / 2, arcCy = dashSlotY + dashSlotH / 2;
+    const arcR  = Math.min(abilSecW, dashSlotH) * 0.36;
+    ctx.save();
+    // Track (faint full ring)
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(arcCx, arcCy, arcR, 0, Math.PI * 2); ctx.stroke();
+    // Fill arc (progress)
+    ctx.strokeStyle = dashReady
+      ? (dashActive ? '#88eeff' : '#44aaff')
+      : `rgba(80,140,220,${0.35 + dashFrac * 0.55})`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(arcCx, arcCy, arcR, -Math.PI / 2, -Math.PI / 2 + dashFrac * Math.PI * 2);
+    ctx.stroke();
+    if (dashReady) {
+      ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 8;
+      ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    // Icon (wind/dash emoji)
+    ctx.font = '17px Segoe UI';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = dashReady ? 1.0 : 0.35 + dashFrac * 0.45;
+    ctx.fillText('💨', arcCx, dashSlotY + 10);
+    ctx.globalAlpha = 1;
+
+    // Status text
+    ctx.font = "13px 'VT323'";
+    ctx.textAlign = 'center';
+    if (dashReady) {
+      ctx.fillStyle = dashActive ? '#88eeff' : '#44ff99';
+      ctx.textBaseline = 'top';
+      ctx.fillText(dashActive ? 'DASH!' : 'READY', arcCx, dashSlotY + 20);
+    } else {
+      ctx.fillStyle = '#ff8844';
+      ctx.textBaseline = 'top';
+      ctx.fillText(Math.ceil(player.dashCooldown / 60) + 's', arcCx, dashSlotY + 20);
+    }
+
+    // Key hint
+    ctx.font = "11px 'VT323'";
+    ctx.fillStyle = 'rgba(140,180,220,0.45)';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('[ENTER]', arcCx, dashSlotY + dashSlotH - 3);
+
+    vDiv(abilX + abilSecW + ipd + 2);
+
+    // ── 5. Money ──────────────────────────────────
+    const monX = abilX + abilSecW + ipd * 2 + 4;
     ctx.font = "14px 'VT323'";
     ctx.fillStyle = 'rgba(245,197,24,0.65)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -658,7 +728,7 @@ function drawHUD() {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(`$${player.money}`, monX + moneyW/2, BY + HUD_H/2 + 8);
 
-    // ── 5. Right side: permanent perks + temp perks + orb inventory ────────────
+    // ── 6. Right side: permanent perks + temp perks + orb inventory ────────────
     {
       // Build right-side tile list
       const rightTiles = [];
