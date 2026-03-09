@@ -17,10 +17,16 @@ function getSpawnTiles() {
 function spawnZombie() {
   const pts = getSpawnTiles();
   const sp  = pts[Math.floor(Math.random() * pts.length)];
-  const hp  = 20 + game.round * 20;
+  const hp  = Math.round((20 + game.round * 22) * enemyHpScale(game.round));
   return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
            frame:Math.random()*8|0, ft:Math.random()*.1, hp, maxHp:hp,
-           dead:false, deathTimer:0, hitFlash:0, vx:0, vy:0 };
+           dead:false, deathTimer:0, hitFlash:0, vx:0, vy:0,
+           spreadAngle: (Math.random() - 0.5) * 1.8 };
+}
+
+// Exponential HP multiplier — kicks in after round 1, grows 8% per round
+function enemyHpScale(round) {
+  return Math.pow(1.08, Math.max(0, round - 1));
 }
 
 const ZOMBIES = [];
@@ -38,13 +44,33 @@ function updateZombies() {
       if(Math.abs(z.vx)<0.005) z.vx=0;
       if(Math.abs(z.vy)<0.005) z.vy=0;
     }
-    const spd = ZOMBIE_SPEED + game.round*0.0008; // scale speed with round
+    const spd = ZOMBIE_SPEED + game.round*0.0009; // scale speed with round
     const tgt=nearestPlayerTo(z.cx,z.cy);
     const dx=tgt.cx-z.cx,dy=tgt.cy-z.cy,dist=Math.hypot(dx,dy);
-    if(dist>0.4){z.cx+=(dx/dist)*spd;z.cy+=(dy/dist)*spd;}
+    // Spread: aim for a point slightly offset from the player so zombies fan out
+    let tx=tgt.cx, ty=tgt.cy;
+    if(dist>1.5){
+      const perp=Math.atan2(dy,dx)+Math.PI/2;
+      tx+=Math.cos(perp)*Math.sin(z.spreadAngle)*1.1;
+      ty+=Math.sin(perp)*Math.sin(z.spreadAngle)*1.1;
+    }
+    const tdx=tx-z.cx,tdy=ty-z.cy,td=Math.hypot(tdx,tdy);
+    if(td>0.4){z.cx+=(tdx/td)*spd;z.cy+=(tdy/td)*spd;}
+    // Separation: push apart from overlapping zombies so they don't merge
+    for(const other of ZOMBIES){
+      if(other===z||other.dead)continue;
+      const sdx=z.cx-other.cx,sdy=z.cy-other.cy;
+      const sd2=sdx*sdx+sdy*sdy;
+      if(sd2<0.64&&sd2>0.0001){
+        const sd=Math.sqrt(sd2);
+        const push=0.008*(1-sd/0.8);
+        z.cx+=(sdx/sd)*push; z.cy+=(sdy/sd)*push;
+      }
+    }
     // Hurt nearest player on contact
+    const contactDmg = 8 + Math.floor(game.round / 5) * 2; // r1:8 r5:10 r10:12 r15:14 r20:16
     if(dist<0.65&&tgt.hurtTimer<=0&&!tgt.dead&&!tgt.downed&&game.state==='playing'){
-      applyDamage(tgt, 8);
+      applyDamage(tgt, contactDmg);
       if(tgt===player){if(tgt.hp<=0)playerGoDown();}
       else{if(tgt.hp<=0)remoteGoDown(tgt);}
     }
@@ -94,9 +120,10 @@ function skeletonCount(round) {
 function spawnSkeleton() {
   const pts=getSpawnTiles();
   const sp=pts[Math.floor(Math.random()*pts.length)];
+  const hp = Math.round(SKEL_HP * enemyHpScale(game.round));
   return { cx:sp.cx+(Math.random()-.5)*.4, cy:sp.cy+(Math.random()-.5)*.4,
            frame:Math.random()*4|0, ft:Math.random()*.1,
-           hp:SKEL_HP, maxHp:SKEL_HP,
+           hp, maxHp:hp,
            dead:false, deathTimer:0, hitFlash:0, vx:0, vy:0 };
 }
 
@@ -185,9 +212,10 @@ const FLAME_LIFE           = 200;  // frames
 function spawnDragon() {
   const pts = getSpawnTiles();
   const sp  = pts[Math.floor(Math.random()*pts.length)];
+  const hp  = Math.round(DRAGON_HP * enemyHpScale(game.round));
   return { cx:sp.cx+(Math.random()-.5)*.5, cy:sp.cy+(Math.random()-.5)*.5,
            frame:Math.random()*8|0, ft:Math.random()*.1,
-           hp:DRAGON_HP, maxHp:DRAGON_HP,
+           hp, maxHp:hp,
            dead:false, deathTimer:0, hitFlash:0, vx:0, vy:0,
            fireTimer:Math.random()*DRAGON_FIRE_INTERVAL|0 };
 }
@@ -336,7 +364,7 @@ const LAVA_POOL_DMG_INTERVAL  = 30;   // frames between pool damage ticks
 function spawnLavaZombie() {
   const pts = getSpawnTiles();
   const sp  = pts[Math.floor(Math.random() * pts.length)];
-  const hp  = 100 + game.round * 20;
+  const hp  = Math.round((100 + game.round * 25) * enemyHpScale(game.round));
   return {
     cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
     frame: Math.random()*8|0, ft: Math.random()*.1,
@@ -414,8 +442,9 @@ function updateLavaZombies() {
     } else {
       const spd = LAVA_SPEED + game.round * 0.0006;
       if (dist > 0.4) { z.cx += (dx/dist)*spd; z.cy += (dy/dist)*spd; }
+      const lavaContactDmg = LAVA_CONTACT_DMG + Math.floor(game.round / 4) * 3;
       if (dist < 0.65 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
-        applyDamage(tgt, LAVA_CONTACT_DMG);
+        applyDamage(tgt, lavaContactDmg);
         if (tgt === player) { if (tgt.hp <= 0) playerGoDown(); }
         else { if (tgt.hp <= 0) remoteGoDown(tgt); }
       }

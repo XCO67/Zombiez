@@ -78,7 +78,7 @@ function drawSpreadDrops() {
 const BOSS_DEMONS = [];
 const BOSS_SHOTS  = [];
 
-const BOSS_BASE_HP        = 3000;
+const BOSS_BASE_HP        = 7000;
 const BOSS_SHOT_SPEED     = 4.8;
 const BOSS_SHOT_DMG       = 35;
 const BOSS_SHOOT_INTERVAL = 70;  // frames between waves
@@ -96,7 +96,7 @@ function getBossSpawnTiles() {
 function spawnBossDemon() {
   const pts = getBossSpawnTiles();
   const sp  = pts[0];
-  const hp  = BOSS_BASE_HP + game.round * 150;
+  const hp  = BOSS_BASE_HP + game.round * 300;
   return {
     cx: sp.cx, cy: sp.cy,
     hp, maxHp: hp,
@@ -107,7 +107,9 @@ function spawnBossDemon() {
 
 function hitBoss(b, wkey, papMult = 1) {
   const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
-  const dmg = Math.round(rawDmg * papMult);
+  // Damage cap: bosses have thick armour — no single hit does more than this
+  const cap = 500 + game.round * 20;
+  const dmg = Math.min(Math.round(rawDmg * papMult), cap);
   b.hp -= dmg;
   b.hitFlash = 9;
   const nc = papMult > 1
@@ -503,7 +505,8 @@ function spawnSpiderBoss() {
 
 function hitSpiderBoss(b, wkey, papMult = 1) {
   const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
-  const dmg = Math.round(rawDmg * papMult);
+  const cap = 700 + game.round * 25;
+  const dmg = Math.min(Math.round(rawDmg * papMult), cap);
   b.hp -= dmg;
   b.hitFlash = 9;
   const nc = papMult > 1
