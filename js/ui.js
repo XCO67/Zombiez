@@ -34,34 +34,68 @@ function drawCursor() {
   ctx.restore();
 }
 
+// ─── PIXEL PANEL HELPERS ──────────────────────────────────────────────────────
+
+// Draws a Terraria-style pixel panel
+function pixelPanel(ctx, x, y, w, h, bg) {
+  bg = bg || '#0e0e1e';
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
+  // outer dark border
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(x,     y,     w, 2);
+  ctx.fillRect(x,     y,     2, h);
+  ctx.fillRect(x,     y+h-2, w, 2);
+  ctx.fillRect(x+w-2, y,     2, h);
+  // inner highlight (top-left)
+  ctx.fillStyle = '#3a3a5e';
+  ctx.fillRect(x+2, y+2, w-4, 1);
+  ctx.fillRect(x+2, y+2, 1,   h-4);
+  // inner shadow (bottom-right)
+  ctx.fillStyle = '#09090f';
+  ctx.fillRect(x+2,   y+h-3, w-4, 1);
+  ctx.fillRect(x+w-3, y+2,   1,   h-4);
+}
+
+// Draws a single inventory slot (Terraria style)
+function pixelSlot(ctx, x, y, w, h, bg, active) {
+  var bgCol = bg || (active ? '#252545' : '#1a1a30');
+  ctx.fillStyle = bgCol;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(x,     y,     w, 2);
+  ctx.fillRect(x,     y,     2, h);
+  ctx.fillRect(x,     y+h-2, w, 2);
+  ctx.fillRect(x+w-2, y,     2, h);
+  var hi = active ? '#6666cc' : '#3a3a5e';
+  ctx.fillStyle = hi;
+  ctx.fillRect(x+2, y+2, w-4, 1);
+  ctx.fillRect(x+2, y+2, 1,   h-4);
+  ctx.fillStyle = '#09090f';
+  ctx.fillRect(x+2,   y+h-3, w-4, 1);
+  ctx.fillRect(x+w-3, y+2,   1,   h-4);
+}
+
 // ─── MINIMAP ──────────────────────────────────────────────────────────────────
 function drawMinimap() {
-  const pad = 14;
-  const barH = 14;
-  // Fixed minimap size — never changes regardless of map dimensions
-  const mmW = 160, mmH = 120;
-  const mmX = pad - 6;
-  const mmY = pad - 6;   // top-left, just below screen edge
-  // Cell size scales so the full map always fits in the fixed box
+  const pad = 10;
+  const labelH = 16;
+  const mmW = 180, mmH = 135;
+  const mmX = pad;
+  const mmY = pad;
   const cW = mmW / MAP_W, cH = mmH / MAP_H;
 
   ctx.save();
 
-  // Outer background + border (fixed size)
-  ctx.fillStyle = 'rgba(4,3,14,0.82)';
-  roundRect(ctx, mmX, mmY, mmW, mmH + 14, 5, true, false);
-  ctx.strokeStyle = 'rgba(80,60,140,0.55)'; ctx.lineWidth = 1;
-  roundRect(ctx, mmX, mmY, mmW, mmH + 14, 5, false, true);
+  // Outer pixel panel (includes label bar at bottom)
+  pixelPanel(ctx, mmX, mmY, mmW, mmH + labelH, '#0e0e1e');
 
-  // Label
-  ctx.fillStyle = 'rgba(160,140,220,0.65)';
-  ctx.font = `bold 8px Segoe UI`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText('MAP', mmX + 5, mmY + 3);
+  // Clip to tile area
+  ctx.beginPath();
+  ctx.rect(mmX + 2, mmY + 2, mmW - 4, mmH - 2);
+  ctx.clip();
 
-  const mapOffY = mmY + 12;   // tile grid starts here
-
-  // Clip to map area
-  ctx.beginPath(); ctx.rect(mmX, mapOffY, mmW, mmH); ctx.clip();
+  const mapOffY = mmY;
 
   // Draw tiles
   for (let r = 0; r < MAP_H; r++) {
@@ -69,19 +103,20 @@ function drawMinimap() {
       const t = MAP[r][c];
       const x = mmX + c * cW, y = mapOffY + r * cH;
       if (t === T.WALL) {
-        ctx.fillStyle = '#0d0b1a'; ctx.fillRect(x, y, cW + .5, cH + .5);
-      } else if (t === T.FLOOR || t === T.SPAWN) {
-        ctx.fillStyle = t === T.SPAWN ? '#3a1010' : '#1e1a30';
-        ctx.fillRect(x, y, cW + .5, cH + .5);
+        ctx.fillStyle = '#131320'; ctx.fillRect(x, y, cW + .5, cH + .5);
+      } else if (t === T.FLOOR) {
+        ctx.fillStyle = '#1e1a32'; ctx.fillRect(x, y, cW + .5, cH + .5);
+      } else if (t === T.SPAWN) {
+        ctx.fillStyle = '#2a0e0e'; ctx.fillRect(x, y, cW + .5, cH + .5);
       } else if (t === T.PILLAR) {
-        ctx.fillStyle = '#2a2040'; ctx.fillRect(x, y, cW + .5, cH + .5);
+        ctx.fillStyle = '#1a1630'; ctx.fillRect(x, y, cW + .5, cH + .5);
       } else if (t === T.DOOR) {
         ctx.fillStyle = '#5a2e10'; ctx.fillRect(x, y, cW + .5, cH + .5);
       }
     }
   }
 
-  // Door markers (locked = amber glow)
+  // Door markers (locked = amber)
   DOORS.forEach(door => {
     if (door.unlocked) return;
     door.tiles.forEach(({r, c}) => {
@@ -90,72 +125,77 @@ function drawMinimap() {
     });
   });
 
-  // Torch dots
-  TORCHES.forEach(([r, c]) => {
-    ctx.fillStyle = 'rgba(255,160,40,0.4)';
-    ctx.beginPath();
-    ctx.arc(mmX + (c + .5) * cW, mapOffY + (r + .5) * cH, Math.max(1, cW * .6), 0, Math.PI * 2);
-    ctx.fill();
-  });
+  ctx.restore();
+  ctx.save();
 
-  // Zombies
+  // Restore clip to full minimap for markers
+  ctx.beginPath();
+  ctx.rect(mmX + 2, mmY + 2, mmW - 4, mmH - 2);
+  ctx.clip();
+
+  // Enemies: 2x2 pixel squares
   ZOMBIES.forEach(z => {
     if (z.dead) return;
-    ctx.fillStyle = '#c83838';
-    ctx.beginPath();
-    ctx.arc(mmX + z.cx * cW, mapOffY + z.cy * cH, Math.max(1.2, cW * .7), 0, Math.PI * 2);
-    ctx.fill();
+    const ex = mmX + z.cx * cW - 1;
+    const ey = mapOffY + z.cy * cH - 1;
+    ctx.fillStyle = '#dd3030';
+    ctx.fillRect(ex, ey, 2, 2);
   });
 
-  // Shop marker
+  // Boss marker: blinking red 3x3
+  if (typeof BOSS_DEMONS !== 'undefined') {
+    BOSS_DEMONS.forEach(b => {
+      if (b.dead) return;
+      const blink = Math.floor(performance.now() / 300) % 2 === 0;
+      if (!blink) return;
+      ctx.fillStyle = '#ff2020';
+      ctx.fillRect(mmX + b.cx * cW - 1, mapOffY + b.cy * cH - 1, 3, 3);
+    });
+  }
+
+  // Shop marker: 2x2 cyan
   ctx.fillStyle = '#44ccff';
-  ctx.beginPath();
-  ctx.arc(mmX + SHOP_POS.cx * cW, mapOffY + SHOP_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillRect(mmX + SHOP_POS.cx * cW - 1, mapOffY + SHOP_POS.cy * cH - 1, 2, 2);
 
-  // Mystery box marker
+  // Mystery box marker: 2x2 purple
   ctx.fillStyle = '#aa44ff';
-  ctx.beginPath();
-  ctx.arc(mmX + BOX_POS.cx * cW, mapOffY + BOX_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillRect(mmX + BOX_POS.cx * cW - 1, mapOffY + BOX_POS.cy * cH - 1, 2, 2);
 
-  // Pack-a-Punch marker (rainbow)
+  // Pack-a-Punch marker: 2x2 rainbow
   ctx.fillStyle = `hsl(${(performance.now()/6)%360},100%,60%)`;
-  ctx.beginPath();
-  ctx.arc(mmX + PAP_POS.cx * cW, mapOffY + PAP_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillRect(mmX + PAP_POS.cx * cW - 1, mapOffY + PAP_POS.cy * cH - 1, 2, 2);
 
-  // Perk vendor marker (green)
+  // Perk vendor marker: 2x2 green
   ctx.fillStyle = '#44ffaa';
-  ctx.beginPath();
-  ctx.arc(mmX + PERK_VENDOR_POS.cx * cW, mapOffY + PERK_VENDOR_POS.cy * cH, Math.max(1.5, cW * .8), 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillRect(mmX + PERK_VENDOR_POS.cx * cW - 1, mapOffY + PERK_VENDOR_POS.cy * cH - 1, 2, 2);
 
-  // Player dot (bright white with pulse)
-  const pulse = Math.sin(performance.now() / 200) * .3 + .7;
-  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
-  ctx.beginPath();
-  ctx.arc(mmX + player.cx * cW, mapOffY + player.cy * cH, Math.max(2, cW * 1.1), 0, Math.PI * 2);
-  ctx.fill();
-  // Player direction indicator
-  const facingAngles = {east:0,'south-east':Math.PI*.25,south:Math.PI*.5,'south-west':Math.PI*.75,
-    west:Math.PI,'north-west':Math.PI*1.25,north:Math.PI*1.5,'north-east':Math.PI*1.75};
-  const ang = facingAngles[player.facing] || 0;
-  const pr = Math.max(2, cW * 1.1);
-  ctx.strokeStyle = `rgba(255,255,255,${pulse})`;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(mmX + player.cx * cW, mapOffY + player.cy * cH);
-  ctx.lineTo(mmX + player.cx * cW + Math.cos(ang) * pr * 2.2, mapOffY + player.cy * cH + Math.sin(ang) * pr * 2.2);
-  ctx.stroke();
+  // Player: blinking white 3x3
+  const playerBlink = Math.floor(performance.now() / 300) % 2 === 0;
+  ctx.fillStyle = playerBlink ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.5)';
+  ctx.fillRect(mmX + player.cx * cW - 1, mapOffY + player.cy * cH - 1, 3, 3);
 
-  // Camera viewport rectangle
+  // Camera viewport outline
   const vx = mmX + (camX / TW) * cW;
   const vy = mapOffY + (camY / TH) * cH;
   const vw = (canvas.width / TW) * cW;
   const vh = (canvas.height / TH) * cH;
   ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
   ctx.strokeRect(vx, vy, vw, vh);
+
+  ctx.restore();
+  ctx.save();
+
+  // Label bar at bottom of minimap panel
+  ctx.fillStyle = '#0a0a18';
+  ctx.fillRect(mmX + 2, mmY + mmH, mmW - 4, labelH - 2);
+  ctx.fillStyle = '#3a3a5e';
+  ctx.fillRect(mmX + 2, mmY + mmH, mmW - 4, 1);
+
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = 'rgba(160,140,220,0.7)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('MINIMAP', mmX + mmW / 2, mmY + mmH + labelH / 2 - 1);
 
   ctx.restore();
 }
@@ -291,7 +331,7 @@ function drawWeaponInfo() {
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
-const HUD_H = 72; // bottom bar height — used by minimap positioning too
+const HUD_H = 86; // bottom bar height — used by minimap positioning too
 
 function drawHUD() {
   const W = canvas.width, H = canvas.height;
@@ -300,295 +340,344 @@ function drawHUD() {
   const pad = 14;
 
   // ── Round (top-center)
-  ctx.fillStyle='rgba(0,0,0,0.55)';
-  roundRect(ctx,W/2-65,pad-6,130,32,5,true,false);
-  ctx.fillStyle='#c8a040'; ctx.font='bold 14px Segoe UI';
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(`ROUND  ${game.round}`, W/2, pad+10);
+  const roundW = 160, roundH = 30;
+  pixelPanel(ctx, W/2 - roundW/2, pad - 4, roundW, roundH, '#0e0e1e');
+  ctx.fillStyle = '#c8a040';
+  ctx.font = "9px 'Press Start 2P'";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`ROUND ${game.round}`, W/2, pad - 4 + roundH/2);
 
   // ── Kills / score (top-right)
-  ctx.fillStyle='rgba(0,0,0,0.55)';
-  roundRect(ctx,W-172-pad,pad-6,176,32,5,true,false);
-  ctx.fillStyle='#8888ee'; ctx.font='bold 12px Segoe UI';
-  ctx.textAlign='right'; ctx.textBaseline='middle';
-  ctx.fillText(`KILLS ${game.kills}   SCORE ${game.score}`, W-pad, pad+10);
+  const killsW = 200, killsH = 30;
+  pixelPanel(ctx, W - killsW - pad, pad - 4, killsW, killsH, '#0e0e1e');
+  ctx.fillStyle = '#7777cc';
+  ctx.font = "7px 'Press Start 2P'";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`KILLS ${game.kills}   SCORE ${game.score}`, W - killsW/2 - pad, pad - 4 + killsH/2);
 
   // ── Wave-clear overlay
   if (game.state==='wave_clear') {
     const prog=1-(game.waveTimer/180);
     const fadeIn=Math.min(1,prog*4), fadeOut=Math.max(0,1-(prog-.75)*4);
     ctx.globalAlpha=fadeIn*fadeOut;
-    ctx.fillStyle='rgba(0,0,0,0.45)';
-    roundRect(ctx,W/2-170,H/2-50,340,90,8,true,false);
-    ctx.fillStyle='#a0e060'; ctx.font='bold 30px Segoe UI';
+    const ovW = 380, ovH = 90;
+    pixelPanel(ctx, W/2 - ovW/2, H/2 - ovH/2 - 10, ovW, ovH, '#0a0a1e');
+    ctx.fillStyle='#a0e060';
+    ctx.font = "18px 'Press Start 2P'";
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('WAVE CLEAR!',W/2,H/2-15);
-    ctx.fillStyle='#888'; ctx.font='14px Segoe UI';
-    ctx.fillText(`Round ${game.round+1} begins in ${Math.ceil(game.waveTimer/60)}…`,W/2,H/2+20);
+    ctx.fillText('WAVE CLEAR!', W/2, H/2 - 14);
+    ctx.fillStyle='rgba(180,180,180,0.7)';
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.fillText(`Round ${game.round+1} in ${Math.ceil(game.waveTimer/60)}s`, W/2, H/2 + 18);
     ctx.globalAlpha=1;
   }
 
   // ── Game over overlay
   if (game.state==='game_over') {
     if (!game.scoreSaved && !mp.active) { game.scoreSaved=true; saveScore(); }
-    ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,0,W,H);
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='#c83838'; ctx.font=`bold ${Math.round(W*.04)}px Segoe UI`;
-    ctx.fillText('GAME  OVER',W/2,H/2-50);
-    ctx.fillStyle='#aaa'; ctx.font=`${Math.round(W*.016)}px Segoe UI`;
-    ctx.fillText(`Round ${game.round}  •  Kills: ${game.kills}  •  Score: ${game.score}`,W/2,H/2+4);
-    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font=`${Math.round(W*.013)}px Segoe UI`;
-    ctx.fillText('[R] Restart    [M] Main Menu',W/2,H/2+42);
+    ctx.fillStyle='#cc2222';
+    ctx.font = "20px 'Press Start 2P'";
+    ctx.fillText('GAME OVER', W/2, H/2 - 52);
+    ctx.fillStyle='rgba(200,190,220,0.8)';
+    ctx.font = "8px 'Press Start 2P'";
+    ctx.fillText(`Round ${game.round}  •  Kills: ${game.kills}  •  Score: ${game.score}`, W/2, H/2 + 4);
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.fillText('[R] Restart    [M] Main Menu', W/2, H/2 + 42);
   }
 
-  // ── Bottom bar (LoL-style) ─────────────────────────────────────────────────
+  // ── Bottom bar ─────────────────────────────────────────────────────────────
   {
     const BY = H - HUD_H;
 
-    // Background
-    ctx.fillStyle = 'rgba(5,3,16,0.94)';
-    ctx.fillRect(0, BY, W, HUD_H);
+    // Background pixel panel
+    pixelPanel(ctx, 0, BY, W, HUD_H, '#0e0e1e');
 
-    // Top border gradient
-    const tb = ctx.createLinearGradient(0,0,W,0);
-    tb.addColorStop(0,'rgba(60,40,120,0)');
-    tb.addColorStop(0.25,'rgba(90,65,180,0.9)');
-    tb.addColorStop(0.75,'rgba(90,65,180,0.9)');
-    tb.addColorStop(1,'rgba(60,40,120,0)');
-    ctx.fillStyle = tb; ctx.fillRect(0, BY, W, 1);
-
-    const midY = BY + HUD_H / 2;
-    const ipd = 18; // inner padding
+    const ipd = 10;
 
     // helper: vertical divider
     function vDiv(x) {
-      ctx.fillStyle = 'rgba(80,60,140,0.45)';
-      ctx.fillRect(x, BY+8, 1, HUD_H-16);
+      ctx.fillStyle = '#050510';
+      ctx.fillRect(x, BY + 4, 2, HUD_H - 8);
+      ctx.fillStyle = '#3a3a5e';
+      ctx.fillRect(x + 2, BY + 4, 1, HUD_H - 8);
     }
 
     // ── 1. HP section ─────────────────────────────
-    const hpSecW = Math.min(230, W * 0.16);
-    const hpX = ipd;
+    const hpSecW = 200;
+    const hpX = ipd + 4;
     const hf = Math.max(0, player.hp / player.maxHp);
     const hpColor = hf > 0.5 ? '#2ecc40' : hf > 0.25 ? '#e6c020' : '#e74c3c';
 
-    ctx.fillStyle = 'rgba(160,140,220,0.55)';
-    ctx.font = 'bold 9px Segoe UI'; ctx.textAlign='left'; ctx.textBaseline='top';
-    ctx.fillText('HEALTH', hpX, BY+10);
+    // "HP" label
+    ctx.fillStyle = '#8888bb';
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('HP', hpX, BY + 8);
 
     const hasShield = player.perks.shield > 0;
     const shieldMax = SHIELD_MAXHP[player.perks.shield] || 0;
-    const bx=hpX, bw=hpSecW-ipd;
-    // If shield exists, split vertical space: HP bar on top, shield bar below
-    const by2 = hasShield ? BY+20 : BY+22;
-    const bh  = hasShield ? 11 : 16;
-    // HP track
-    ctx.fillStyle='#190808'; ctx.fillRect(bx,by2,bw,bh);
-    ctx.fillStyle=hpColor; ctx.fillRect(bx,by2,bw*hf,bh);
-    ctx.fillStyle='rgba(255,255,255,0.10)'; ctx.fillRect(bx,by2,bw*hf,bh/3);
-    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
-    ctx.strokeRect(bx,by2,bw,bh);
-    ctx.fillStyle='#fff'; ctx.font='bold 9px Segoe UI';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(`${player.hp} / ${player.maxHp}`, bx+bw/2, by2+bh/2);
+    const bw = hpSecW - ipd * 2;
+
+    // HP segmented bar
+    const hpBarY = BY + 22;
+    const hpBarH = 12;
+    const segCount = 10;
+    const segGap = 2;
+    const segW = Math.floor((bw) / segCount) - segGap;
+    const filledSegs = Math.round(hf * segCount);
+
+    for (let k = 0; k < segCount; k++) {
+      const sx = hpX + k * (segW + segGap);
+      if (k < filledSegs) {
+        ctx.fillStyle = hpColor;
+        ctx.fillRect(sx, hpBarY, segW, hpBarH);
+        // pixel highlight top
+        ctx.fillStyle = 'rgba(255,255,255,0.20)';
+        ctx.fillRect(sx, hpBarY, segW, 2);
+      } else {
+        ctx.fillStyle = '#1a0808';
+        ctx.fillRect(sx, hpBarY, segW, hpBarH);
+      }
+    }
+
+    // HP text below bar
+    ctx.font = "6px 'Press Start 2P'";
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(`HP: ${player.hp}/${player.maxHp}`, hpX + bw/2, hpBarY + hpBarH + 2);
 
     // Shield bar
     if (hasShield) {
-      const sby = by2 + bh + 3;
-      const sbh = 9;
+      const sby = hpBarY + hpBarH + 14;
+      const sbh = 10;
       const sf = Math.max(0, player.shield / shieldMax);
       const recharging = player.shield < shieldMax && player.shieldRechargeTimer <= 0;
       const shieldCol = recharging ? `hsl(${Math.round(performance.now()/30)%360},80%,55%)` : '#4499ff';
-      ctx.fillStyle='rgba(0,0,30,0.7)'; ctx.fillRect(bx, sby, bw, sbh);
-      if (sf > 0) {
-        ctx.fillStyle = shieldCol; ctx.fillRect(bx, sby, bw*sf, sbh);
-        ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(bx, sby, bw*sf, sbh/2);
+      const filledShieldSegs = Math.round(sf * segCount);
+
+      // "SHIELD" label
+      ctx.font = "5px 'Press Start 2P'";
+      ctx.fillStyle = '#4499ff';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText('SHIELD', hpX, sby - 9);
+
+      for (let k = 0; k < segCount; k++) {
+        const sx = hpX + k * (segW + segGap);
+        if (k < filledShieldSegs) {
+          ctx.fillStyle = shieldCol;
+          ctx.fillRect(sx, sby, segW, sbh);
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          ctx.fillRect(sx, sby, segW, 2);
+        } else {
+          ctx.fillStyle = '#080820';
+          ctx.fillRect(sx, sby, segW, sbh);
+        }
       }
-      ctx.strokeStyle='rgba(68,153,255,0.4)'; ctx.lineWidth=1;
-      ctx.strokeRect(bx, sby, bw, sbh);
-      ctx.fillStyle='rgba(150,200,255,0.7)'; ctx.font='bold 7px Segoe UI';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(`🛡 ${Math.ceil(player.shield)} / ${shieldMax}`, bx+bw/2, sby+sbh/2);
     }
 
-    vDiv(hpSecW + ipd*1.5);
+    vDiv(hpSecW + ipd * 2);
 
-    // ── 2. Weapon slots (primary + secondary) ─────
-    const wepX = hpSecW + ipd*3;
-    const slotW = Math.min(150, W*0.10);
+    // ── 2. Weapon slots ─────────────────────────────
+    const wepStartX = hpSecW + ipd * 3 + 4;
+    const slotW = 68, slotH = 66;
     const slotGap = 6;
+    const slotY = BY + (HUD_H - slotH) / 2;
 
     function drawWeaponSlot(slotX, wkey, ammo, isActive) {
       const sw = WEAPONS[wkey];
-      const alpha = isActive ? 1 : 0.45;
-      ctx.save(); ctx.globalAlpha = alpha;
 
       // slot background
-      ctx.fillStyle = isActive ? sw.color+'28' : 'rgba(255,255,255,0.04)';
-      roundRect(ctx, slotX, BY+8, slotW, HUD_H-16, 6, true, false);
-      ctx.strokeStyle = isActive ? sw.color+'99' : 'rgba(80,70,120,0.5)';
-      ctx.lineWidth = isActive ? 1.5 : 1;
-      roundRect(ctx, slotX, BY+8, slotW, HUD_H-16, 6, false, true);
+      const slotBg = isActive ? sw.color + '33' : '#1a1a30';
+      pixelSlot(ctx, slotX, slotY, slotW, slotH, slotBg, isActive);
 
       // weapon name
-      ctx.fillStyle = sw.color; ctx.font = `bold 11px Segoe UI`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(sw.name.toUpperCase(), slotX+slotW/2, BY+20);
+      ctx.fillStyle = sw.color;
+      ctx.font = "6px 'Press Start 2P'";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      // Truncate name if too long
+      const nameStr = sw.name.length > 9 ? sw.name.substring(0, 8) + '.' : sw.name;
+      ctx.fillText(nameStr.toUpperCase(), slotX + slotW/2, slotY + 5);
 
       if (wkey === 'pistol') {
-        // heat bar
+        // heat segmented bar (6 blocks)
         const heatFrac = player.heat / 100;
-        const hbX = slotX+7, hbY = BY+30, hbW = slotW-14, hbH = 8;
-        ctx.fillStyle = '#160808'; ctx.fillRect(hbX, hbY, hbW, hbH);
-        if (heatFrac > 0) {
-          const hCol = heatFrac < 0.5
-            ? `hsl(${Math.round(120 - heatFrac*2*60)},88%,42%)`
-            : `hsl(${Math.round(60  - (heatFrac-0.5)*2*60)},88%,42%)`;
-          ctx.fillStyle = player.overheated ? '#ff2200' : hCol;
-          ctx.fillRect(hbX, hbY, hbW * heatFrac, hbH);
-          ctx.fillStyle='rgba(255,255,255,0.11)';
-          ctx.fillRect(hbX, hbY, hbW * heatFrac, hbH/2);
+        const hbX = slotX + 5, hbY = slotY + 18, hbW = slotW - 10, hbH = 8;
+        const heatSegs = 6;
+        const heatSegW = Math.floor(hbW / heatSegs) - 2;
+        const filledHeat = Math.round(heatFrac * heatSegs);
+        for (let k = 0; k < heatSegs; k++) {
+          const hsx = hbX + k * (heatSegW + 2);
+          if (k < filledHeat) {
+            ctx.fillStyle = player.overheated ? '#ff2200' : '#ff4400';
+            ctx.fillRect(hsx, hbY, heatSegW, hbH);
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(hsx, hbY, heatSegW, 2);
+          } else {
+            ctx.fillStyle = '#1a0808';
+            ctx.fillRect(hsx, hbY, heatSegW, hbH);
+          }
         }
-        ctx.strokeStyle = player.overheated ? '#ff5500' : 'rgba(255,255,255,0.08)';
-        ctx.lineWidth=1; ctx.strokeRect(hbX, hbY, hbW, hbH);
         if (player.overheated) {
-          ctx.fillStyle='#ff4400'; ctx.font='bold 8px Segoe UI';
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText('OVERHEATED', slotX+slotW/2, BY+46);
+          ctx.fillStyle = '#ff4400';
+          ctx.font = "5px 'Press Start 2P'";
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText('OVERHEATED', slotX + slotW/2, slotY + 30);
         } else {
-          ctx.fillStyle='rgba(180,130,110,0.6)'; ctx.font='8px Segoe UI';
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText('HEAT', slotX+slotW/2, BY+46);
+          ctx.fillStyle = 'rgba(180,130,110,0.55)';
+          ctx.font = "5px 'Press Start 2P'";
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText('HEAT', slotX + slotW/2, slotY + 30);
         }
       } else {
-        // ammo display — pips for ≤16, bar+number for larger counts
-        const hbX = slotX+7, hbY = BY+30, hbW = slotW-14, hbH = 8;
+        // ammo display
+        const hbX = slotX + 5, hbY = slotY + 18, hbW = slotW - 10, hbH = 8;
         if (sw.ammoMax <= 16) {
-          // pip row
-          const pipAreaW = hbW, pw2 = Math.max(3, hbW/sw.ammoMax - 2), ph2 = hbH;
-          const totalPipW = sw.ammoMax*(pw2+2)-2;
-          const pipStartX = slotX + (slotW-totalPipW)/2;
-          for (let k=0;k<sw.ammoMax;k++) {
-            ctx.fillStyle = k<ammo ? sw.color : 'rgba(255,255,255,0.1)';
-            ctx.fillRect(pipStartX+k*(pw2+2), hbY, pw2, ph2);
+          // pip blocks
+          const pw2 = Math.max(3, Math.floor(hbW / sw.ammoMax) - 2);
+          const totalPipW = sw.ammoMax * (pw2 + 2) - 2;
+          const pipStartX = slotX + Math.max(5, (slotW - totalPipW) / 2);
+          for (let k = 0; k < sw.ammoMax; k++) {
+            ctx.fillStyle = k < ammo ? sw.color : 'rgba(255,255,255,0.1)';
+            ctx.fillRect(pipStartX + k*(pw2+2), hbY, pw2, hbH);
           }
         } else {
-          // ammo bar
+          // segmented ammo bar
           const frac = ammo / sw.ammoMax;
-          ctx.fillStyle = '#0d0d1a'; ctx.fillRect(hbX, hbY, hbW, hbH);
-          ctx.fillStyle = ammo===0 ? '#ff3322' : sw.color;
-          ctx.fillRect(hbX, hbY, hbW*frac, hbH);
-          ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fillRect(hbX, hbY, hbW*frac, hbH/2);
-          ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
-          ctx.strokeRect(hbX, hbY, hbW, hbH);
+          const ammoSegs = 8;
+          const ammoSegW = Math.floor(hbW / ammoSegs) - 2;
+          const filledAmmo = Math.round(frac * ammoSegs);
+          for (let k = 0; k < ammoSegs; k++) {
+            const asx = hbX + k * (ammoSegW + 2);
+            if (k < filledAmmo) {
+              ctx.fillStyle = ammo === 0 ? '#ff3322' : sw.color;
+              ctx.fillRect(asx, hbY, ammoSegW, hbH);
+              ctx.fillStyle = 'rgba(255,255,255,0.12)';
+              ctx.fillRect(asx, hbY, ammoSegW, 2);
+            } else {
+              ctx.fillStyle = '#0d0d1a';
+              ctx.fillRect(asx, hbY, ammoSegW, hbH);
+            }
+          }
         }
-        ctx.fillStyle = ammo===0 ? '#ff4444' : 'rgba(200,200,200,0.65)';
-        ctx.font='9px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(`${ammo} / ${sw.ammoMax}`, slotX+slotW/2, BY+47);
+        // ammo count text
+        ctx.fillStyle = ammo === 0 ? '#ff4444' : 'rgba(200,200,200,0.7)';
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(`${ammo}/${sw.ammoMax}`, slotX + slotW/2, slotY + 30);
       }
 
-      // hints row at bottom of slot
-      ctx.font='8px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-      if (!isActive && wkey !== 'pistol') {
-        ctx.fillStyle='rgba(180,180,180,0.4)';
-        ctx.fillText('[Q] swap', slotX+slotW/2, BY+HUD_H-4);
-      }
+      // hints at bottom
+      ctx.font = "5px 'Press Start 2P'";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       if (isActive) {
-        ctx.fillStyle='rgba(180,180,180,0.35)';
-        const swapHint = wkey==='pistol' ? '[Q] swap' : '[Q] pistol';
-        ctx.fillText(`${swapHint}  [I] info`, slotX+slotW/2, BY+HUD_H-4);
+        ctx.fillStyle = 'rgba(180,180,180,0.35)';
+        ctx.fillText('[Q][I]', slotX + slotW/2, slotY + slotH - 4);
+      } else if (wkey !== 'pistol') {
+        ctx.fillStyle = 'rgba(150,150,150,0.3)';
+        ctx.fillText('[Q]', slotX + slotW/2, slotY + slotH - 4);
       }
-      ctx.restore();
     }
 
     const pistolActive = player.weaponKey === 'pistol';
-    drawWeaponSlot(wepX, 'pistol', Infinity, pistolActive);
+    drawWeaponSlot(wepStartX, 'pistol', Infinity, pistolActive);
 
     if (player.secondaryKey) {
-      const secX = wepX + slotW + slotGap;
+      const secX = wepStartX + slotW + slotGap;
       const secAmmo = pistolActive ? player.secondaryAmmo : player.ammo;
       drawWeaponSlot(secX, player.secondaryKey, secAmmo, !pistolActive);
-      vDiv(secX + slotW + ipd);
+      vDiv(secX + slotW + ipd + 4);
     } else {
-      // empty secondary slot hint
-      ctx.save(); ctx.globalAlpha=0.25;
-      roundRect(ctx, wepX+slotW+slotGap, BY+8, slotW, HUD_H-16, 6, false, true);
-      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
-      roundRect(ctx, wepX+slotW+slotGap, BY+8, slotW, HUD_H-16, 6, false, true);
-      ctx.fillStyle='#888'; ctx.font='9px Segoe UI';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('MYSTERY BOX', wepX+slotW+slotGap+slotW/2, BY+HUD_H/2-6);
-      ctx.fillText('for secondary', wepX+slotW+slotGap+slotW/2, BY+HUD_H/2+6);
-      ctx.restore();
-      vDiv(wepX + slotW*2 + slotGap + ipd);
+      // empty secondary slot
+      const emptySlotX = wepStartX + slotW + slotGap;
+      pixelSlot(ctx, emptySlotX, slotY, slotW, slotH, '#141420', false);
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#888';
+      ctx.font = "5px 'Press Start 2P'";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('MYSTERY', emptySlotX + slotW/2, slotY + slotH/2 - 6);
+      ctx.fillText('BOX', emptySlotX + slotW/2, slotY + slotH/2 + 4);
+      ctx.fillText('2nd wpn', emptySlotX + slotW/2, slotY + slotH/2 + 14);
+      ctx.globalAlpha = 1;
+      vDiv(emptySlotX + slotW + ipd + 4);
     }
 
     // ── 3. Stat tiles ─────────────────────────────
     const stats = [
-      { icon:'⚔', label:'DAMAGE',    val:`+${player.upgrades.damage*20}%`,                                     col:'#ff7744', lvl:player.upgrades.damage    },
-      { icon:'⚡', label:'ATK SPD',   val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,  col:'#ffdd44', lvl:player.upgrades.atkSpeed  },
-      { icon:'★',  label:'CRIT',      val:`${player.upgrades.crit*10}%`,                                        col:'#bb44ff', lvl:player.upgrades.crit      },
-      { icon:'👟', label:'MOV SPD',   val:`+${player.upgrades.moveSpeed*15}%`,                                  col:'#44ffaa', lvl:player.upgrades.moveSpeed },
-      { icon:'❤',  label:'HP REGEN',  val:`${[0,2,5,8,11,15][player.upgrades.hpRegen]}/s`,                      col:'#ff4d6d', lvl:player.upgrades.hpRegen   },
+      { icon:'⚔', label:'DAMAGE',   val:`+${player.upgrades.damage*20}%`,                                     col:'#ff7744', lvl:player.upgrades.damage    },
+      { icon:'⚡', label:'ATK SPD',  val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,   col:'#ffdd44', lvl:player.upgrades.atkSpeed  },
+      { icon:'★',  label:'CRIT',     val:`${player.upgrades.crit*10}%`,                                         col:'#bb44ff', lvl:player.upgrades.crit      },
+      { icon:'👟', label:'MOV SPD',  val:`+${player.upgrades.moveSpeed*15}%`,                                   col:'#44ffaa', lvl:player.upgrades.moveSpeed },
+      { icon:'❤',  label:'HP REGEN', val:`${[0,2,5,8,11,15][player.upgrades.hpRegen]}/s`,                       col:'#ff4d6d', lvl:player.upgrades.hpRegen   },
     ];
-    const statStartX = wepX + slotW*2 + slotGap + ipd*2.5;
-    const statTileW  = Math.min(110, (W - statStartX - 160 - ipd*3) / stats.length);
+
+    const wepEndX = player.secondaryKey
+      ? wepStartX + slotW * 2 + slotGap + ipd + 6
+      : wepStartX + slotW * 2 + slotGap + ipd + 6;
+    const moneyW = 110;
+    const statAreaW = W - wepEndX - moneyW - ipd * 4;
+    const statTileW = Math.min(80, Math.floor((statAreaW - stats.length * 4) / stats.length));
+    const statTileH = slotH;
+    const statStartX = wepEndX + 4;
 
     stats.forEach((s, i) => {
-      const sx = statStartX + i * (statTileW + 6);
-      const sy = BY + 8;
-      const sh = HUD_H - 16;
-
-      // tile bg
-      ctx.fillStyle = 'rgba(255,255,255,0.03)';
-      roundRect(ctx, sx, sy, statTileW, sh, 5, true, false);
-      ctx.strokeStyle = s.lvl > 0 ? s.col+'44' : 'rgba(60,50,100,0.5)';
-      ctx.lineWidth = 1;
-      roundRect(ctx, sx, sy, statTileW, sh, 5, false, true);
+      const sx = statStartX + i * (statTileW + 4);
+      const sy = slotY;
+      const activeBg = s.lvl > 0 ? s.col + '22' : '#1a1a30';
+      pixelSlot(ctx, sx, sy, statTileW, statTileH, activeBg, s.lvl > 0);
 
       // icon
-      ctx.font = '13px Segoe UI'; ctx.textAlign='left'; ctx.textBaseline='top';
-      ctx.fillStyle = s.col;
-      ctx.fillText(s.icon, sx+7, sy+7);
+      ctx.font = '14px Segoe UI';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = s.lvl > 0 ? s.col : 'rgba(100,90,130,0.6)';
+      ctx.fillText(s.icon, sx + statTileW/2, sy + 4);
 
       // label
-      ctx.font = 'bold 8px Segoe UI'; ctx.fillStyle='rgba(180,170,210,0.6)';
-      ctx.textAlign='right';
-      ctx.fillText(s.label, sx+statTileW-6, sy+8);
+      ctx.font = "5px 'Press Start 2P'";
+      ctx.fillStyle = 'rgba(150,140,200,0.7)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(s.label, sx + statTileW/2, sy + 22);
 
       // value
-      ctx.font = `bold 14px Segoe UI`; ctx.fillStyle = s.lvl>0 ? s.col : 'rgba(120,110,150,0.7)';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(s.val, sx+statTileW/2, BY+38);
+      ctx.font = "7px 'Press Start 2P'";
+      ctx.fillStyle = s.lvl > 0 ? s.col : 'rgba(120,110,150,0.5)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.val, sx + statTileW/2, sy + statTileH/2 + 4);
 
-      // level pips
-      const segW=(statTileW-14)/5;
-      for(let k=0;k<5;k++){
-        ctx.fillStyle = k<s.lvl ? s.col : 'rgba(255,255,255,0.08)';
-        ctx.fillRect(sx+7+k*(segW+1), BY+HUD_H-14, segW, 3);
+      // 5 level squares at bottom
+      const sqW = 7, sqH = 4, sqGap = 2;
+      const totalSqW = 5 * sqW + 4 * sqGap;
+      const sqStartX = sx + (statTileW - totalSqW) / 2;
+      for (let k = 0; k < 5; k++) {
+        ctx.fillStyle = k < s.lvl ? s.col : 'rgba(255,255,255,0.1)';
+        ctx.fillRect(sqStartX + k * (sqW + sqGap), sy + statTileH - 8, sqW, sqH);
       }
     });
 
-    const afterStats = statStartX + stats.length*(statTileW+6) + ipd;
+    const afterStats = statStartX + stats.length * (statTileW + 4) + ipd;
     vDiv(afterStats);
 
     // ── 4. Money ──────────────────────────────────
     const monX = afterStats + ipd;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='bold 9px Segoe UI'; ctx.fillStyle='rgba(245,197,24,0.55)';
-    ctx.fillText('GOLD', monX + 55, BY+16);
-    ctx.font=`bold ${Math.round(HUD_H*.38)}px Segoe UI`;
-    ctx.fillStyle='#f5c518';
-    ctx.fillText(`$${player.money}`, monX+55, midY+4);
+    ctx.font = "6px 'Press Start 2P'";
+    ctx.fillStyle = 'rgba(245,197,24,0.6)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('GOLD', monX + moneyW/2, BY + 14);
+    ctx.font = "14px 'Press Start 2P'";
+    ctx.fillStyle = '#f5c518';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`$${player.money}`, monX + moneyW/2, BY + HUD_H/2 + 6);
 
-    // ── 5. Active perk tiles (bottom-right) ───────
+    // ── 5. Active perk tiles ───────────────────────
     const PERK_DEFS = [
       { key:'doublePoints', icon:'2×', label:'DOUBLE GOLD', col:'#ffd700', glow:'rgba(255,200,0,0.35)' },
       { key:'magnet',       icon:'🧲', label:'MAGNET',      col:'#60ccff', glow:'rgba(50,150,255,0.3)' },
     ];
     const activePerks = PERK_DEFS.filter(pd => activePerkTimers[pd.key] > 0);
     if (activePerks.length > 0) {
-      const tileW = 68, tileH = HUD_H - 16, tileGap = 6;
+      const tileW = 68, tileH = slotH, tileGap = 6;
       const totalW = activePerks.length * (tileW + tileGap) - tileGap;
       let px2 = W - ipd - totalW;
 
@@ -597,63 +686,50 @@ function drawHUD() {
       activePerks.forEach(pd => {
         const timer = activePerkTimers[pd.key];
         const frac  = timer / PERK_DURATION;
-        const tx = px2, ty = BY + 8;
-
-        ctx.save();
-
-        // Glow pulse
-        const gp = Math.sin(performance.now() / 400) * 0.5 + 0.5;
-        ctx.shadowColor = pd.col; ctx.shadowBlur = 6 + gp * 8;
-
-        // Tile bg — brightens as timer is high
-        ctx.fillStyle = `rgba(${pd.col==='#ffd700'?'60,40,0':'0,20,55'},${0.7+gp*0.15})`;
-        roundRect(ctx, tx, ty, tileW, tileH, 7, true, false);
-        ctx.shadowBlur = 0;
-
-        // Border (flashes when < 3s left)
+        const tx = px2, ty = slotY;
         const lowTime = timer < 180;
-        const flashAlpha = lowTime ? 0.5 + Math.sin(performance.now()/120)*0.5 : 0.7;
-        ctx.strokeStyle = pd.col + Math.round(flashAlpha * 255).toString(16).padStart(2,'0');
-        ctx.lineWidth = lowTime ? 2 : 1.5;
-        roundRect(ctx, tx, ty, tileW, tileH, 7, false, true);
+
+        const gp = Math.sin(performance.now() / 400) * 0.5 + 0.5;
+        const perkBg = lowTime
+          ? (Math.floor(performance.now() / 120) % 2 === 0 ? '#251500' : '#1a0f00')
+          : '#1a1a30';
+        pixelSlot(ctx, tx, ty, tileW, tileH, perkBg, true);
 
         // Big icon
+        ctx.font = '18px Segoe UI';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const isEmoji = pd.icon.length > 1 || pd.icon.codePointAt(0) > 127;
-        ctx.font = isEmoji ? `18px Segoe UI` : `bold 18px Segoe UI`;
         ctx.fillStyle = pd.col;
-        ctx.shadowColor = pd.col; ctx.shadowBlur = 8;
-        ctx.fillText(pd.icon, tx + tileW / 2, ty + tileH * 0.32);
-        ctx.shadowBlur = 0;
+        ctx.fillText(pd.icon, tx + tileW/2, ty + tileH * 0.30);
 
         // Label
-        ctx.font = 'bold 7px Segoe UI';
-        ctx.fillStyle = 'rgba(200,200,200,0.6)';
-        ctx.fillText(pd.label, tx + tileW / 2, ty + tileH * 0.58);
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.fillStyle = 'rgba(200,200,200,0.65)';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(pd.label, tx + tileW/2, ty + tileH * 0.58);
 
-        // Timer bar track
-        const barX = tx + 5, barY = ty + tileH - 13, barW = tileW - 10, barH = 6;
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.fillRect(barX, barY, barW, barH);
-
-        // Timer bar fill — color shifts red when low
-        const barCol = lowTime
-          ? `hsl(${Math.round(frac * 60)},90%,55%)`
-          : pd.col;
-        ctx.fillStyle = barCol;
-        ctx.fillRect(barX, barY, barW * frac, barH);
-
-        // Gloss on bar
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(barX, barY, barW * frac, barH / 2);
+        // Segmented timer bar (10 blocks)
+        const barX = tx + 5, barY = ty + tileH - 14, barW = tileW - 10, barH = 6;
+        const timerSegs = 10;
+        const timerSegW = Math.floor(barW / timerSegs) - 1;
+        const filledTimer = Math.round(frac * timerSegs);
+        for (let k = 0; k < timerSegs; k++) {
+          const tsx = barX + k * (timerSegW + 1);
+          if (k < filledTimer) {
+            ctx.fillStyle = lowTime ? `hsl(${Math.round(frac*60)},90%,55%)` : pd.col;
+            ctx.fillRect(tsx, barY, timerSegW, barH);
+          } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(tsx, barY, timerSegW, barH);
+          }
+        }
 
         // Seconds text
-        ctx.font = 'bold 8px Segoe UI';
-        ctx.fillStyle = lowTime ? barCol : 'rgba(255,255,255,0.55)';
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.fillStyle = lowTime ? '#ff6644' : 'rgba(255,255,255,0.55)';
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        ctx.fillText(Math.ceil(timer / 60) + 's', tx + tileW / 2, barY - 1);
+        ctx.fillText(Math.ceil(timer / 60) + 's', tx + tileW/2, barY - 1);
 
-        ctx.restore();
         px2 += tileW + tileGap;
       });
     }

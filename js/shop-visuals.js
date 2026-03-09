@@ -24,7 +24,7 @@ function drawShopMarker() {
   // "SHOP" label above
   ctx.save();
   ctx.textAlign='center'; ctx.textBaseline='bottom';
-  ctx.font=`bold ${Math.round(TH*.35)}px Segoe UI`;
+  ctx.font=`bold ${Math.round(TH*.32)}px 'Press Start 2P'`;
   ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillText('SHOP',px+1,py-sz*.7+1);
   ctx.fillStyle=`rgba(100,220,255,${0.7+pulse*0.3})`; ctx.fillText('SHOP',px,py-sz*.7);
   ctx.restore();
@@ -43,136 +43,245 @@ function drawShopMarker() {
 function drawPerkShopUI() {
   if (!perkShopOpen) return;
   const W=canvas.width, H=canvas.height;
-  const pw=Math.min(460,W*.44), ph=Math.min(310,H*.50);
-  const px=W/2-pw/2, py=H-ph-HUD_H-12;
+  const pw=500, ph=360;
+  const px=W/2-pw/2, py=H-ph-HUD_H-16;
 
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,0.78)';
-  roundRect(ctx,px,py,pw,ph,12,true,false);
-  ctx.strokeStyle='rgba(40,220,130,0.55)'; ctx.lineWidth=1.5;
-  roundRect(ctx,px,py,pw,ph,12,false,true);
+
+  // Main background panel
+  pixelPanel(ctx, px, py, pw, ph, '#111120');
+
+  // Top strip (32px)
+  const stripH = 32;
+  ctx.fillStyle = '#0a0a1e';
+  ctx.fillRect(px + 2, py + 2, pw - 4, stripH - 2);
+  ctx.fillStyle = '#1a1a3a';
+  ctx.fillRect(px + 2, py + 2 + stripH - 2, pw - 4, 1);
 
   // Title
-  ctx.fillStyle='#44ffaa'; ctx.font=`bold ${Math.round(H*.027)}px Segoe UI`;
-  ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.shadowColor='#20ee80'; ctx.shadowBlur=8;
-  ctx.fillText('✨  PERK SHOP  ✨', px+pw/2, py+14);
-  ctx.shadowBlur=0;
-  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(px+16,py+44,pw-32,1);
+  ctx.font = "9px 'Press Start 2P'";
+  ctx.fillStyle = '#44ffaa';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('\u2728 PERK SHOP', px + 14, py + 2 + stripH/2);
 
-  // Money
-  ctx.fillStyle='#f5c518'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
-  ctx.textAlign='center'; ctx.fillText(`$${player.money}`, px+pw/2, py+52);
+  // Gold coin right-aligned in strip
+  ctx.font = "8px 'Press Start 2P'";
+  ctx.fillStyle = '#f5c518';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText(`$${player.money}`, px + pw - 14, py + 2 + stripH/2);
 
-  const itemH=(ph-108)/PERK_SHOP_ITEMS.length;
-  PERK_SHOP_ITEMS.forEach((item,i)=>{
-    const lvl=player.perks[item.key];
-    const maxed=lvl>=item.maxLevel;
-    const cost=maxed?0:item.price(lvl);
-    const canAfford=!maxed&&player.money>=cost;
-    const iy=py+88+i*itemH;
+  // Horizontal divider
+  ctx.fillStyle = '#2a2a4e';
+  ctx.fillRect(px + 2, py + 2 + stripH, pw - 4, 2);
 
-    ctx.fillStyle=canAfford?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.025)';
-    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,true,false);
-    ctx.strokeStyle=canAfford?item.color+'88':'rgba(255,255,255,0.1)'; ctx.lineWidth=1;
-    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,false,true);
+  const itemAreaY = py + 2 + stripH + 2;
+  const itemAreaH = ph - stripH - 6 - 22; // leave room for close hint
+  const count = PERK_SHOP_ITEMS.length;
+  const rowH = Math.floor(itemAreaH / count);
 
-    // Key hint
-    ctx.fillStyle=canAfford?item.color:'#555'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
-    ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText(`[${i+1}]`, px+22, iy+itemH*.35);
+  PERK_SHOP_ITEMS.forEach((item, i) => {
+    const lvl = player.perks[item.key];
+    const maxed = lvl >= item.maxLevel;
+    const cost = maxed ? 0 : item.price(lvl);
+    const canAfford = !maxed && player.money >= cost;
+    const iy = itemAreaY + i * rowH;
 
-    // Icon + name
-    ctx.fillStyle=maxed?'#888':item.color;
-    ctx.fillText(`${item.icon} ${item.name}`, px+58, iy+itemH*.35);
+    // Row background
+    const rowBg = canAfford ? item.color + '18' : 'rgba(255,255,255,0.04)';
+    ctx.fillStyle = rowBg;
+    ctx.fillRect(px + 2, iy, pw - 4, rowH);
 
-    // Level pips
-    for (let l=0;l<item.maxLevel;l++) {
-      ctx.fillStyle=l<lvl?item.color:'rgba(255,255,255,0.15)';
-      ctx.beginPath(); ctx.arc(px+pw-28-l*16,iy+itemH*.35,5,0,Math.PI*2); ctx.fill();
+    // Row separator
+    if (i > 0) {
+      ctx.fillStyle = '#1e1e2e';
+      ctx.fillRect(px + 2, iy, pw - 4, 1);
+    }
+
+    // Key hint on far left
+    ctx.font = "6px 'Press Start 2P'";
+    ctx.fillStyle = canAfford ? item.color : 'rgba(100,100,120,0.6)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`[${i+1}]`, px + 8, iy + rowH/2);
+
+    // Icon slot (40x rowH, left side)
+    const iconSlotX = px + 30;
+    const iconSlotH = Math.min(40, rowH - 4);
+    const iconSlotY = iy + (rowH - iconSlotH) / 2;
+    pixelSlot(ctx, iconSlotX, iconSlotY, 40, iconSlotH, maxed ? '#141428' : item.color + '22', !maxed && canAfford);
+    ctx.font = '16px Segoe UI';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = maxed ? '#555' : item.color;
+    ctx.fillText(item.icon, iconSlotX + 20, iconSlotY + iconSlotH/2);
+
+    // Item name
+    const textX = iconSlotX + 48;
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.fillStyle = maxed ? '#444' : item.color;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(item.name, textX, iy + 6);
+
+    // Level squares (5 squares, 8x8, 2px gap)
+    const sqY = iy + 20;
+    for (let l = 0; l < item.maxLevel; l++) {
+      ctx.fillStyle = l < lvl ? item.color : 'rgba(255,255,255,0.1)';
+      ctx.fillRect(textX + l * 10, sqY, 8, 8);
     }
 
     // Description
-    ctx.fillStyle=maxed?'#555':'#aaa'; ctx.font=`${Math.round(H*.017)}px Segoe UI`;
-    ctx.textAlign='left';
-    ctx.fillText(maxed?'MAX LEVEL':item.desc(lvl), px+22, iy+itemH*.72);
+    ctx.font = "10px 'VT323', monospace";
+    ctx.fillStyle = maxed ? '#555' : 'rgba(180,170,210,0.75)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(maxed ? 'MAX LEVEL' : item.desc(lvl), textX, iy + 33);
 
-    // Price
+    // Price badge (far right) — pixelPanel 56x22
     if (!maxed) {
-      ctx.fillStyle=canAfford?'#f5c518':'#c84444'; ctx.textAlign='right';
-      ctx.fillText(`$${cost}`, px+pw-20, iy+itemH*.72);
+      const badgeX = px + pw - 70;
+      const badgeY = iy + (rowH - 22) / 2;
+      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1e1e00');
+      ctx.font = "7px 'Press Start 2P'";
+      ctx.fillStyle = canAfford ? '#f5c518' : '#cc4444';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`$${cost}`, badgeX + 28, badgeY + 11);
+    } else {
+      // MAX badge
+      const badgeX = px + pw - 70;
+      const badgeY = iy + (rowH - 22) / 2;
+      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1a1a1a');
+      ctx.font = "7px 'Press Start 2P'";
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('MAX', badgeX + 28, badgeY + 11);
     }
   });
 
-  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font=`${Math.round(H*.016)}px Segoe UI`;
-  ctx.textAlign='center'; ctx.textBaseline='bottom';
-  ctx.fillText('[E] Close', px+pw/2, py+ph-8);
+  // Bottom close hint
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('[E] CLOSE', px + pw/2, py + ph - 6);
+
   ctx.restore();
 }
 
 function drawShopUI() {
   if (!shopOpen) return;
   const W=canvas.width, H=canvas.height;
-  const pw=Math.min(480,W*.46), ph=Math.min(340,H*.52);
-  const px=W/2-pw/2, py=H-ph-HUD_H-12; // centered, sits above bottom bar
+  const pw=500, ph=360;
+  const px=W/2-pw/2, py=H-ph-HUD_H-16;
 
-  // Backdrop
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,0.72)';
-  roundRect(ctx,px,py,pw,ph,12,true,false);
-  ctx.strokeStyle='rgba(80,220,255,0.5)'; ctx.lineWidth=1.5;
-  roundRect(ctx,px,py,pw,ph,12,false,true);
+
+  // Main background panel
+  pixelPanel(ctx, px, py, pw, ph, '#111120');
+
+  // Top strip (32px)
+  const stripH = 32;
+  ctx.fillStyle = '#0a0a1e';
+  ctx.fillRect(px + 2, py + 2, pw - 4, stripH - 2);
+  ctx.fillStyle = '#1a1a3a';
+  ctx.fillRect(px + 2, py + 2 + stripH - 2, pw - 4, 1);
 
   // Title
-  ctx.fillStyle='#44ccff'; ctx.font=`bold ${Math.round(H*.028)}px Segoe UI`;
-  ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.fillText('⚙  SHOP  ⚙', px+pw/2, py+14);
-  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(px+16,py+44,pw-32,1);
+  ctx.font = "9px 'Press Start 2P'";
+  ctx.fillStyle = '#44ccff';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('\u2694 WEAPON SHOP', px + 14, py + 2 + stripH/2);
 
-  // Money display
-  ctx.fillStyle='#f5c518'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
-  ctx.textAlign='center';
-  ctx.fillText(`$${player.money}`, px+pw/2, py+52);
+  // Gold coin right-aligned in strip
+  ctx.font = "8px 'Press Start 2P'";
+  ctx.fillStyle = '#f5c518';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText(`$${player.money}`, px + pw - 14, py + 2 + stripH/2);
 
-  // Items
-  const itemH=(ph-110)/SHOP_ITEMS.length;
-  SHOP_ITEMS.forEach((item,i)=>{
-    const lvl=player.upgrades[item.key];
-    const maxed=lvl>=item.maxLevel;
-    const cost=maxed?0:item.price(lvl);
-    const canAfford=!maxed&&player.money>=cost;
-    const iy=py+90+i*itemH;
-    // Item bg
-    ctx.fillStyle=canAfford?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.025)';
-    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,true,false);
-    ctx.strokeStyle=canAfford?item.color+'88':'rgba(255,255,255,0.1)'; ctx.lineWidth=1;
-    roundRect(ctx,px+12,iy,pw-24,itemH-8,8,false,true);
-    // Key hint
-    ctx.fillStyle=canAfford?item.color:'#555'; ctx.font=`bold ${Math.round(H*.022)}px Segoe UI`;
-    ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText(`[${i+1}]`, px+22, iy+itemH*.35);
-    // Icon + name
-    ctx.fillStyle=maxed?'#888':item.color;
-    ctx.fillText(`${item.icon} ${item.name}`, px+58, iy+itemH*.35);
-    // Level pips
-    for (let l=0;l<item.maxLevel;l++) {
-      ctx.fillStyle=l<lvl?item.color:'rgba(255,255,255,0.15)';
-      ctx.beginPath(); ctx.arc(px+pw-28-l*16,iy+itemH*.35,5,0,Math.PI*2); ctx.fill();
+  // Horizontal divider
+  ctx.fillStyle = '#2a2a4e';
+  ctx.fillRect(px + 2, py + 2 + stripH, pw - 4, 2);
+
+  const itemAreaY = py + 2 + stripH + 2;
+  const itemAreaH = ph - stripH - 6 - 22;
+  const count = SHOP_ITEMS.length;
+  const rowH = Math.floor(itemAreaH / count);
+
+  SHOP_ITEMS.forEach((item, i) => {
+    const lvl = player.upgrades[item.key];
+    const maxed = lvl >= item.maxLevel;
+    const cost = maxed ? 0 : item.price(lvl);
+    const canAfford = !maxed && player.money >= cost;
+    const iy = itemAreaY + i * rowH;
+
+    // Row background
+    const rowBg = canAfford ? item.color + '18' : 'rgba(255,255,255,0.04)';
+    ctx.fillStyle = rowBg;
+    ctx.fillRect(px + 2, iy, pw - 4, rowH);
+
+    // Row separator
+    if (i > 0) {
+      ctx.fillStyle = '#1e1e2e';
+      ctx.fillRect(px + 2, iy, pw - 4, 1);
     }
+
+    // Key hint on far left
+    ctx.font = "6px 'Press Start 2P'";
+    ctx.fillStyle = canAfford ? item.color : 'rgba(100,100,120,0.6)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`[${i+1}]`, px + 8, iy + rowH/2);
+
+    // Icon slot (40x rowH, left side)
+    const iconSlotX = px + 30;
+    const iconSlotH = Math.min(40, rowH - 4);
+    const iconSlotY = iy + (rowH - iconSlotH) / 2;
+    pixelSlot(ctx, iconSlotX, iconSlotY, 40, iconSlotH, maxed ? '#141428' : item.color + '22', !maxed && canAfford);
+    ctx.font = '16px Segoe UI';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = maxed ? '#555' : item.color;
+    ctx.fillText(item.icon, iconSlotX + 20, iconSlotY + iconSlotH/2);
+
+    // Item name
+    const textX = iconSlotX + 48;
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.fillStyle = maxed ? '#444' : item.color;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(item.name, textX, iy + 6);
+
+    // Level squares (5 squares, 8x8, 2px gap)
+    const sqY = iy + 20;
+    for (let l = 0; l < item.maxLevel; l++) {
+      ctx.fillStyle = l < lvl ? item.color : 'rgba(255,255,255,0.1)';
+      ctx.fillRect(textX + l * 10, sqY, 8, 8);
+    }
+
     // Description
-    ctx.fillStyle=maxed?'#555':'#aaa'; ctx.font=`${Math.round(H*.017)}px Segoe UI`;
-    ctx.textAlign='left';
-    ctx.fillText(maxed?'MAX LEVEL':item.desc(lvl), px+22, iy+itemH*.72);
-    // Price
+    ctx.font = "10px 'VT323', monospace";
+    ctx.fillStyle = maxed ? '#555' : 'rgba(180,170,210,0.75)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(maxed ? 'MAX LEVEL' : item.desc(lvl), textX, iy + 33);
+
+    // Price badge (far right) — pixelPanel 56x22
     if (!maxed) {
-      ctx.fillStyle=canAfford?'#f5c518':'#c84444'; ctx.textAlign='right';
-      ctx.fillText(`$${cost}`, px+pw-20, iy+itemH*.72);
+      const badgeX = px + pw - 70;
+      const badgeY = iy + (rowH - 22) / 2;
+      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1e1e00');
+      ctx.font = "7px 'Press Start 2P'";
+      ctx.fillStyle = canAfford ? '#f5c518' : '#cc4444';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`$${cost}`, badgeX + 28, badgeY + 11);
+    } else {
+      // MAX badge
+      const badgeX = px + pw - 70;
+      const badgeY = iy + (rowH - 22) / 2;
+      pixelPanel(ctx, badgeX, badgeY, 56, 22, '#1a1a1a');
+      ctx.font = "7px 'Press Start 2P'";
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('MAX', badgeX + 28, badgeY + 11);
     }
   });
 
-  // Close hint
-  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font=`${Math.round(H*.016)}px Segoe UI`;
-  ctx.textAlign='center'; ctx.textBaseline='bottom';
-  ctx.fillText('[E] Close', px+pw/2, py+ph-8);
+  // Bottom close hint
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('[E] CLOSE', px + pw/2, py + ph - 6);
+
   ctx.restore();
 }
