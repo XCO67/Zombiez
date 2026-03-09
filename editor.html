@@ -95,6 +95,15 @@
   <div class="s-sec">Tiles</div>
   <div id="tool-list"></div>
 
+  <div class="s-sec">Map Size</div>
+  <div id="size-area" style="padding:8px 10px;display:flex;flex-direction:column;gap:7px;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)">
+      W <input id="inp-w" type="number" value="40" min="8" max="500" style="width:56px;background:#0e0e1a;border:1px solid var(--border2);color:#fff;padding:4px 6px;border-radius:4px;font-size:12px;font-family:inherit">
+      H <input id="inp-h" type="number" value="28" min="8" max="500" style="width:56px;background:#0e0e1a;border:1px solid var(--border2);color:#fff;padding:4px 6px;border-radius:4px;font-size:12px;font-family:inherit">
+    </div>
+    <button class="tbtn" onclick="applySize()" style="justify-content:center;font-size:11px">Apply Size</button>
+  </div>
+
   <div class="s-sec">Assets</div>
   <div id="asset-list"></div>
 
@@ -139,7 +148,7 @@
   <div id="statusbar">
     <span>Tool: <b id="st-tool">Wall</b></span>
     <span>Cursor: <b id="st-pos">—</b></span>
-    <span id="st-assets"></span>
+    <span>Size: <b id="st-size">40 × 28</b></span>
     <span style="margin-left:auto">Right-click = erase to Wall</span>
   </div>
 </div>
@@ -220,7 +229,7 @@ function newMap() {
   );
   initDefaultObjects();
   document.getElementById('map-name-inp').value = 'My Map';
-  syncCanvasSize();
+  syncSizeInputs();
   redraw();
   toast('New map created', 'inf');
 }
@@ -256,7 +265,7 @@ function loadDefault() {
   // Player start (id 6)
   mapData[13][19] = 6;
   initDefaultObjects();
-  syncCanvasSize();
+  syncSizeInputs();
   redraw();
   toast('Default map loaded', 'inf');
 }
@@ -279,7 +288,7 @@ function loadMapFromData(m) {
   }
   document.getElementById('map-name-inp').value = m.name || 'Map';
   editId = m.id;
-  syncCanvasSize();
+  syncSizeInputs();
   redraw();
 }
 
@@ -335,7 +344,25 @@ function undo() {
   const s = undoStack.pop();
   mapData = s.data; objects = s.objects; torches = s.torches;
   mapW = mapData[0].length; mapH = mapData.length;
-  syncCanvasSize(); redraw();
+  syncSizeInputs(); redraw();
+}
+
+function applySize() {
+  const w = Math.max(8, Math.min(500, parseInt(document.getElementById('inp-w').value)||40));
+  const h = Math.max(8, Math.min(500, parseInt(document.getElementById('inp-h').value)||28));
+  saveUndo();
+  const newData = Array.from({length:h},(_,r)=>
+    Array.from({length:w},(_,c)=>(r<mapH&&c<mapW)?mapData[r][c]:0)
+  );
+  mapData=newData; mapW=w; mapH=h;
+  syncSizeInputs();
+  redraw();
+}
+
+function syncSizeInputs() {
+  document.getElementById('inp-w').value = mapW;
+  document.getElementById('inp-h').value = mapH;
+  document.getElementById('st-size').textContent = `${mapW} × ${mapH}`;
 }
 
 // ── TOOLBAR BUILDERS ─────────────────────────────────────────────────────────
@@ -457,13 +484,6 @@ function placeAsset(e) {
 }
 
 // ── DRAW ─────────────────────────────────────────────────────────────────────
-function syncCanvasSize() {
-  const ts = TS();
-  canvas.width  = mapW * ts;
-  canvas.height = mapH * ts;
-  document.getElementById('map-size-label')?.remove?.();
-}
-
 function redraw() {
   const ts = TS();
   canvas.width  = mapW * ts;
