@@ -36,8 +36,8 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 'q' && game.state === 'playing' && !shopOpen) swapWeapon();
   if (e.key.toLowerCase() === 'i' && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
     weaponInfoOpen = !weaponInfoOpen;
-  // Dash ability (Enter)
-  if (e.key === 'Enter' && game.state === 'playing' && !player.dead && !player.downed
+  // Dash ability (Space)
+  if (e.key === ' ' && game.state === 'playing' && !player.dead && !player.downed
       && player.dashCooldown <= 0 && player.dashTimer <= 0) {
     player.dashTimer    = DASH_FRAMES;
     player.dashCooldown = DASH_COOLDOWN;

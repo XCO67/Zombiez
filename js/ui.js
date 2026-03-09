@@ -713,7 +713,7 @@ function drawHUD() {
     ctx.font = "11px 'VT323'";
     ctx.fillStyle = 'rgba(140,180,220,0.45)';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('[ENTER]', arcCx, dashSlotY + dashSlotH - 3);
+    ctx.fillText('[SPACE]', arcCx, dashSlotY + dashSlotH - 3);
 
     vDiv(abilX + abilSecW + ipd + 2);
 
