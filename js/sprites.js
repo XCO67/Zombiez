@@ -12,8 +12,8 @@ function loadFrames(base, dir, n) {
 
 const charWalk = {}, charIdle = {};
 DIRS.forEach(d => {
-  charWalk[d] = loadFrames('character/animations/walk', d, 6);
-  const img = new Image(); img.src = `character/rotations/${d}.png`; charIdle[d] = img;
+  charWalk[d] = loadFrames('wizard/animations/walk', d, 6);
+  const img = new Image(); img.src = `wizard/rotations/${d}.png`; charIdle[d] = img;
 });
 
 const zWalk = {};
