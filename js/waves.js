@@ -10,7 +10,7 @@ function dragonCount(round) {
 }
 
 function bossCount(round) {
-  return round >= 15 ? 1 : 0;
+  return round === 15 ? 1 : 0;  // Eye Demon appears on round 15 only
 }
 
 function lavaZombieCount(round) {
@@ -57,7 +57,8 @@ function restartGame() {
     downed:false, downedTimer:0, reviveProgress:0});
   player.packedWeapons = new Set();
   player.pistolSpread = 0;
-  player.perks = { magnet:0, shield:0, lifesteal:0 };
+  player.spreadOrbs = 0;
+  player.perks = { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 };
   player.shield = 0; player.shieldRechargeTimer = 0;
   perkShopOpen = false;
   Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false});

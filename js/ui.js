@@ -169,6 +169,10 @@ function drawMinimap() {
   ctx.fillStyle = '#44ffaa';
   ctx.fillRect(mmX + PERK_VENDOR_POS.cx * cW - 1, mapOffY + PERK_VENDOR_POS.cy * cH - 1, 2, 2);
 
+  // Pistol vendor marker: 2x2 steel-blue
+  ctx.fillStyle = '#60aaff';
+  ctx.fillRect(mmX + PISTOL_VENDOR_POS.cx * cW - 1, mapOffY + PISTOL_VENDOR_POS.cy * cH - 1, 2, 2);
+
   // Player: blinking white 3x3
   const playerBlink = Math.floor(performance.now() / 300) % 2 === 0;
   ctx.fillStyle = playerBlink ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.5)';
@@ -209,7 +213,7 @@ function drawWeaponInfo() {
   const isPapped = player.packedWeapons && player.packedWeapons.has(wkey);
 
   // Computed stats
-  const dmgMult  = 1 + player.upgrades.damage * 0.20;
+  const dmgMult  = Math.pow(1.5, player.upgrades.damage);
   const papMult  = isPapped ? 3 : 1;
   const baseDmg  = Math.round(w.baseDmg * dmgMult * papMult);
   const critDmg  = baseDmg * 2;
@@ -592,13 +596,11 @@ function drawHUD() {
       vDiv(emptySlotX + slotW + ipd + 2);
     }
 
-    // ── 3. Stat tiles ─────────────────────────────
+    // ── 3. Stat tiles (weapon shop upgrades only) ──────────
     const stats = [
-      { icon:'⚔', label:'DMG',    val:`+${player.upgrades.damage*20}%`,                                     col:'#ff7744', lvl:player.upgrades.damage    },
-      { icon:'⚡', label:'ATKSPD', val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,   col:'#ffdd44', lvl:player.upgrades.atkSpeed  },
-      { icon:'★',  label:'CRIT',   val:`${player.upgrades.crit*10}%`,                                         col:'#bb44ff', lvl:player.upgrades.crit      },
-      { icon:'👟', label:'SPEED',  val:`+${player.upgrades.moveSpeed*15}%`,                                   col:'#44ffaa', lvl:player.upgrades.moveSpeed },
-      { icon:'❤',  label:'REGEN',  val:`${[0,2,5,8,11,15][player.upgrades.hpRegen]}/s`,                       col:'#ff4d6d', lvl:player.upgrades.hpRegen   },
+      { icon:'⚔', label:'DMG',    val:`×${Math.pow(1.5,player.upgrades.damage).toFixed(2)}`,                 col:'#ff7744', lvl:player.upgrades.damage   },
+      { icon:'⚡', label:'ATKSPD', val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,    col:'#ffdd44', lvl:player.upgrades.atkSpeed },
+      { icon:'★',  label:'CRIT',   val:`${player.upgrades.crit*10}%`,                                          col:'#bb44ff', lvl:player.upgrades.crit     },
     ];
 
     const wepEndX = wepStartX + slotW * 2 + slotGap + ipd + 4;
@@ -656,66 +658,122 @@ function drawHUD() {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(`$${player.money}`, monX + moneyW/2, BY + HUD_H/2 + 8);
 
-    // ── 5. Active perk tiles ───────────────────────
-    const PERK_DEFS = [
-      { key:'doublePoints', icon:'2×', label:'DBL GOLD', col:'#ffd700' },
-      { key:'magnet',       icon:'🧲', label:'MAGNET',   col:'#60ccff' },
-    ];
-    const activePerks = PERK_DEFS.filter(pd => activePerkTimers[pd.key] > 0);
-    if (activePerks.length > 0) {
-      const tileW = 70, tileGap = 5;
-      const totalW = activePerks.length * (tileW + tileGap) - tileGap;
-      let px2 = W - ipd - totalW;
+    // ── 5. Right side: permanent perks + temp perks + orb inventory ────────────
+    {
+      // Build right-side tile list
+      const rightTiles = [];
 
-      vDiv(px2 - ipd);
+      // Temporary perks (with countdown)
+      const TEMP_DEFS = [
+        { key:'doublePoints', icon:'2×', label:'DBL GOLD', col:'#ffd700', temp:true },
+        { key:'magnet',       icon:'🧲', label:'MAGNET',   col:'#60ccff', temp:true },
+      ];
+      TEMP_DEFS.forEach(pd => { if (activePerkTimers[pd.key] > 0) rightTiles.push(pd); });
 
-      activePerks.forEach(pd => {
-        const timer = activePerkTimers[pd.key];
-        const frac  = timer / PERK_DURATION;
-        const tx = px2, ty = slotY;
-        const lowTime = timer < 180;
-
-        const perkBg = lowTime
-          ? (Math.floor(performance.now() / 120) % 2 === 0 ? '#251500' : '#1a0f00')
-          : '#1a1a30';
-        pixelSlot(ctx, tx, ty, tileW, slotH, perkBg, true);
-
-        // Big icon
-        ctx.font = '18px Segoe UI';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillStyle = pd.col;
-        ctx.fillText(pd.icon, tx + tileW/2, ty + 5);
-
-        // Label
-        ctx.font = "14px 'VT323'";
-        ctx.fillStyle = 'rgba(200,200,200,0.8)';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(pd.label, tx + tileW/2, ty + 26);
-
-        // Timer text
-        ctx.font = "15px 'VT323'";
-        ctx.fillStyle = lowTime ? '#ff6644' : 'rgba(255,255,255,0.65)';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(Math.ceil(timer / 60) + 's', tx + tileW/2, ty + 42);
-
-        // Segmented timer bar near bottom
-        const barX = tx + 5, barY = ty + slotH - 11, barW = tileW - 10, barH = 6;
-        const timerSegs = 10;
-        const timerSegW = Math.floor(barW / timerSegs) - 1;
-        const filledTimer = Math.round(frac * timerSegs);
-        for (let k = 0; k < timerSegs; k++) {
-          const tsx = barX + k * (timerSegW + 1);
-          if (k < filledTimer) {
-            ctx.fillStyle = lowTime ? `hsl(${Math.round(frac*60)},90%,55%)` : pd.col;
-            ctx.fillRect(tsx, barY, timerSegW, barH);
-          } else {
-            ctx.fillStyle = 'rgba(255,255,255,0.08)';
-            ctx.fillRect(tsx, barY, timerSegW, barH);
-          }
-        }
-
-        px2 += tileW + tileGap;
+      // Permanent perks (bought from perk vendor, level > 0)
+      const PERM_DEFS = [
+        { key:'magnet',    icon:'🧲', label:'MAGNET',  col:'#60ccff', val: l => `R${MAGNET_RADII[l]}` },
+        { key:'shield',    icon:'🛡', label:'SHIELD',  col:'#4499ff', val: l => `${SHIELD_MAXHP[l]}HP`  },
+        { key:'lifesteal', icon:'🩸', label:'STEAL',   col:'#ff4466', val: l => `${LIFESTEAL_HP[l]}HP`  },
+        { key:'moveSpeed', icon:'👟', label:'SPEED',   col:'#44ffaa', val: l => `+${l*15}%`           },
+        { key:'hpRegen',   icon:'❤', label:'REGEN',   col:'#ff4d6d', val: l => `${[0,2,5,8,11,15][l]}/s` },
+      ];
+      PERM_DEFS.forEach(pd => {
+        const lvl = player.perks[pd.key];
+        if (lvl > 0) rightTiles.push({ ...pd, perm:true, lvl });
       });
+
+      // Pistol spread level tile
+      if (player.pistolSpread > 0) {
+        rightTiles.push({ icon:'✦', label:'SPREAD', col:'#80c8ff', perm:true, lvl:player.pistolSpread,
+          val: l => l===1?'2 bullets':'3 bullets' });
+      }
+
+      // Orb inventory slot
+      if (player.spreadOrbs > 0) {
+        rightTiles.push({ icon:'●', label:'PISTOL ORB', col:'#60aaff', orb:true, count: player.spreadOrbs });
+      }
+
+      if (rightTiles.length > 0) {
+        const tileW = 66, tileGap = 4;
+        const totalW = rightTiles.length * (tileW + tileGap) - tileGap;
+        let rx = W - ipd - totalW;
+        vDiv(rx - ipd);
+
+        rightTiles.forEach(pd => {
+          const tx = rx, ty = slotY;
+
+          if (pd.temp) {
+            // Temporary perk tile (countdown)
+            const timer = activePerkTimers[pd.key];
+            const frac  = timer / PERK_DURATION;
+            const lowTime = timer < 180;
+            const perkBg = lowTime
+              ? (Math.floor(performance.now() / 120) % 2 === 0 ? '#251500' : '#1a0f00')
+              : '#1a1a30';
+            pixelSlot(ctx, tx, ty, tileW, slotH, perkBg, true);
+            ctx.font = '16px Segoe UI';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillStyle = pd.col; ctx.fillText(pd.icon, tx + tileW/2, ty + 4);
+            ctx.font = "13px 'VT323'"; ctx.fillStyle = 'rgba(200,200,200,0.8)';
+            ctx.textBaseline = 'top'; ctx.fillText(pd.label, tx + tileW/2, ty + 24);
+            ctx.font = "15px 'VT323'";
+            ctx.fillStyle = lowTime ? '#ff6644' : 'rgba(255,255,255,0.65)';
+            ctx.fillText(Math.ceil(timer/60)+'s', tx + tileW/2, ty + 40);
+            // Timer bar
+            const bx2=tx+4, bY2=ty+slotH-10, bw2=tileW-8, bh2=5, segs=8;
+            const segW2=Math.floor(bw2/segs)-1, filled=Math.round(frac*segs);
+            for(let k=0;k<segs;k++){
+              const tsx=bx2+k*(segW2+1);
+              ctx.fillStyle=k<filled?(lowTime?`hsl(${Math.round(frac*60)},90%,55%)`:pd.col):'rgba(255,255,255,0.08)';
+              ctx.fillRect(tsx,bY2,segW2,bh2);
+            }
+
+          } else if (pd.orb) {
+            // Orb inventory slot
+            pixelSlot(ctx, tx, ty, tileW, slotH, '#0a1828', true);
+            // Glowing orb
+            const orbX = tx + tileW/2, orbY = ty + 28;
+            const oG = ctx.createRadialGradient(orbX - 3, orbY - 3, 0, orbX, orbY, 14);
+            oG.addColorStop(0, 'rgba(200,230,255,1)');
+            oG.addColorStop(0.4, 'rgba(60,140,255,0.9)');
+            oG.addColorStop(1, 'rgba(10,60,200,0)');
+            ctx.fillStyle = oG; ctx.beginPath(); ctx.arc(orbX, orbY, 14, 0, Math.PI*2); ctx.fill();
+            ctx.font = `bold ${Math.round(tileW*0.26)}px Segoe UI`;
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('✦', orbX, orbY);
+            ctx.font = "13px 'VT323'"; ctx.fillStyle = '#80c8ff';
+            ctx.textBaseline = 'top'; ctx.fillText(pd.label, tx + tileW/2, ty + 46);
+            if (pd.count > 1) {
+              ctx.font = "bold 11px 'VT323'"; ctx.fillStyle = '#fff';
+              ctx.fillText('×'+pd.count, tx + tileW - 10, ty + 8);
+            }
+
+          } else {
+            // Permanent perk tile
+            pixelSlot(ctx, tx, ty, tileW, slotH, pd.col+'18', true);
+            ctx.font = '16px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillStyle = pd.col; ctx.fillText(pd.icon, tx + tileW/2, ty + 4);
+            ctx.font = "13px 'VT323'"; ctx.fillStyle = 'rgba(200,200,200,0.8)';
+            ctx.fillText(pd.label, tx + tileW/2, ty + 24);
+            // Stat value
+            ctx.font = "15px 'VT323'"; ctx.fillStyle = pd.col;
+            ctx.fillText(pd.val(pd.lvl), tx + tileW/2, ty + 40);
+            // Level dots
+            const sqW=7, sqH=4, sqGap=2;
+            const dotMaxLevel = (pd.key === 'magnet'||pd.key==='shield'||pd.key==='lifesteal'||pd.key==='moveSpeed'||pd.key==='hpRegen') ? 5 : 2;
+            const totalSqW = dotMaxLevel*(sqW+sqGap)-sqGap;
+            const sqX = tx + Math.max(2,(tileW-totalSqW)/2);
+            const sqY2 = ty + slotH - sqH - 5;
+            for (let k=0; k<dotMaxLevel; k++) {
+              ctx.fillStyle = k < pd.lvl ? pd.col : 'rgba(255,255,255,0.1)';
+              ctx.fillRect(sqX + k*(sqW+sqGap), sqY2, sqW, sqH);
+            }
+          }
+
+          rx += tileW + tileGap;
+        });
+      }
     }
   }
 

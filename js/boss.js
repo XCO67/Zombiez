@@ -11,7 +11,15 @@ function spawnSpreadDrop(cx, cy) {
 }
 
 function updateSpreadDrops() {
-  SPREAD_DROPS.forEach(d => { d.bob += 0.055; });
+  for (let i = SPREAD_DROPS.length - 1; i >= 0; i--) {
+    const d = SPREAD_DROPS[i];
+    d.bob += 0.055;
+    // Auto-pickup when player walks close
+    if (Math.hypot(player.cx - d.cx, player.cy - d.cy) < 1.2) {
+      player.spreadOrbs++;
+      SPREAD_DROPS.splice(i, 1);
+    }
+  }
 }
 
 function drawSpreadDrops() {
@@ -48,17 +56,13 @@ function drawSpreadDrops() {
     ctx.fillStyle = `rgba(120,190,255,${0.8 + pulse * 0.2})`; ctx.fillText('PISTOL UPGRADE', px, py - TH * 0.58);
     ctx.restore();
 
-    // [E] prompt when player is near
+    // Pickup hint when player is near
     const dist = Math.hypot(player.cx - d.cx, player.cy - d.cy);
     if (dist < SPREAD_DROP_RADIUS) {
-      const maxed   = player.pistolSpread >= 2;
-      const afford  = player.money >= SPREAD_DROP_COST;
-      const label   = maxed ? 'Already maxed!' : `[E] +1 Bullet  $${SPREAD_DROP_COST}`;
-      const col     = maxed ? '#888' : (afford ? '#80c8ff' : '#ff5555');
       ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
-      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px + 1, py - TH * 1.02 + 1);
-      ctx.fillStyle = col; ctx.fillText(label, px, py - TH * 1.02);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText('Walk over to collect!', px + 1, py - TH * 1.02 + 1);
+      ctx.fillStyle = '#80c8ff'; ctx.fillText('Walk over to collect!', px, py - TH * 1.02);
       ctx.restore();
     }
   });

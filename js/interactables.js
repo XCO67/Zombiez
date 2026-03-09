@@ -466,3 +466,78 @@ function drawMysteryBox() {
     ctx.restore();
   }
 }
+
+// ─── PISTOL UPGRADE VENDOR ────────────────────────────────────────────────────
+function drawPistolVendor() {
+  const px = PISTOL_VENDOR_POS.cx * TW, py = PISTOL_VENDOR_POS.cy * TH;
+  const sz = Math.min(TW, TH) * 0.56, tt = performance.now() / 1000;
+  const pulse = Math.sin(tt * 2.6) * 0.5 + 0.5;
+  const hue = 200; // fixed steel-blue theme
+
+  ctx.save();
+
+  // Outer glow
+  const gg = ctx.createRadialGradient(px, py, sz * 0.2, px, py, sz * 2.6);
+  gg.addColorStop(0, `rgba(60,160,255,${0.18 + pulse * 0.12})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, sz * 2.6, 0, Math.PI * 2); ctx.fill();
+
+  // Body — dark steel box
+  ctx.shadowColor = '#3399ff'; ctx.shadowBlur = 10 + pulse * 6;
+  ctx.fillStyle = '#0a1622';
+  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, true, false);
+  ctx.strokeStyle = `rgba(60,160,255,${0.5 + pulse * 0.3})`; ctx.lineWidth = 2;
+  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, false, true);
+
+  // Bullet icons (3 vertical lines showing spread levels)
+  const spread = player.pistolSpread;
+  const bulletOffsets = [-sz * 0.32, 0, sz * 0.32];
+  bulletOffsets.forEach((ox, k) => {
+    const unlocked = k < spread + 1;
+    ctx.fillStyle = unlocked ? `rgba(80,180,255,${0.7 + pulse * 0.25})` : 'rgba(50,80,110,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(px + ox, py - sz * 0.08, sz * 0.085, sz * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (unlocked) {
+      ctx.fillStyle = 'rgba(200,230,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(px + ox, py - sz * 0.22, sz * 0.05, Math.PI, 0);
+      ctx.fill();
+    }
+  });
+
+  // Label
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = `bold ${Math.round(sz * 0.22)}px Segoe UI`;
+  ctx.fillStyle = `rgba(80,180,255,${0.7 + pulse * 0.25})`;
+  ctx.fillText('GUN UPGRADE', px, py + sz * 0.72);
+
+  // Spread level indicator below label
+  ctx.font = `${Math.round(sz * 0.18)}px Segoe UI`;
+  ctx.fillStyle = 'rgba(150,200,255,0.6)';
+  const lvlLabel = spread >= 2 ? 'MAXED' : `Spread Lv.${spread}`;
+  ctx.fillText(lvlLabel, px, py + sz * 0.96);
+
+  ctx.restore();
+
+  // [E] prompt when near
+  const dist = Math.hypot(player.cx - PISTOL_VENDOR_POS.cx, player.cy - PISTOL_VENDOR_POS.cy);
+  if (dist < PISTOL_VENDOR_RADIUS) {
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
+    let label, col;
+    if (player.pistolSpread >= 2) {
+      label = 'Spread MAXED!'; col = '#888';
+    } else if (player.spreadOrbs <= 0) {
+      label = 'Need Pistol Orb  (from Eye Demon)'; col = '#ff8844';
+    } else if (player.money < PISTOL_UPGRADE_COST) {
+      label = `[E] Upgrade  $${PISTOL_UPGRADE_COST}  — need more gold`; col = '#ff5555';
+    } else {
+      label = `[E] Upgrade Spread  $${PISTOL_UPGRADE_COST}  (${player.spreadOrbs} orb${player.spreadOrbs>1?'s':''})`; col = '#80c8ff';
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px + 1, py - sz * 1.0 + 1);
+    ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.0);
+    ctx.restore();
+  }
+}

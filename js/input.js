@@ -63,18 +63,15 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
-      // Check pistol spread drops (boss loot orbs)
-      for (let si = SPREAD_DROPS.length - 1; si >= 0; si--) {
-        const drop = SPREAD_DROPS[si];
-        const distDrop = Math.hypot(player.cx - drop.cx, player.cy - drop.cy);
-        if (distDrop < SPREAD_DROP_RADIUS) {
-          if (player.pistolSpread < 2 && player.money >= SPREAD_DROP_COST) {
-            player.money -= SPREAD_DROP_COST;
-            player.pistolSpread++;
-            SPREAD_DROPS.splice(si, 1);
-          }
-          return;
+      // Pistol Upgrade Vendor — spend an orb + gold to unlock spread
+      const distPU = Math.hypot(player.cx - PISTOL_VENDOR_POS.cx, player.cy - PISTOL_VENDOR_POS.cy);
+      if (distPU < PISTOL_VENDOR_RADIUS) {
+        if (player.spreadOrbs > 0 && player.pistolSpread < 2 && player.money >= PISTOL_UPGRADE_COST) {
+          player.money -= PISTOL_UPGRADE_COST;
+          player.spreadOrbs--;
+          player.pistolSpread++;
         }
+        return;
       }
       // Check doors
       for (const door of DOORS) {
@@ -173,8 +170,8 @@ function updatePlayer() {
   }
 
   player.moving = dx!==0||dy!==0;
-  // Apply move speed upgrade (capped at +50% = level 5)
-  player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.15);
+  // Apply move speed perk (capped at +75% = level 5)
+  player.speed = PLAYER_SPEED * (1 + Math.min(player.perks.moveSpeed, 5) * 0.15);
   if (player.moving) {
     const nx=player.cx+dx*player.speed, ny=player.cy+dy*player.speed;
     if (!isBlocked(nx,player.cy)) player.cx=nx;
@@ -187,11 +184,11 @@ function updatePlayer() {
     player.hurtTimer--;
     player.regenTimer = 0;
     player.regenAccum = 0;
-  } else if (player.upgrades.hpRegen > 0 && player.hp < player.maxHp) {
+  } else if (player.perks.hpRegen > 0 && player.hp < player.maxHp) {
     player.regenTimer++;
     if (player.regenTimer >= 300) { // 5 seconds at 60fps
       const rates = [0, 2, 5, 8, 11, 15];
-      player.regenAccum += rates[player.upgrades.hpRegen] / 60;
+      player.regenAccum += rates[player.perks.hpRegen] / 60;
       if (player.regenAccum >= 1) {
         player.hp = Math.min(player.maxHp, player.hp + Math.floor(player.regenAccum));
         player.regenAccum -= Math.floor(player.regenAccum);

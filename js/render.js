@@ -99,6 +99,7 @@ function render(now) {
   drawDevChest();
   drawPapMachine();
   drawPerkVendor();
+  drawPistolVendor();
   drawMysteryBox();
   drawCoins();
   drawPerks();
