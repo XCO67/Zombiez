@@ -96,8 +96,9 @@ function applyMapData(data) {
     if (o.shop)       { SHOP_POS.cx=o.shop.cx;             SHOP_POS.cy=o.shop.cy; }
     if (o.ammo)       { AMMO_POS.cx=o.ammo.cx;             AMMO_POS.cy=o.ammo.cy; }
     if (o.pap)        { PAP_POS.cx=o.pap.cx;               PAP_POS.cy=o.pap.cy; }
-    if (o.perkvendor) { PERK_VENDOR_POS.cx=o.perkvendor.cx; PERK_VENDOR_POS.cy=o.perkvendor.cy; }
-    if (o.box)        { BOX_POS.cx=o.box.cx;               BOX_POS.cy=o.box.cy; }
+    if (o.perkvendor)   { PERK_VENDOR_POS.cx=o.perkvendor.cx;     PERK_VENDOR_POS.cy=o.perkvendor.cy; }
+    if (o.pistolvendor) { PISTOL_VENDOR_POS.cx=o.pistolvendor.cx; PISTOL_VENDOR_POS.cy=o.pistolvendor.cy; }
+    if (o.box)          { BOX_POS.cx=o.box.cx;                    BOX_POS.cy=o.box.cy; }
     if (o.devchest)   { DEV_CHEST_POS.cx=o.devchest.cx;    DEV_CHEST_POS.cy=o.devchest.cy; }
   }
 }
