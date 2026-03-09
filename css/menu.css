@@ -108,3 +108,18 @@
       from { transform: translateY(0px)  rotate(-1.5deg); filter: drop-shadow(0 0 14px rgba(60,200,40,.45)) drop-shadow(0 0 32px rgba(30,120,10,.30)); }
       to   { transform: translateY(-8px) rotate( 1.5deg); filter: drop-shadow(0 0 22px rgba(80,255,50,.70)) drop-shadow(0 0 50px rgba(40,160,20,.50)); }
     }
+    .menu-bat {
+      position: absolute; top: 18px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      height: clamp(64px, 9vh, 110px); width: auto;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 10px rgba(160,0,0,.75)) drop-shadow(0 0 28px rgba(100,0,0,.50));
+      opacity: 0.92;
+      animation: batFlap 3.8s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes batFlap {
+      from { transform: translateX(-50%) translateY(0px)  rotate(-3deg); filter: drop-shadow(0 0 10px rgba(160,0,0,.75)) drop-shadow(0 0 28px rgba(100,0,0,.50)); }
+      to   { transform: translateX(-50%) translateY(-14px) rotate(3deg); filter: drop-shadow(0 0 18px rgba(220,30,30,.90)) drop-shadow(0 0 45px rgba(140,0,0,.70)); }
+    }
