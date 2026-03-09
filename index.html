@@ -56,6 +56,7 @@
     }
     .login-corner:hover { border-color: rgba(255,255,255,.5); color: #fff; background: rgba(255,255,255,.12); }
     .menu-ver { position: absolute; bottom: 12px; right: 16px; color: rgba(255,255,255,.16); font-size: 11px; letter-spacing: .05em; z-index: 1; }
+    .menu-credit { position: absolute; bottom: 12px; left: 16px; color: rgba(255,255,255,.25); font-size: 11px; letter-spacing: .05em; z-index: 1; }
 
     /* ── MODALS ──────────────────────────────────────────── */
     .modal-ov {
@@ -150,12 +151,13 @@
     </div>
     <div class="menu-btns">
       <button class="mbtn play" onclick="openMapSelect()">▶&nbsp;&nbsp;Play</button>
-      <button class="mbtn mp"   onclick="openModal('mpModal')">👥&nbsp;&nbsp;Multiplayer</button>
+      <button class="mbtn mp" disabled style="opacity:0.5;cursor:not-allowed;">👥&nbsp;&nbsp;Multiplayer &mdash; Coming Soon</button>
       <button class="mbtn lb"   onclick="openModal('lbModal')">🏆&nbsp;&nbsp;Leaderboard</button>
       <button class="mbtn cfg"  onclick="openModal('settingsModal')">⚙&nbsp;&nbsp;Settings</button>
     </div>
   </div>
   <span class="menu-ver">DEAD SURGE v1.0</span>
+  <span class="menu-credit">Made by JesterByte</span>
 
   <!-- Map Selector Modal -->
   <div id="mapSelectModal" class="modal-ov" style="display:none">
