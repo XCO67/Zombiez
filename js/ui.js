@@ -528,7 +528,7 @@ function drawHUD() {
       { icon:'⚔', label:'DAMAGE',    val:`+${player.upgrades.damage*20}%`,                                     col:'#ff7744', lvl:player.upgrades.damage    },
       { icon:'⚡', label:'ATK SPD',   val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,  col:'#ffdd44', lvl:player.upgrades.atkSpeed  },
       { icon:'★',  label:'CRIT',      val:`${player.upgrades.crit*10}%`,                                        col:'#bb44ff', lvl:player.upgrades.crit      },
-      { icon:'👟', label:'MOV SPD',   val:`+${player.upgrades.moveSpeed*10}%`,                                  col:'#44ffaa', lvl:player.upgrades.moveSpeed },
+      { icon:'👟', label:'MOV SPD',   val:`+${player.upgrades.moveSpeed*15}%`,                                  col:'#44ffaa', lvl:player.upgrades.moveSpeed },
       { icon:'❤',  label:'HP REGEN',  val:`${[0,2,5,8,11,15][player.upgrades.hpRegen]}/s`,                      col:'#ff4d6d', lvl:player.upgrades.hpRegen   },
     ];
     const statStartX = wepX + slotW*2 + slotGap + ipd*2.5;

@@ -13,7 +13,7 @@ const SHOP_ITEMS = [
     desc: l => `${l*10}% crit  →  ${(l+1)*10}% crit (×2 dmg)`,
     price: l => (l+1)*200, maxLevel:5 },
   { key:'moveSpeed', name:'MOVE SPEED',  icon:'👟', color:'#44ffaa',
-    desc: l => `+${l*10}% speed  →  +${(l+1)*10}% speed  (max +50%)`,
+    desc: l => `+${l*15}% speed  →  +${(l+1)*15}% speed  (max +75%)`,
     price: l => (l+1)*125, maxLevel:5 },
   { key:'hpRegen',   name:'HP REGEN',    icon:'❤', color:'#ff4d6d',
     desc: l => `${[0,2,5,8,11,15][l]} hp/s  →  ${[0,2,5,8,11,15][l+1]} hp/s  (after 5s no dmg)`,

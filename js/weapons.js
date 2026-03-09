@@ -2,7 +2,7 @@
 // ─── WEAPONS ──────────────────────────────────────────────────────────────────
 // ammoCost: SMG $30/120 shots, Shotgun $75/64 shells, Thundergun $200/16 waves
 const WEAPONS = {
-  pistol:     { name:'Pistol',     fireRate:22, baseDmg:10,    ammoMax:Infinity, pellets:1,  spread:0,    speed:16, hitR:.55, pierce:false, color:'#60c0ff', trail:'#3080ff' },
+  pistol:     { name:'Pistol',     fireRate:30, baseDmg:10,    ammoMax:Infinity, pellets:1,  spread:0,    speed:16, hitR:.55, pierce:false, color:'#60c0ff', trail:'#3080ff' },
   smg:        { name:'SMG',        fireRate:6,  baseDmg:8,     ammoMax:120,      pellets:1,  spread:0.12, speed:22, hitR:.45, pierce:false, color:'#ff8844', trail:'#ff5500', ammoCost:30  },
   shotgun:    { name:'Shotgun',    fireRate:38, baseDmg:18,    ammoMax:64,       pellets:7,  spread:0.36, speed:18, hitR:.45, pierce:false, color:'#ffcc44', trail:'#ff8800', ammoCost:75  },
   thundergun: { name:'Thundergun', fireRate:75, baseDmg:90,    ammoMax:16,       pellets:1,  spread:0,    speed:0,  hitR:0,   pierce:false, color:'#ffe044', trail:'#ffa500', wave:true,    ammoCost:200 },
@@ -11,7 +11,7 @@ const WEAPONS = {
 const BOX_POOL = ['smg','shotgun','thundergun'];
 
 // ─── PLAYER ───────────────────────────────────────────────────────────────────
-const PLAYER_SPEED = 0.055;
+const PLAYER_SPEED = 0.032;
 const player = {
   cx:PLAYER_START.cx, cy:PLAYER_START.cy, facing:'south',
   frame:0, ft:0, moving:false, speed:PLAYER_SPEED,

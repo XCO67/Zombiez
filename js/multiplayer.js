@@ -171,7 +171,7 @@ function mpAnimate() {
       else { dx=cdx/dist; dy=cdy/dist; }
     } else if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
     player.moving = dx !== 0 || dy !== 0;
-    player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.10);
+    player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.15);
     if (player.moving) {
       const nx = player.cx + dx * player.speed, ny = player.cy + dy * player.speed;
       if (canWalk(nx, player.cy)) player.cx = nx;

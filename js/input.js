@@ -161,7 +161,7 @@ function updatePlayer() {
 
   player.moving = dx!==0||dy!==0;
   // Apply move speed upgrade (capped at +50% = level 5)
-  player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.10);
+  player.speed = PLAYER_SPEED * (1 + Math.min(player.upgrades.moveSpeed, 5) * 0.15);
   if (player.moving) {
     const nx=player.cx+dx*player.speed, ny=player.cy+dy*player.speed;
     if (!isBlocked(nx,player.cy)) player.cx=nx;
