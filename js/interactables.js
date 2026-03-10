@@ -365,7 +365,7 @@ const BOX_POS = { cx:28.5, cy:13.5 };
 const BOX_RADIUS = 2.0, BOX_COST = 500;
 const box = { state:'idle', spinTimer:0, result:null, notifTimer:0, notifWeapon:'' };
 const SPIN_FRAMES = 100; // how long the spin lasts
-const BOX_SPIN_NAMES = ['SMG','Shotgun','Thundergun','Pistol','SMG','Thundergun','Shotgun'];
+const BOX_SPIN_NAMES = ['SMG','Shotgun','Thundergun','Lasergun','Pistol','SMG','Thundergun','Shotgun'];
 
 function tryOpenBox() {
   if (box.state!=='idle') return;
@@ -619,4 +619,54 @@ function drawPistolVendor() {
     ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.0);
     ctx.restore();
   }
+}
+
+// ─── GOLD BUTTONS (Dev Testing) ───────────────────────────────────────────────
+function drawGoldButtons() {
+  const tt = performance.now() / 1000;
+  GOLD_BUTTONS.forEach(g => {
+    const px = g.cx * TW, py = g.cy * TH;
+    const sz = Math.min(TW,TH) * 0.46;
+    const pulse = Math.sin(tt * 3.5) * 0.5 + 0.5;
+
+    // Glow
+    const gg = ctx.createRadialGradient(px,py,0,px,py,sz*3.2);
+    gg.addColorStop(0, `rgba(255,200,0,${0.22+pulse*0.14})`);
+    gg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(px,py,sz*3.2,0,Math.PI*2); ctx.fill();
+
+    ctx.save();
+    ctx.shadowColor='#ffd700'; ctx.shadowBlur=10+pulse*10;
+
+    // Body
+    ctx.fillStyle='#1a1200';
+    roundRect(ctx, px-sz, py-sz*.75, sz*2, sz*1.5, sz*.22, true, false);
+    ctx.strokeStyle=`rgba(255,200,0,${0.7+pulse*0.3})`; ctx.lineWidth=2;
+    roundRect(ctx, px-sz, py-sz*.75, sz*2, sz*1.5, sz*.22, false, true);
+
+    // $ icon
+    ctx.font = `bold ${Math.round(sz*1.0)}px Segoe UI`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowBlur=0;
+    ctx.fillStyle=`rgba(255,215,0,${0.9+pulse*0.1})`;
+    ctx.fillText('$', px, py);
+
+    // Label
+    ctx.font = `bold ${Math.round(sz*.32)}px Segoe UI`;
+    ctx.textBaseline='top';
+    ctx.fillStyle=`rgba(255,200,0,${0.7+pulse*0.2})`;
+    ctx.fillText('DEV GOLD', px, py+sz*.78);
+
+    ctx.restore();
+
+    // [E] prompt when near
+    const dist = Math.hypot(player.cx-g.cx, player.cy-g.cy);
+    if (dist < 2.0) {
+      ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.font=`${Math.round(TH*.26)}px Segoe UI`;
+      ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillText('[E] +$99,999,999',px+1,py-sz*1.8+1);
+      ctx.fillStyle='#ffd700'; ctx.fillText('[E] +$99,999,999',px,py-sz*1.8);
+      ctx.restore();
+    }
+  });
 }

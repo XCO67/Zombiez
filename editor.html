@@ -301,8 +301,10 @@ const ASSETS = [
   { type:'perkvendor',   label:'Perk Vendor',    icon:'🧪', color:'#44ffcc', multi:false, default:{cx:24.5,cy:18}   },
   { type:'pistolvendor',label:'Pistol Upgrade', icon:'✦',  color:'#60aaff', multi:false, default:{cx:17.5,cy:18}   },
   { type:'devchest',    label:'Dev Chest',      icon:'💎', color:'#ffd700', multi:false, default:{cx:19.5,cy:16}   },
+  { type:'ricochet',    label:'Ricochet Vendor', icon:'↯',  color:'#00dcd2', multi:false, default:{cx:26,cy:13.5}   },
   { type:'torch',      label:'Torch',         icon:'🔥', color:'#ff8833', multi:true,  default:null              },
   { type:'door',       label:'Buyable Door',  icon:'🔒', color:'#ffd700', multi:true,  default:null              },
+  { type:'goldbutton', label:'Gold Button (Dev)', icon:'💰', color:'#ffd700', multi:true, default:null           },
 ];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -391,6 +393,7 @@ function initDefaultObjects() {
   torches = [];
   colorFloors = [];
   objects.doors = [];
+  objects.goldbuttons = [];
 }
 
 function newMap() {
@@ -460,6 +463,7 @@ function loadMapFromData(m) {
   objects.doors = (m.objects?.doors || m.doors || []).slice();
   if(m.torches) { torches = m.torches.slice(); }
   colorFloors = (m.colorFloors || []).slice();
+  objects.goldbuttons = (m.objects?.goldbuttons || []).slice();
   document.getElementById('map-name-inp').value = m.name || 'Map';
   editId = m.id;
   syncSizeInputs();
@@ -490,6 +494,7 @@ function buildMapObj() {
   const obj = {};
   Object.keys(objects).forEach(k=>{
     if(k==='doors') obj.doors = objects.doors.map(d=>({...d}));
+    else if(k==='goldbuttons') obj.goldbuttons = (objects.goldbuttons||[]).map(g=>({...g}));
     else obj[k]={...objects[k]};
   });
 
@@ -739,6 +744,16 @@ function placeAsset(e, rightClick) {
       objects.doors.push({ cx:pos.cx, cy:pos.cy, name, cost });
       redraw();
     }
+  } else if(type==='goldbutton') {
+    const pos = assetPosAt(e);
+    if(!objects.goldbuttons) objects.goldbuttons = [];
+    if(rightClick) {
+      const idx = objects.goldbuttons.findIndex(g=>Math.hypot(g.cx-pos.cx,g.cy-pos.cy)<2);
+      if(idx>=0) { objects.goldbuttons.splice(idx,1); redraw(); }
+    } else {
+      objects.goldbuttons.push({ cx:pos.cx, cy:pos.cy });
+      redraw();
+    }
   } else {
     const pos = assetPosAt(e);
     objects[type] = { cx:pos.cx, cy:pos.cy };
@@ -845,6 +860,27 @@ function drawTile(r, c) {
 
 function drawAssets() {
   const ts = TS();
+  // Gold button markers (multi)
+  (objects.goldbuttons||[]).forEach(g=>{
+    const px=g.cx*ts, py=g.cy*ts;
+    const isActive = activeTool==='goldbutton';
+    ctx.save();
+    const gg2=ctx.createRadialGradient(px,py,0,px,py,ts*.65);
+    gg2.addColorStop(0,'rgba(255,210,0,.28)'); gg2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gg2; ctx.beginPath(); ctx.arc(px,py,ts*.65,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = isActive ? '#fff' : '#ffd700'; ctx.lineWidth = isActive ? 2 : 1.5;
+    ctx.beginPath(); ctx.arc(px,py,ts*.38,0,Math.PI*2); ctx.stroke();
+    ctx.font=`${Math.max(10,ts*.36)}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('💰', px, py);
+    if(ts>=14){
+      ctx.font=`bold ${Math.max(7,ts*.2)}px Segoe UI`;
+      ctx.fillStyle='#ffd700'; ctx.textBaseline='top';
+      ctx.fillText('Gold (Dev)', px, py+ts*.42);
+    }
+    ctx.restore();
+  });
+
   // Draw door markers
   (objects.doors||[]).forEach((d,i)=>{
     const px=d.cx*ts, py=d.cy*ts;

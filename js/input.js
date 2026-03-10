@@ -126,6 +126,15 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
+      // Gold buttons (dev testing — infinite money)
+      for (let gi = GOLD_BUTTONS.length - 1; gi >= 0; gi--) {
+        const g = GOLD_BUTTONS[gi];
+        if (Math.hypot(player.cx-g.cx, player.cy-g.cy) < 2.0) {
+          player.money += 99999999;
+          GOLD_BUTTONS.splice(gi, 1);
+          return;
+        }
+      }
       // Ricochet Vendor — stackable wall bounces
       const distRico = Math.hypot(player.cx-RICOCHET_POS.cx, player.cy-RICOCHET_POS.cy);
       if (distRico < RICOCHET_RADIUS) {

@@ -116,6 +116,7 @@ function render(now) {
   drawPerkVendor();
   drawPistolVendor();
   drawRicochetVendor();
+  drawGoldButtons();
   drawMysteryBox();
   drawCoins();
   drawPerks();

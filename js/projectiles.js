@@ -2,6 +2,9 @@
 // ─── PROJECTILES ─────────────────────────────────────────────────────────────
 let shootTimer=0, muzzleFlash=0, muzzleColor='#fffbe0';
 const projectiles = [];
+let laserChargeTimer = 0;
+let laserBeam = null;
+let laserWasMouseDown = false;
 
 function getW() { return WEAPONS[player.weaponKey]; }
 function getFireRate() {
@@ -41,8 +44,93 @@ function applyDamage(tgt, amount) {
   tgt.hurtTimer = 45;
 }
 
+function playLaserSound() {
+  try {
+    const ac = new AudioContext();
+    const master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination);
+    // Rising whine
+    const osc1 = ac.createOscillator(); const g1 = ac.createGain();
+    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(300, ac.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(4000, ac.currentTime + 0.18);
+    g1.gain.setValueAtTime(0.55, ac.currentTime); g1.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.55);
+    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 0.55);
+    // Sizzle
+    const osc2 = ac.createOscillator(); const g2 = ac.createGain();
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(1800, ac.currentTime + 0.1);
+    osc2.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.5);
+    g2.gain.setValueAtTime(0.3, ac.currentTime + 0.1); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.6);
+    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.1); osc2.stop(ac.currentTime + 0.6);
+    setTimeout(() => ac.close(), 1000);
+  } catch(e) {}
+}
+
+function fireLaser(sx, sy, angle) {
+  const wkey = 'lasergun';
+  const papped = player.packedWeapons.has(wkey);
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const maxDist = (MAP_W + MAP_H) * TW;
+  // Raycast to first wall
+  let beamLen = maxDist;
+  for (let d = TW * 0.5; d < maxDist; d += TW * 0.5) {
+    const tc = (sx + dx*d)/TW|0, tr = (sy + dy*d)/TH|0;
+    if (tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR) {
+      beamLen = d; break;
+    }
+  }
+  const hitR = TW * 0.55;
+  function onBeam(ex, ey) {
+    const rx = ex-sx, ry = ey-sy;
+    const proj = rx*dx + ry*dy;
+    if (proj < 0 || proj > beamLen) return false;
+    return Math.abs(rx*dy - ry*dx) <= hitR;
+  }
+  const pm = papped ? 3 : 1;
+  ZOMBIES.forEach(z  => { if (!z.dead  && onBeam(z.cx*TW,  z.cy*TH))  hitZombie(z, wkey, z.cx*TW, z.cy*TH, pm); });
+  SKELETONS.forEach(s=> { if (!s.dead  && onBeam(s.cx*TW,  s.cy*TH))  hitSkeleton(s, wkey, pm); });
+  DRAGONS.forEach(d  => { if (!d.dead  && onBeam(d.cx*TW,  d.cy*TH))  hitDragon(d, wkey, pm); });
+  LAVA_ZOMBIES.forEach(lz=>{ if (!lz.dead && onBeam(lz.cx*TW, lz.cy*TH)) hitLavaZombie(lz, wkey, pm); });
+  EXPLODERS.forEach(ex=> { if (!ex.dead && onBeam(ex.cx*TW, ex.cy*TH)) hitExploder(ex, wkey, pm); });
+  PHANTOMS.forEach(ph => { if (!ph.dead && onBeam(ph.cx*TW, ph.cy*TH)) hitPhantom(ph, wkey, pm); });
+  BOSS_DEMONS.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitBoss(b, wkey, pm); });
+  SPIDER_BOSSES.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitSpiderBoss(b, wkey, pm); });
+  SPIDER_MINIONS.forEach(m => { if (!m.dead && onBeam(m.cx*TW, m.cy*TH)) hitSpiderMinion(m, wkey, pm); });
+  laserBeam = { sx, sy, ex: sx+dx*beamLen, ey: sy+dy*beamLen, life:35, maxLife:35, papped };
+  muzzleFlash = 15; muzzleColor = '#ff00cc';
+  playLaserSound();
+}
+
 function tryShoot() {
   if (player.dead||game.state!=='playing'||shopOpen) return;
+  // ── Laser: special charge-and-auto-fire mechanic ────────────────────────────
+  const wCur = getW();
+  if (wCur && wCur.laser) {
+    if (shootTimer > 0) shootTimer--;
+    const mouseRelease = laserWasMouseDown && !mouse.down;
+    laserWasMouseDown = mouse.down;
+    if (mouse.down && shootTimer <= 0 && player.ammo > 0) {
+      laserChargeTimer++;
+      if (laserChargeTimer >= 120) { // 2 seconds = auto-fire
+        const sx=player.cx*TW, sy=player.cy*TH;
+        fireLaser(sx, sy, Math.atan2((mouse.y+camY)-sy, (mouse.x+camX)-sx));
+        if (player.ammo !== Infinity) player.ammo = Math.max(0, player.ammo - 1);
+        shootTimer = 45;
+        laserChargeTimer = 0;
+      }
+    } else if (mouseRelease && laserChargeTimer >= 45 && shootTimer <= 0 && player.ammo > 0) {
+      // Early release (≥ 0.75s charged) also fires
+      const sx=player.cx*TW, sy=player.cy*TH;
+      fireLaser(sx, sy, Math.atan2((mouse.y+camY)-sy, (mouse.x+camX)-sx));
+      if (player.ammo !== Infinity) player.ammo = Math.max(0, player.ammo - 1);
+      shootTimer = 45;
+      laserChargeTimer = 0;
+    } else if (!mouse.down) {
+      laserChargeTimer = 0;
+      laserWasMouseDown = false;
+    }
+    return;
+  }
+  laserWasMouseDown = false;
+  laserChargeTimer = 0;
   if (shootTimer>0){shootTimer--;return;}
   if (!mouse.down) return;
   const w=getW();
@@ -354,6 +442,67 @@ function updateProjectiles() {
 }
 
 function drawProjectiles() {
+  // Laser charge indicator (arc around player while charging)
+  if (getW()?.laser && laserChargeTimer > 0) {
+    const px = player.cx*TW, py = player.cy*TH;
+    const frac = laserChargeTimer / 120;
+    const hue = frac >= 1 ? 55 : 300;
+    ctx.save();
+    ctx.strokeStyle = `hsl(${hue},100%,65%)`;
+    ctx.lineWidth = TW * 0.14;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 12;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(px, py, TW * 0.72, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
+    // Percentage text
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.font = `bold ${Math.round(TH*.22)}px Segoe UI`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = `hsl(${hue},100%,75%)`;
+    ctx.fillText(Math.round(frac*100)+'%', px, py - TH * 1.1);
+    ctx.restore();
+  }
+
+  // Laser beam
+  if (laserBeam) {
+    const lb = laserBeam;
+    const a = lb.life / lb.maxLife;
+    const hue = lb.papped ? (performance.now()/3)%360 : 300;
+    ctx.save();
+    ctx.lineCap = 'round';
+    // Outer wide glow
+    ctx.globalAlpha = a * 0.35;
+    ctx.strokeStyle = `hsl(${hue},100%,70%)`;
+    ctx.lineWidth = TW * 1.2 * a;
+    ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 28;
+    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
+    // Mid beam
+    ctx.globalAlpha = a * 0.8;
+    ctx.strokeStyle = `hsl(${hue},100%,85%)`;
+    ctx.lineWidth = TW * 0.38 * a;
+    ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
+    // White hot core
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = TW * 0.09;
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
+    // Impact flash at endpoint
+    if (a > 0.5) {
+      const ig = ctx.createRadialGradient(lb.ex,lb.ey,0,lb.ex,lb.ey,TW*0.9*a);
+      ig.addColorStop(0,`hsla(${hue},100%,95%,${a})`);
+      ig.addColorStop(0.5,`hsla(${hue},100%,70%,${a*0.6})`);
+      ig.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(lb.ex,lb.ey,TW*0.9*a,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    lb.life--;
+    if (lb.life <= 0) laserBeam = null;
+  }
+
   // Muzzle flash
   if(muzzleFlash>0){
     const px=player.cx*TW,py=player.cy*TH,a=muzzleFlash/12;
