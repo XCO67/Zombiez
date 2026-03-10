@@ -13,7 +13,7 @@ const WEAPONS = {
 const BOX_POOL = ['smg','shotgun','thundergun','lasergun','xenoblaster'];
 
 // ─── PLAYER ───────────────────────────────────────────────────────────────────
-const PLAYER_SPEED = 0.032;
+const PLAYER_SPEED = 0.038;
 const player = {
   cx:PLAYER_START.cx, cy:PLAYER_START.cy, facing:'south',
   frame:0, ft:0, moving:false, speed:PLAYER_SPEED,
