@@ -2,33 +2,15 @@
 // ─── RENDER LOOP ──────────────────────────────────────────────────────────────
 let t = 0;
 let gameStarted = false; // true once player clicks PLAY
-const TARGET_FPS = 60;
-const FRAME_MS = 1000 / TARGET_FPS;
+const FRAME_MS = 1000 / 60; // fixed physics step (60 Hz)
 let lastFrameTime = 0;
+let accumulated   = 0;    // ms of unprocessed time
 
-function render(now) {
-  requestAnimationFrame(render);
-  if (now - lastFrameTime < FRAME_MS) return;
-  lastFrameTime = now - ((now - lastFrameTime) % FRAME_MS);
-  t += 0.04;
-  _tt = now / 1000; // shared frame time for tile/decoration animators
-  if (!gameStarted) { return; }
-
-  // ── Game logic ───────────────────────────────────────────────────────────────
+function _runGameLogic() {
+  // All physics/game-state updates — runs at fixed 60fps step
   if (mp.active) {
-    // Send input to server every other frame (30fps is enough)
     sendMpInput();
-    if (!mp.firstState) {
-      ctx.fillStyle='#060410'; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle='#00ffaa'; ctx.font=`bold ${Math.round(canvas.width*.026)}px Segoe UI`;
-      ctx.fillText('Waiting for server...', canvas.width/2, canvas.height/2);
-      ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font=`${Math.round(canvas.width*.014)}px Segoe UI`;
-      ctx.fillText('Room: '+mp.room, canvas.width/2, canvas.height/2+44);
-      return;
-    }
     updateCamera();
-    mpAnimate();
   } else if (game.state !== 'paused') {
     updateCamera();
     updatePlayer();
@@ -59,8 +41,41 @@ function render(now) {
     updateEffects();
     updateWave();
   } else {
-    updateCamera(); // keep camera steady while paused
+    updateCamera();
   }
+}
+
+function render(now) {
+  requestAnimationFrame(render);
+
+  _tt = now / 1000; // wall-clock seconds for visuals
+
+  if (!gameStarted) return;
+
+  const dt = Math.min(now - lastFrameTime, 100); // cap: ignore >100ms gaps (tab hidden)
+  lastFrameTime = now;
+  accumulated += dt;
+
+  // Run physics in fixed steps — up to 3 catch-up steps to avoid spiral of death
+  let steps = 0;
+  while (accumulated >= FRAME_MS && steps < 3) {
+    accumulated -= FRAME_MS;
+    t += 0.04;
+    _runGameLogic();
+    steps++;
+  }
+
+  // ── Multiplayer waiting screen ────────────────────────────────────────────────
+  if (mp.active && !mp.firstState) {
+    ctx.fillStyle='#060410'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='#00ffaa'; ctx.font=`bold ${Math.round(canvas.width*.026)}px Segoe UI`;
+    ctx.fillText('Waiting for server...', canvas.width/2, canvas.height/2);
+    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font=`${Math.round(canvas.width*.014)}px Segoe UI`;
+    ctx.fillText('Room: '+mp.room, canvas.width/2, canvas.height/2+44);
+    return;
+  }
+  if (mp.active) mpAnimate();
 
   // ── Fill background ───────────────────────────────────────────────────────────
   ctx.fillStyle = '#0c0b12';
@@ -89,7 +104,7 @@ function render(now) {
   drawWallShadows();
   drawDoorPrompts();
 
-  // Torches — support optional [r, c, '#color'] format
+  // Torches
   const flickers=TORCHES.map((_,i)=>Math.sin(t*2.8+i*1.87)*.5+.5);
   TORCHES.forEach(([r,c,color,opacity],i)=>drawTorch(r,c,flickers[i],color,opacity));
 
@@ -140,15 +155,13 @@ function render(now) {
 
   // ── Screen-space overlays ─────────────────────────────────────────────────────
   applyLighting(flickers);
-  // Web slow vignette (Venom Queen)
   if (player.webSlowTimer > 0) {
     const wAlpha = Math.min(1, player.webSlowTimer / 60) * 0.38;
     const wg = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height*0.28, canvas.width/2, canvas.height/2, canvas.height*0.75);
     wg.addColorStop(0, 'rgba(0,0,0,0)');
     wg.addColorStop(1, `rgba(0,180,30,${wAlpha})`);
     ctx.fillStyle = wg; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // "WEBBED" text
-    const wPulse = Math.sin(performance.now() / 250) * 0.4 + 0.6;
+    const wPulse = Math.sin(_tt * 4) * 0.4 + 0.6;
     ctx.save(); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.font = `bold ${Math.round(canvas.height * 0.026)}px Segoe UI`;
     ctx.fillStyle = `rgba(80,255,100,${wPulse * 0.9})`;
@@ -166,7 +179,6 @@ function render(now) {
   drawDownedHUD();
   drawPingHUD();
   drawCursor();
-
 }
 
 render(0);
