@@ -794,8 +794,14 @@ function placeAsset(e, rightClick) {
     }
   } else {
     const pos = assetPosAt(e);
-    objects[type] = { cx:pos.cx, cy:pos.cy };
-    redraw();
+    if(rightClick) {
+      if(objects[type] && Math.hypot(objects[type].cx-pos.cx, objects[type].cy-pos.cy)<2) {
+        delete objects[type]; redraw();
+      }
+    } else {
+      objects[type] = { cx:pos.cx, cy:pos.cy };
+      redraw();
+    }
   }
 }
 
