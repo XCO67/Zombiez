@@ -781,7 +781,7 @@ function placeAsset(e, rightClick) {
     const pos = assetPosAt(e);
     if(!objects.decorations) objects.decorations = [];
     if(rightClick) {
-      const idx = objects.decorations.findIndex(d=>d.type===type && Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
+      const idx = objects.decorations.findIndex(d=>Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
       if(idx>=0) { objects.decorations.splice(idx,1); redraw(); }
     } else {
       objects.decorations.push({ type, cx:pos.cx, cy:pos.cy });
