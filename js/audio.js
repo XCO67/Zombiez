@@ -80,6 +80,46 @@ function playThundergunSound() {
   osc.connect(gb); gb.connect(masterGain); osc.start(now); osc.stop(now + 0.55);
 }
 
+function playXenoblasterSound() {
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  // Organic "blorp" — low warbling alien pulse
+  const osc1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.setValueAtTime(280, now);
+  osc1.frequency.exponentialRampToValueAtTime(55, now + 0.15);
+  osc1.frequency.exponentialRampToValueAtTime(200, now + 0.32);
+  g1.gain.setValueAtTime(0.30, now);
+  g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+  osc1.connect(g1); g1.connect(masterGain); osc1.start(now); osc1.stop(now + 0.4);
+  // High alien harmonic shimmer
+  const osc2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
+  osc2.type = 'triangle';
+  osc2.frequency.setValueAtTime(2200, now);
+  osc2.frequency.exponentialRampToValueAtTime(700, now + 0.28);
+  g2.gain.setValueAtTime(0.13, now);
+  g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.30);
+  osc2.connect(g2); g2.connect(masterGain); osc2.start(now); osc2.stop(now + 0.32);
+  // Wet plasma splat — short noise burst
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.10);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+  const noise = audioCtx.createBufferSource(); noise.buffer = buf;
+  const bpf = audioCtx.createBiquadFilter();
+  bpf.type = 'bandpass'; bpf.Q.value = 4.0; bpf.frequency.value = 900;
+  const gn = audioCtx.createGain();
+  gn.gain.setValueAtTime(0.20, now); gn.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+  noise.connect(bpf); bpf.connect(gn); gn.connect(masterGain);
+  noise.start(now); noise.stop(now + 0.12);
+  // Sub-bass thump for weight
+  const osc3 = audioCtx.createOscillator(); const g3 = audioCtx.createGain();
+  osc3.type = 'sine';
+  osc3.frequency.setValueAtTime(90, now); osc3.frequency.exponentialRampToValueAtTime(28, now + 0.22);
+  g3.gain.setValueAtTime(0.24, now); g3.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+  osc3.connect(g3); g3.connect(masterGain); osc3.start(now); osc3.stop(now + 0.28);
+}
+
 function playPistolSound() {
   if (audioCtx.state !== 'running') return;
   const now = audioCtx.currentTime;

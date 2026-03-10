@@ -212,7 +212,9 @@ function tryShoot() {
 
   if(player.ammo!==Infinity) player.ammo=Math.max(0,player.ammo-1);
 
-  if(player.weaponKey==='pistol') {
+  if(player.weaponKey==='xenoblaster') {
+    playXenoblasterSound();
+  } else if(player.weaponKey==='pistol') {
     playPistolSound();
     player.heat = Math.min(100, player.heat + 8);
     if (player.heat >= 100) {
@@ -553,8 +555,8 @@ function drawProjectiles() {
   projectiles.forEach(p=>{
     const w=WEAPONS[p.wkey];
     ctx.save();
-    // Pack-a-Punch: rainbow overrides normal rendering for non-thundergun bullets
-    if(p.papped && p.wkey!=='thundergun'){
+    // Pack-a-Punch: rainbow overrides normal rendering for non-thundergun, non-alien bullets
+    if(p.papped && p.wkey!=='thundergun' && p.wkey!=='xenoblaster'){
       const rh=(performance.now()/4+p.x*0.3+p.y*0.3)%360;
       const rh2=(rh+120)%360;
       p.trail.forEach((pos,i)=>{
@@ -626,6 +628,67 @@ function drawProjectiles() {
       g.addColorStop(0,'rgba(255,200,150,1)');g.addColorStop(.5,'rgba(255,120,40,0.7)');g.addColorStop(1,'rgba(255,60,0,0)');
       ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,TW*.18,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#ffeecc'; ctx.beginPath(); ctx.arc(p.x,p.y,TW*.05,0,Math.PI*2); ctx.fill();
+
+    } else if(p.wkey==='xenoblaster'){
+      // ── Xenoblaster: alien plasma orb with helical spiral trail ───────────────
+      const tt = performance.now() / 1000;
+      const hue = p.papped ? (tt * 110) % 360 : 160; // teal normally, rainbow when papped
+      const orb_r = TW * (p.papped ? 0.56 : 0.40);
+      const spd = Math.hypot(p.vx, p.vy) || 1;
+      const nx = -p.vy / spd, ny = p.vx / spd; // perpendicular to travel direction
+
+      // Helical spiral trail — each dot oscillates perpendicular
+      p.trail.forEach((pos, i) => {
+        const ta = 1 - i / p.trail.length;
+        const th = (hue + i * 28) % 360;
+        const sOff = Math.sin(tt * 11 - i * 1.1) * TW * 0.22;
+        ctx.globalAlpha = ta * 0.65;
+        ctx.fillStyle = `hsl(${th}, 100%, 65%)`;
+        ctx.shadowColor = `hsl(${th}, 100%, 70%)`; ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(pos.x + nx * sOff, pos.y + ny * sOff, TW * (0.20 - i * 0.012), 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.shadowBlur = 0;
+
+      // Wide outer glow halo
+      ctx.globalAlpha = 0.28;
+      const gHalo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, orb_r * 2.8);
+      gHalo.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.9)`);
+      gHalo.addColorStop(0.6, `hsla(${(hue+40)%360}, 100%, 55%, 0.3)`);
+      gHalo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gHalo;
+      ctx.beginPath(); ctx.arc(p.x, p.y, orb_r * 2.8, 0, Math.PI * 2); ctx.fill();
+
+      // Main plasma body
+      ctx.globalAlpha = 1;
+      const gOrb = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, orb_r);
+      gOrb.addColorStop(0, 'rgba(255,255,255,1)');
+      gOrb.addColorStop(0.22, `hsla(${(hue+180)%360}, 80%, 90%, 0.95)`);
+      gOrb.addColorStop(0.58, `hsla(${hue}, 100%, 58%, 0.88)`);
+      gOrb.addColorStop(1, `hsla(${(hue+60)%360}, 100%, 30%, 0)`);
+      ctx.fillStyle = gOrb;
+      ctx.beginPath(); ctx.arc(p.x, p.y, orb_r, 0, Math.PI * 2); ctx.fill();
+
+      // 3 spinning dashed rings orbiting the orb
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      const spin = tt * 4.2;
+      [0, 1, 2].forEach(ring => {
+        const rHue = (hue + ring * 55) % 360;
+        ctx.strokeStyle = `hsla(${rHue}, 100%, 82%, ${0.7 - ring * 0.12})`;
+        ctx.lineWidth = 2.0 - ring * 0.4;
+        ctx.setLineDash([TW * 0.18, TW * 0.10]);
+        ctx.lineDashOffset = -(spin + ring * 1.2) * TW * 0.12;
+        ctx.beginPath();
+        ctx.arc(0, 0, orb_r * (0.52 + ring * 0.18), spin + ring * 2.09, spin + ring * 2.09 + Math.PI * 1.5);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]); ctx.restore();
+
+      // Bright white core
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(p.x, p.y, TW * 0.08, 0, Math.PI * 2); ctx.fill();
 
     } else {
       // Pistol: blue energy

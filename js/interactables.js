@@ -365,7 +365,7 @@ const BOX_POS = { cx:28.5, cy:13.5 };
 const BOX_RADIUS = 2.0, BOX_COST = 500;
 const box = { state:'idle', spinTimer:0, result:null, notifTimer:0, notifWeapon:'' };
 const SPIN_FRAMES = 100; // how long the spin lasts
-const BOX_SPIN_NAMES = ['SMG','Shotgun','Thundergun','Lasergun','Pistol','SMG','Thundergun','Shotgun'];
+const BOX_SPIN_NAMES = ['SMG','Shotgun','Thundergun','Lasergun','Xenoblaster','Pistol','SMG','Thundergun','Shotgun','Xenoblaster'];
 
 function tryOpenBox() {
   if (box.state!=='idle') return;
