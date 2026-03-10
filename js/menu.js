@@ -69,6 +69,7 @@ function closeModal(id) {
 
 // ── In-game Pause Menu ────────────────────────────────────────────────────────
 function openPauseMenu() {
+  document.body.style.cursor = 'default'; // show cursor over HTML overlay
   // Sync volume sliders to current values
   const mv = Math.round(masterGain.gain.value * 100);
   const pmv = document.getElementById('pmVolSlider');
@@ -86,6 +87,7 @@ function openPauseMenu() {
 function closePauseMenu() {
   cancelRebind();
   document.getElementById('pauseMenu').style.display = 'none';
+  if (gameStarted) document.body.style.cursor = 'none'; // restore hidden cursor in-game
 }
 function resumeFromPause() {
   closePauseMenu();
