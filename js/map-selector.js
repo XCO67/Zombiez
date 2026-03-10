@@ -10,14 +10,6 @@ async function openMapSelect() {
   const activeId = getActiveMapId();
   let html = '';
 
-  // Default map row
-  const defActive = activeId === 'default';
-  html += `<div class="map-row">
-    <span class="map-row-name">${defActive?'★ ':''}Default Map</span>
-    <span class="map-row-size">40×28</span>
-    <button class="play-btn" onclick="selectAndPlay('default')">▶ Play</button>
-  </div>`;
-
   maps.forEach(m => {
     const active = activeId === m.id;
     html += `<div class="map-row">
@@ -25,12 +17,10 @@ async function openMapSelect() {
       <span class="map-row-size">${m.mapW}×${m.mapH}</span>
       <button class="play-btn" onclick="selectAndPlay('${m.id}')">▶ Play</button>
       <a href="/editor?id=${m.id}" style="padding:4px 10px;border-radius:5px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#ccc;cursor:pointer;font-size:11px;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center">✏ Edit</a>
-      <button onclick="confirmDeleteMap('${m.id}','${escHtml(m.name)}')">🗑</button>
     </div>`;
   });
 
-  if (!maps.length) html += `<p style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:16px">No custom maps yet.<br><a href="/editor" style="color:#a090f8;text-decoration:none">Open Map Editor →</a></p>`;
-  html += `<div style="margin-top:8px;text-align:center"><a href="/editor" style="font-size:11px;color:#a090f8;text-decoration:none;opacity:.8">🗺 Map Editor →</a></div>`;
+  if (!maps.length) html += `<p style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:16px">No published maps yet.<br>Use the Map Editor to create and publish one.</p>`;
   list.innerHTML = html;
 }
 function closeMapSelect() { document.getElementById('mapSelectModal').style.display='none'; }
