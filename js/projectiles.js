@@ -44,22 +44,57 @@ function applyDamage(tgt, amount) {
   tgt.hurtTimer = 45;
 }
 
-function playLaserSound() {
+let _laserChargeAC = null;
+function playLaserChargeSound() {
+  try {
+    if (_laserChargeAC) { try { _laserChargeAC.close(); } catch(e) {} }
+    const ac = new AudioContext();
+    _laserChargeAC = ac;
+    const master = ac.createGain(); master.gain.value = 0.4; master.connect(ac.destination);
+    // Low hum that rises over 2 seconds
+    const osc1 = ac.createOscillator(); const g1 = ac.createGain();
+    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(80, ac.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 2.0);
+    g1.gain.setValueAtTime(0.0, ac.currentTime);
+    g1.gain.linearRampToValueAtTime(0.7, ac.currentTime + 0.3);
+    g1.gain.linearRampToValueAtTime(0.9, ac.currentTime + 1.8);
+    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 2.1);
+    // High shimmer layered in
+    const osc2 = ac.createOscillator(); const g2 = ac.createGain();
+    osc2.type = 'triangle'; osc2.frequency.setValueAtTime(400, ac.currentTime + 0.2);
+    osc2.frequency.exponentialRampToValueAtTime(3200, ac.currentTime + 2.0);
+    g2.gain.setValueAtTime(0.0, ac.currentTime + 0.2);
+    g2.gain.linearRampToValueAtTime(0.5, ac.currentTime + 1.0);
+    g2.gain.linearRampToValueAtTime(0.8, ac.currentTime + 2.0);
+    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.2); osc2.stop(ac.currentTime + 2.1);
+    setTimeout(() => { try { ac.close(); } catch(e) {} _laserChargeAC = null; }, 2500);
+  } catch(e) {}
+}
+function stopLaserChargeSound() {
+  if (_laserChargeAC) { try { _laserChargeAC.close(); } catch(e) {} _laserChargeAC = null; }
+}
+function playLaserFireSound() {
   try {
     const ac = new AudioContext();
-    const master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination);
-    // Rising whine
+    const master = ac.createGain(); master.gain.value = 0.55; master.connect(ac.destination);
+    // Instant high-pitched ZAP
     const osc1 = ac.createOscillator(); const g1 = ac.createGain();
-    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(300, ac.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(4000, ac.currentTime + 0.18);
-    g1.gain.setValueAtTime(0.55, ac.currentTime); g1.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.55);
-    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 0.55);
-    // Sizzle
+    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(4000, ac.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(200, ac.currentTime + 0.3);
+    g1.gain.setValueAtTime(1.0, ac.currentTime); g1.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
+    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 0.35);
+    // Sizzle tail
     const osc2 = ac.createOscillator(); const g2 = ac.createGain();
-    osc2.type = 'sine'; osc2.frequency.setValueAtTime(1800, ac.currentTime + 0.1);
-    osc2.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.5);
-    g2.gain.setValueAtTime(0.3, ac.currentTime + 0.1); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.6);
-    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.1); osc2.stop(ac.currentTime + 0.6);
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(2200, ac.currentTime + 0.05);
+    osc2.frequency.exponentialRampToValueAtTime(400, ac.currentTime + 0.6);
+    g2.gain.setValueAtTime(0.5, ac.currentTime + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.65);
+    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.05); osc2.stop(ac.currentTime + 0.65);
+    // Deep thump
+    const osc3 = ac.createOscillator(); const g3 = ac.createGain();
+    osc3.type = 'sine'; osc3.frequency.setValueAtTime(120, ac.currentTime);
+    osc3.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.25);
+    g3.gain.setValueAtTime(0.8, ac.currentTime); g3.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3);
+    osc3.connect(g3); g3.connect(master); osc3.start(); osc3.stop(ac.currentTime + 0.3);
     setTimeout(() => ac.close(), 1000);
   } catch(e) {}
 }
@@ -94,9 +129,10 @@ function fireLaser(sx, sy, angle) {
   BOSS_DEMONS.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitBoss(b, wkey, pm); });
   SPIDER_BOSSES.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitSpiderBoss(b, wkey, pm); });
   SPIDER_MINIONS.forEach(m => { if (!m.dead && onBeam(m.cx*TW, m.cy*TH)) hitSpiderMinion(m, wkey, pm); });
+  stopLaserChargeSound();
   laserBeam = { sx, sy, ex: sx+dx*beamLen, ey: sy+dy*beamLen, life:35, maxLife:35, papped };
   muzzleFlash = 15; muzzleColor = '#ff00cc';
-  playLaserSound();
+  playLaserFireSound();
 }
 
 function tryShoot() {
@@ -108,6 +144,7 @@ function tryShoot() {
     const mouseRelease = laserWasMouseDown && !mouse.down;
     laserWasMouseDown = mouse.down;
     if (mouse.down && shootTimer <= 0 && player.ammo > 0) {
+      if (laserChargeTimer === 0) playLaserChargeSound(); // start charge sound once
       laserChargeTimer++;
       if (laserChargeTimer >= 120) { // 2 seconds = auto-fire
         const sx=player.cx*TW, sy=player.cy*TH;
@@ -124,6 +161,7 @@ function tryShoot() {
       shootTimer = 45;
       laserChargeTimer = 0;
     } else if (!mouse.down) {
+      if (laserChargeTimer > 0) stopLaserChargeSound(); // cancelled
       laserChargeTimer = 0;
       laserWasMouseDown = false;
     }
@@ -442,29 +480,6 @@ function updateProjectiles() {
 }
 
 function drawProjectiles() {
-  // Laser charge indicator (arc around player while charging)
-  if (getW()?.laser && laserChargeTimer > 0) {
-    const px = player.cx*TW, py = player.cy*TH;
-    const frac = laserChargeTimer / 120;
-    const hue = frac >= 1 ? 55 : 300;
-    ctx.save();
-    ctx.strokeStyle = `hsl(${hue},100%,65%)`;
-    ctx.lineWidth = TW * 0.14;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 12;
-    ctx.globalAlpha = 0.9;
-    ctx.beginPath();
-    ctx.arc(px, py, TW * 0.72, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-    ctx.stroke();
-    // Percentage text
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    ctx.font = `bold ${Math.round(TH*.22)}px Segoe UI`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = `hsl(${hue},100%,75%)`;
-    ctx.fillText(Math.round(frac*100)+'%', px, py - TH * 1.1);
-    ctx.restore();
-  }
-
   // Laser beam
   if (laserBeam) {
     const lb = laserBeam;

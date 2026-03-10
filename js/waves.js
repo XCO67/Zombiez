@@ -73,7 +73,7 @@ function restartGame() {
     downed:false, downedTimer:0, reviveProgress:0});
   player.packedWeapons = new Set();
   player.ricochets = 0;
-  laserChargeTimer = 0; laserBeam = null; laserWasMouseDown = false;
+  stopLaserChargeSound(); laserChargeTimer = 0; laserBeam = null; laserWasMouseDown = false;
   player.pistolSpread = 0;
   player.spreadOrbs = 0;
   player.webSlowTimer = 0;
