@@ -263,10 +263,10 @@ async function refreshLeaderboard() {
       .map(e => ({ username: e.name, round: e.round, kills: e.kills, gold: e.gold, score: e.score, date: e.date }));
   }
 
-  // Merge real players with fake entries, real players take priority (remove fake if same username)
-  const realNames = new Set(real.map(r => (r.username||r.name).toLowerCase()));
-  const fakeFiltered = FAKE_LB.filter(f => !realNames.has(f.username.toLowerCase()));
-  const rows = [...real, ...fakeFiltered]
+  // FAKE_LB names always win — strip any DB entry whose username is in the fake list
+  const fakeNames = new Set(FAKE_LB.map(f => f.username.toLowerCase()));
+  const realOnly = real.filter(r => !fakeNames.has((r.username||r.name).toLowerCase()));
+  const rows = [...realOnly, ...FAKE_LB]
     .sort((a, b) => b.round - a.round || b.score - a.score || b.kills - a.kills);
 
   if (!rows.length) { el.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>'; return; }
