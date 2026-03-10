@@ -5,7 +5,7 @@ const AMMO_RADIUS = 2.0;
 
 function drawAmmoStation() {
   const px = AMMO_POS.cx*TW, py = AMMO_POS.cy*TH;
-  const sz = Math.min(TW,TH)*.55, tt = performance.now()/1000;
+  const sz = Math.min(TW,TH)*.55, tt = _tt;
   const pulse = Math.sin(tt*2.2)*.5+.5;
 
   // Outer glow (green-yellow ammo crate vibe)
@@ -67,7 +67,7 @@ const DEV_CHEST_RADIUS = 2.0;
 
 function drawDevChest() {
   const px=DEV_CHEST_POS.cx*TW, py=DEV_CHEST_POS.cy*TH;
-  const sz=Math.min(TW,TH)*.58, tt=performance.now()/1000;
+  const sz=Math.min(TW,TH)*.58, tt=_tt;
   const pulse=Math.sin(tt*4)*.5+.5;
   const hue=Math.round(tt*60)%360;
 
@@ -154,7 +154,7 @@ function playPapSound() {
 
 function drawPapMachine() {
   const px = PAP_POS.cx * TW, py = PAP_POS.cy * TH;
-  const sz = Math.min(TW,TH) * 0.6, tt = performance.now() / 1000;
+  const sz = Math.min(TW,TH) * 0.6, tt = _tt;
   const pulse = Math.sin(tt * 2.5) * 0.5 + 0.5;
   const hue = (tt * 60) % 360; // rainbow cycle
 
@@ -243,7 +243,7 @@ const RICOCHET_COST   = 10000;
 
 function drawRicochetVendor() {
   const px = RICOCHET_POS.cx * TW, py = RICOCHET_POS.cy * TH;
-  const sz = Math.min(TW,TH) * 0.58, tt = performance.now() / 1000;
+  const sz = Math.min(TW,TH) * 0.58, tt = _tt;
   const pulse = Math.sin(tt * 3.0) * 0.5 + 0.5;
 
   ctx.save();
@@ -300,7 +300,7 @@ function drawRicochetVendor() {
 // ─── PERK VENDOR ──────────────────────────────────────────────────────────────
 function drawPerkVendor() {
   const px = PERK_VENDOR_POS.cx * TW, py = PERK_VENDOR_POS.cy * TH;
-  const sz = Math.min(TW,TH) * 0.58, tt = performance.now() / 1000;
+  const sz = Math.min(TW,TH) * 0.58, tt = _tt;
   const pulse = Math.sin(tt * 2.8) * 0.5 + 0.5;
 
   ctx.save();
@@ -482,7 +482,7 @@ function drawEffects() {
 
 function drawMysteryBox() {
   const px=BOX_POS.cx*TW, py=BOX_POS.cy*TH;
-  const sz=Math.min(TW,TH)*.6, tt=performance.now()/1000;
+  const sz=Math.min(TW,TH)*.6, tt=_tt;
   const pulse=Math.sin(tt*3)*.5+.5;
   const spin=(box.state==='spinning');
 
@@ -551,7 +551,7 @@ function drawMysteryBox() {
 // ─── PISTOL UPGRADE VENDOR ────────────────────────────────────────────────────
 function drawPistolVendor() {
   const px = PISTOL_VENDOR_POS.cx * TW, py = PISTOL_VENDOR_POS.cy * TH;
-  const sz = Math.min(TW, TH) * 0.56, tt = performance.now() / 1000;
+  const sz = Math.min(TW, TH) * 0.56, tt = _tt;
   const pulse = Math.sin(tt * 2.6) * 0.5 + 0.5;
   const hue = 200; // fixed steel-blue theme
 
@@ -625,7 +625,7 @@ function drawPistolVendor() {
 
 // ─── GOLD BUTTONS (Dev Testing) ───────────────────────────────────────────────
 function drawGoldButtons() {
-  const tt = performance.now() / 1000;
+  const tt = _tt;
   GOLD_BUTTONS.forEach(g => {
     const px = g.cx * TW, py = g.cy * TH;
     const sz = Math.min(TW,TH) * 0.46;

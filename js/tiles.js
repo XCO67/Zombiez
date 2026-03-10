@@ -1,5 +1,6 @@
 
 // ─── TILE RENDERERS ───────────────────────────────────────────────────────────
+let _tt = 0; // set once per frame by render.js — avoids performance.now() per tile
 function variant(r, c) { return (Math.sin(r*17.31+c*31.71)*0.5+0.5)*11|0; }
 
 function drawWall(r, c) {
@@ -65,73 +66,57 @@ function drawColorFloor(r, c) {
 
 function drawLavaFloor(r, c) {
   const x=c*TW, y=r*TH, v=variant(r,c);
-  const tt=performance.now()/1000;
-  // Dark cooled-lava base
-  ctx.fillStyle='#200500'; ctx.fillRect(x,y,TW,TH);
-  // Pulsing glow from molten core
-  const pulse=Math.sin(tt*1.4+r*0.9+c*1.1)*0.5+0.5;
-  const gx=x+TW*0.5, gy=y+TH*0.5;
-  const g=ctx.createRadialGradient(gx,gy,0,gx,gy,TW*0.9);
-  g.addColorStop(0, `rgba(255,${60+pulse*80|0},0,${0.50+pulse*0.20})`);
-  g.addColorStop(0.5, `rgba(180,20,0,${0.18+pulse*0.10})`);
-  g.addColorStop(1, 'rgba(40,0,0,0)');
-  ctx.fillStyle=g; ctx.fillRect(x,y,TW,TH);
-  // Glowing crack network
-  ctx.save();
-  const oa=0.65+pulse*0.35;
-  ctx.strokeStyle=`rgba(255,${140+pulse*80|0},0,${oa})`; ctx.lineWidth=Math.max(1,TW*0.055);
-  ctx.shadowColor='rgba(255,100,0,0.8)'; ctx.shadowBlur=TW*0.3;
+  const pulse=Math.sin(_tt*1.4+r*0.9+c*1.1)*0.5+0.5;
+  // Dark cooled-lava base + pulsing midtone (solid fill, no gradient)
+  const rb=40+pulse*60|0, gb=pulse*20|0;
+  ctx.fillStyle=`rgb(${rb},${gb},0)`; ctx.fillRect(x,y,TW,TH);
+  ctx.fillStyle='#200500'; ctx.fillRect(x+2,y+2,TW-4,TH-4);
+  // Glowing crack lines — bright color only, no shadowBlur
+  const crA=0.70+pulse*0.30;
+  const crG=140+pulse*80|0;
+  ctx.strokeStyle=`rgba(255,${crG},0,${crA})`; ctx.lineWidth=Math.max(1.5,TW*0.055);
   ctx.beginPath();
   ctx.moveTo(x+(v*6)%TW, y+TH*0.18);
   ctx.lineTo(x+TW*0.50+(v%5-2)*4, y+TH*0.52);
   ctx.lineTo(x+TW-(v*4)%14, y+TH*0.82);
   ctx.stroke();
+  // Second crack (thinner)
+  ctx.strokeStyle=`rgba(255,${crG+30|0},0,${crA*0.65})`; ctx.lineWidth=Math.max(1,TW*0.03);
   ctx.beginPath();
   ctx.moveTo(x+TW*0.15, y+(v*9)%TH);
   ctx.lineTo(x+TW*0.55+(v%3)*3, y+TH*0.52);
   ctx.lineTo(x+TW*0.80, y+TH-(v*3)%16);
   ctx.stroke();
   // Bright molten core dot
-  ctx.fillStyle=`rgba(255,${220+pulse*35|0},${60+pulse*60|0},${0.9+pulse*0.1})`;
-  ctx.beginPath(); ctx.arc(gx,gy,TW*0.08,0,Math.PI*2); ctx.fill();
-  ctx.restore();
-  // Dark border texture
-  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(x,y,TW,1); ctx.fillRect(x,y,1,TH);
-  ctx.fillRect(x,y+TH-1,TW,1); ctx.fillRect(x+TW-1,y,1,TH);
+  ctx.fillStyle=`rgba(255,${220+pulse*35|0},${60+pulse*60|0},0.9)`;
+  ctx.beginPath(); ctx.arc(x+TW*0.5,y+TH*0.5,TW*0.07,0,Math.PI*2); ctx.fill();
 }
 
 function drawIceFloor(r, c) {
   const x=c*TW, y=r*TH, v=variant(r,c);
-  const tt=performance.now()/1000;
-  const shimmer=Math.sin(tt*2.0+r*1.3+c*0.7)*0.5+0.5;
-  // Deep ice base
+  const shimmer=Math.sin(_tt*2.0+r*1.3+c*0.7)*0.5+0.5;
+  // Deep ice base (two solid fills, no gradient)
   ctx.fillStyle='#0a1828'; ctx.fillRect(x,y,TW,TH);
-  ctx.fillStyle='#111f32'; ctx.fillRect(x+1,y+1,TW-2,TH-2);
-  // Translucent ice sheen
-  const g=ctx.createLinearGradient(x,y,x+TW,y+TH);
-  g.addColorStop(0, `rgba(80,180,255,${0.10+shimmer*0.08})`);
-  g.addColorStop(0.45, `rgba(200,240,255,${0.20+shimmer*0.12})`);
-  g.addColorStop(1, `rgba(50,140,220,${0.06})`);
-  ctx.fillStyle=g; ctx.fillRect(x,y,TW,TH);
-  // Crystal crack lines
-  ctx.save();
-  ctx.strokeStyle=`rgba(160,225,255,${0.45+shimmer*0.20})`; ctx.lineWidth=Math.max(1,TW*0.04);
-  ctx.shadowColor='rgba(120,200,255,0.5)'; ctx.shadowBlur=TW*0.15;
+  const ib=30+shimmer*18|0;
+  ctx.fillStyle=`rgb(${10+ib},${25+ib*2},${50+ib*3})`; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  // Crystal crack lines — bright color only, no shadowBlur
+  const ca=0.50+shimmer*0.22;
+  ctx.strokeStyle=`rgba(160,225,255,${ca})`; ctx.lineWidth=Math.max(1,TW*0.04);
   ctx.beginPath();
   ctx.moveTo(x+(v*7)%TW, y+TH*0.15);
   ctx.lineTo(x+TW*0.50, y+TH*0.52);
   ctx.lineTo(x+TW-(v*3)%14, y+TH*0.88);
   ctx.stroke();
-  ctx.strokeStyle=`rgba(200,240,255,${0.25+shimmer*0.15})`; ctx.lineWidth=Math.max(1,TW*0.025);
+  ctx.strokeStyle=`rgba(200,240,255,${ca*0.55})`; ctx.lineWidth=Math.max(1,TW*0.025);
   ctx.beginPath();
   ctx.moveTo(x+TW*0.30, y+(v*11)%TH);
   ctx.lineTo(x+TW*0.50, y+TH*0.52);
   ctx.lineTo(x+TW*0.85, y+TH-(v*5)%18);
   ctx.stroke();
-  ctx.restore();
-  // Frost sparkle highlight
-  ctx.fillStyle=`rgba(220,245,255,${0.12+shimmer*0.08})`; ctx.fillRect(x+1,y+1,TW-2,2);
-  ctx.fillStyle=`rgba(220,245,255,${0.06+shimmer*0.04})`; ctx.fillRect(x+1,y+1,2,TH-2);
+  // Frost sparkle highlight (solid rects, no gradient)
+  const fa=0.12+shimmer*0.08;
+  ctx.fillStyle=`rgba(220,245,255,${fa})`; ctx.fillRect(x+1,y+1,TW-2,2);
+  ctx.fillStyle=`rgba(220,245,255,${fa*0.5})`; ctx.fillRect(x+1,y+1,2,TH-2);
   // Dark edges
   ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+1,y+TH-2,TW-2,1); ctx.fillRect(x+TW-2,y+1,1,TH-2);
 }
@@ -302,7 +287,7 @@ function drawDoor(r, c) {
 }
 
 function drawDoorPrompts() {
-  const tt=performance.now()/1000;
+  const tt=_tt;
   DOORS.forEach(door=>{
     if(door.unlocked) return;
     const dist=Math.hypot(player.cx-door.cx, player.cy-door.cy);
@@ -381,7 +366,7 @@ function drawTorch(r,c,flicker,color,opacity) {
 
 // ─── DECORATIONS ──────────────────────────────────────────────────────────────
 function drawDecorations() {
-  const tt = performance.now() / 1000;
+  const tt = _tt;
   DECORATIONS.forEach(d => {
     const px = d.cx * TW, py = d.cy * TH;
     ctx.save();

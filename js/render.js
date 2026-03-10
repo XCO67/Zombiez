@@ -11,6 +11,7 @@ function render(now) {
   if (now - lastFrameTime < FRAME_MS) return;
   lastFrameTime = now - ((now - lastFrameTime) % FRAME_MS);
   t += 0.04;
+  _tt = now / 1000; // shared frame time for tile/decoration animators
   if (!gameStarted) { return; }
 
   // ── Game logic ───────────────────────────────────────────────────────────────
