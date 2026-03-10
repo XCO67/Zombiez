@@ -76,9 +76,14 @@ function render(now) {
     else if (type===T.DOOR)         drawDoor(r,c);
     else if (type===T.BOSS_SPAWN)   drawBossSpawnTile(r,c);
     else if (type===T.SPIDER_SPAWN) drawSpiderSpawnTile(r,c);
-    else if (type===T.FLOOR2)       drawFloor(r,c,T.FLOOR2);
-    else if (type===T.COLOR_FLOOR)  drawColorFloor(r,c);
-    else                            drawFloor(r,c,type);
+    else if (type===T.FLOOR2)        drawFloor(r,c,T.FLOOR2);
+    else if (type===T.COLOR_FLOOR)   drawColorFloor(r,c);
+    else if (type===T.LAVA_FLOOR)    drawLavaFloor(r,c);
+    else if (type===T.ICE_FLOOR)     drawIceFloor(r,c);
+    else if (type===T.ANCIENT_STONE) drawAncientStone(r,c);
+    else if (type===T.WOOD_FLOOR)    drawWoodFloor(r,c);
+    else if (type===T.MOSSY_FLOOR)   drawMossyFloor(r,c);
+    else                             drawFloor(r,c,type);
   }
   drawWallShadows();
   drawDoorPrompts();

@@ -282,16 +282,21 @@ const TILES = [
   { id:7, name:'Boss Spawn',   key:'8', fill:'#1a0015', hi:'#880022', label:'B' },
   { id:8, name:'Dark Floor',   key:'9', fill:'#1a0d2e', hi:'#3a1a5c', label:'d' },
   { id:9, name:'Color Floor',  key:'0', fill:'#1e3340', hi:'#44aacc', label:'c' },
-  { id:10, name:'Spider Spawn', key:'q', fill:'#001a00', hi:'#006600', label:'W' },
+  { id:10, name:'Spider Spawn',  key:'q', fill:'#001a00', hi:'#006600', label:'W' },
+  { id:11, name:'Lava Floor',    key:'w', fill:'#3a0800', hi:'#ff4400', label:'L' },
+  { id:12, name:'Ice Floor',     key:'e', fill:'#0a1828', hi:'#60c8ff', label:'I' },
+  { id:13, name:'Ancient Stone', key:'r', fill:'#1c1810', hi:'#8b7040', label:'A' },
+  { id:14, name:'Wood Floor',    key:'t', fill:'#2e1a0a', hi:'#8b5e28', label:'W' },
+  { id:15, name:'Mossy Floor',   key:'y', fill:'#131710', hi:'#3a7020', label:'M' },
 ];
 
 // Editor tile id → game tile value (saved in map files)
-// Editor: 0=Wall 1=Floor 2=Pillar 3=Spawn 4=Torch(wall) 5=Door 6=PlayerStart 7=BossSpawn 8=DarkFloor 9=ColorFloor 10=SpiderSpawn
-// Game:   0=WALL 1=FLOOR 2=PILLAR 3=SPAWN               4=DOOR               5=BOSS_SPAWN 6=FLOOR2   7=COLOR_FLOOR 8=SPIDER_SPAWN
-const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6, 7, 8];
+// Editor: 0=Wall 1=Floor 2=Pillar 3=Spawn 4=Torch(wall) 5=Door 6=PlayerStart 7=BossSpawn 8=DarkFloor 9=ColorFloor 10=SpiderSpawn 11=Lava 12=Ice 13=AncientStone 14=Wood 15=Mossy
+// Game:   0=WALL 1=FLOOR 2=PILLAR 3=SPAWN               4=DOOR               5=BOSS_SPAWN 6=FLOOR2   7=COLOR_FLOOR 8=SPIDER_SPAWN            9=LAVA 10=ICE 11=ANCIENT 12=WOOD 13=MOSSY
+const EDITOR_TO_GAME = [0, 1, 2, 3, 0, 4, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 // Reverse: game tile value → editor tile id (used when loading saved maps)
-const GAME_TO_EDITOR = { 0:0, 1:1, 2:2, 3:3, 4:5, 5:7, 6:8, 7:9, 8:10 };
+const GAME_TO_EDITOR = { 0:0, 1:1, 2:2, 3:3, 4:5, 5:7, 6:8, 7:9, 8:10, 9:11, 10:12, 11:13, 12:14, 13:15 };
 
 // ── ASSET DEFINITIONS ────────────────────────────────────────────────────────
 // Assets are placed as floating objects on the map (snap to 0.5-tile centres)

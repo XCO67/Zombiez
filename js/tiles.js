@@ -63,6 +63,169 @@ function drawColorFloor(r, c) {
   ctx.fillStyle=`rgba(${rh},${gh},${bh},0.12)`; ctx.fillRect(x+v2%TW,y+TH*.3,1,TH*.4);
 }
 
+function drawLavaFloor(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  const tt=performance.now()/1000;
+  // Dark cooled-lava base
+  ctx.fillStyle='#200500'; ctx.fillRect(x,y,TW,TH);
+  // Pulsing glow from molten core
+  const pulse=Math.sin(tt*1.4+r*0.9+c*1.1)*0.5+0.5;
+  const gx=x+TW*0.5, gy=y+TH*0.5;
+  const g=ctx.createRadialGradient(gx,gy,0,gx,gy,TW*0.9);
+  g.addColorStop(0, `rgba(255,${60+pulse*80|0},0,${0.50+pulse*0.20})`);
+  g.addColorStop(0.5, `rgba(180,20,0,${0.18+pulse*0.10})`);
+  g.addColorStop(1, 'rgba(40,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(x,y,TW,TH);
+  // Glowing crack network
+  ctx.save();
+  const oa=0.65+pulse*0.35;
+  ctx.strokeStyle=`rgba(255,${140+pulse*80|0},0,${oa})`; ctx.lineWidth=Math.max(1,TW*0.055);
+  ctx.shadowColor='rgba(255,100,0,0.8)'; ctx.shadowBlur=TW*0.3;
+  ctx.beginPath();
+  ctx.moveTo(x+(v*6)%TW, y+TH*0.18);
+  ctx.lineTo(x+TW*0.50+(v%5-2)*4, y+TH*0.52);
+  ctx.lineTo(x+TW-(v*4)%14, y+TH*0.82);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x+TW*0.15, y+(v*9)%TH);
+  ctx.lineTo(x+TW*0.55+(v%3)*3, y+TH*0.52);
+  ctx.lineTo(x+TW*0.80, y+TH-(v*3)%16);
+  ctx.stroke();
+  // Bright molten core dot
+  ctx.fillStyle=`rgba(255,${220+pulse*35|0},${60+pulse*60|0},${0.9+pulse*0.1})`;
+  ctx.beginPath(); ctx.arc(gx,gy,TW*0.08,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // Dark border texture
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(x,y,TW,1); ctx.fillRect(x,y,1,TH);
+  ctx.fillRect(x,y+TH-1,TW,1); ctx.fillRect(x+TW-1,y,1,TH);
+}
+
+function drawIceFloor(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  const tt=performance.now()/1000;
+  const shimmer=Math.sin(tt*2.0+r*1.3+c*0.7)*0.5+0.5;
+  // Deep ice base
+  ctx.fillStyle='#0a1828'; ctx.fillRect(x,y,TW,TH);
+  ctx.fillStyle='#111f32'; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  // Translucent ice sheen
+  const g=ctx.createLinearGradient(x,y,x+TW,y+TH);
+  g.addColorStop(0, `rgba(80,180,255,${0.10+shimmer*0.08})`);
+  g.addColorStop(0.45, `rgba(200,240,255,${0.20+shimmer*0.12})`);
+  g.addColorStop(1, `rgba(50,140,220,${0.06})`);
+  ctx.fillStyle=g; ctx.fillRect(x,y,TW,TH);
+  // Crystal crack lines
+  ctx.save();
+  ctx.strokeStyle=`rgba(160,225,255,${0.45+shimmer*0.20})`; ctx.lineWidth=Math.max(1,TW*0.04);
+  ctx.shadowColor='rgba(120,200,255,0.5)'; ctx.shadowBlur=TW*0.15;
+  ctx.beginPath();
+  ctx.moveTo(x+(v*7)%TW, y+TH*0.15);
+  ctx.lineTo(x+TW*0.50, y+TH*0.52);
+  ctx.lineTo(x+TW-(v*3)%14, y+TH*0.88);
+  ctx.stroke();
+  ctx.strokeStyle=`rgba(200,240,255,${0.25+shimmer*0.15})`; ctx.lineWidth=Math.max(1,TW*0.025);
+  ctx.beginPath();
+  ctx.moveTo(x+TW*0.30, y+(v*11)%TH);
+  ctx.lineTo(x+TW*0.50, y+TH*0.52);
+  ctx.lineTo(x+TW*0.85, y+TH-(v*5)%18);
+  ctx.stroke();
+  ctx.restore();
+  // Frost sparkle highlight
+  ctx.fillStyle=`rgba(220,245,255,${0.12+shimmer*0.08})`; ctx.fillRect(x+1,y+1,TW-2,2);
+  ctx.fillStyle=`rgba(220,245,255,${0.06+shimmer*0.04})`; ctx.fillRect(x+1,y+1,2,TH-2);
+  // Dark edges
+  ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(x+1,y+TH-2,TW-2,1); ctx.fillRect(x+TW-2,y+1,1,TH-2);
+}
+
+function drawAncientStone(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  // Dark weathered stone base
+  ctx.fillStyle='#151210'; ctx.fillRect(x,y,TW,TH);
+  const shade=v>6?'#231e18':'#1e1a14';
+  ctx.fillStyle=shade; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  // Large flagstone grout lines
+  ctx.strokeStyle='rgba(0,0,0,0.60)'; ctx.lineWidth=1.5;
+  const half=v>5;
+  ctx.beginPath();
+  ctx.moveTo(x,y+TH*0.5); ctx.lineTo(x+TW,y+TH*0.5); ctx.stroke();
+  ctx.beginPath();
+  if(half){ ctx.moveTo(x+TW*0.5,y); ctx.lineTo(x+TW*0.5,y+TH*0.5); }
+  else     { ctx.moveTo(x+TW*0.5,y+TH*0.5); ctx.lineTo(x+TW*0.5,y+TH); }
+  ctx.stroke();
+  // Worn stone highlight on top faces
+  ctx.fillStyle='rgba(200,175,120,0.07)'; ctx.fillRect(x+2,y+2,TW-4,1);
+  ctx.fillStyle='rgba(200,175,120,0.04)'; ctx.fillRect(x+2,y+2,1,TH*0.5-3);
+  ctx.fillStyle='rgba(200,175,120,0.04)'; ctx.fillRect(x+2,y+TH*0.5+2,1,TH*0.5-4);
+  // Moss patches
+  const mx1=x+(v*5+1)%((TW*0.6)|1)+TW*0.1, my1=y+(v*7+2)%((TH*0.4)|1)+TH*0.05;
+  ctx.fillStyle='rgba(38,72,18,0.50)';
+  ctx.beginPath(); ctx.ellipse(mx1,my1,TW*0.13,TH*0.09,v*0.5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(55,100,25,0.30)';
+  ctx.beginPath(); ctx.ellipse(mx1-TW*0.05,my1+TH*0.04,TW*0.06,TH*0.05,0,0,Math.PI*2); ctx.fill();
+  // Engraved rune mark (every 3rd tile)
+  if (v%3===0) {
+    ctx.save(); ctx.globalAlpha=0.18; ctx.strokeStyle='#aa88ff'; ctx.lineWidth=1;
+    const rx=x+TW*0.5, ry=y+TH*0.75, rs=TH*0.12;
+    ctx.beginPath();
+    for(let i=0;i<5;i++){const a=i/5*Math.PI*2-Math.PI/2; ctx.lineTo(rx+Math.cos(a)*rs,ry+Math.sin(a)*rs);}
+    ctx.closePath(); ctx.stroke(); ctx.restore();
+  }
+}
+
+function drawWoodFloor(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  // Warm walnut plank base
+  ctx.fillStyle='#2e1a0a'; ctx.fillRect(x,y,TW,TH);
+  const plankCol=v>6?'#3d2412':'#452a14';
+  ctx.fillStyle=plankCol; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  // Horizontal planks — 3 bands
+  ctx.save();
+  const nGrain=3;
+  for(let i=0;i<nGrain;i++){
+    const gy=y+((i+0.5)/nGrain)*TH;
+    ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,gy); ctx.lineTo(x+TW,gy); ctx.stroke();
+  }
+  // Wood grain detail lines
+  for(let i=0;i<4;i++){
+    const gx2=x+2+(v*3+i*7)%Math.max(1,TW-4);
+    ctx.strokeStyle='rgba(0,0,0,0.13)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(gx2,y+1); ctx.lineTo(gx2+v%4,y+TH-1); ctx.stroke();
+  }
+  // Plank seam (vertical join every tile boundary)
+  ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x+1,y); ctx.lineTo(x+1,y+TH); ctx.stroke();
+  ctx.restore();
+  // Warm toplight highlight
+  ctx.fillStyle='rgba(255,195,100,0.06)'; ctx.fillRect(x+2,y+1,TW-4,1);
+  // Dark shadow bottom
+  ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(x+1,y+TH-2,TW-2,1);
+}
+
+function drawMossyFloor(r, c) {
+  const x=c*TW, y=r*TH, v=variant(r,c);
+  // Damp dark stone base
+  ctx.fillStyle='#131710'; ctx.fillRect(x,y,TW,TH);
+  ctx.fillStyle='#1b2117'; ctx.fillRect(x+1,y+1,TW-2,TH-2);
+  // Moss blob patches — dense coverage
+  const patches=[
+    {ox:v*5%TW,  oy:v*7%TH,  ra:TW*0.22, rb:TH*0.17, col:'rgba(30,75,15,0.72)'},
+    {ox:v*9%TW,  oy:v*3%TH,  ra:TW*0.16, rb:TH*0.13, col:'rgba(45,95,20,0.60)'},
+    {ox:v*13%TW, oy:v*11%TH, ra:TW*0.12, rb:TH*0.10, col:'rgba(60,110,28,0.50)'},
+  ];
+  patches.forEach(p=>{
+    ctx.fillStyle=p.col;
+    ctx.beginPath(); ctx.ellipse(x+p.ox,y+p.oy,p.ra,p.rb,v*0.3,0,Math.PI*2); ctx.fill();
+  });
+  // Bright moss highlight on patches
+  ctx.fillStyle='rgba(80,160,35,0.15)';
+  ctx.beginPath(); ctx.ellipse(x+v*5%TW,y+v*7%TH,TW*0.10,TH*0.08,0,0,Math.PI*2); ctx.fill();
+  // Subtle stone crack under moss
+  ctx.strokeStyle='rgba(0,0,0,0.30)'; ctx.lineWidth=1;
+  ctx.strokeRect(x,y,TW,TH);
+  // Damp sheen top highlight
+  ctx.fillStyle='rgba(100,180,50,0.07)'; ctx.fillRect(x+1,y+1,TW-2,1);
+}
+
 function drawSpiderSpawnTile(r, c) {
   drawFloor(r, c, T.FLOOR);
   const x = c * TW, y = r * TH;
