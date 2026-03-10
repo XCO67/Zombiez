@@ -87,6 +87,9 @@ function render(now) {
   const flickers=TORCHES.map((_,i)=>Math.sin(t*2.8+i*1.87)*.5+.5);
   TORCHES.forEach(([r,c,color,opacity],i)=>drawTorch(r,c,flickers[i],color,opacity));
 
+  // Decorations — drawn on the ground before entities
+  drawDecorations();
+
   // Entities — Y-sorted
   drawFlames();
   drawLavaPools();

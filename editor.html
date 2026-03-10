@@ -142,6 +142,9 @@
   <div class="s-sec">Assets</div>
   <div id="asset-list"></div>
 
+  <div class="s-sec">Decorations</div>
+  <div id="deco-list"></div>
+
   <!-- Torch color picker — shown only when torch tool is active -->
   <div id="torch-cfg" style="display:none;border-bottom:1px solid var(--border)">
     <div class="s-sec" style="border-bottom:none">Torch Color</div>
@@ -305,6 +308,15 @@ const ASSETS = [
   { type:'torch',      label:'Torch',         icon:'🔥', color:'#ff8833', multi:true,  default:null              },
   { type:'door',       label:'Buyable Door',  icon:'🔒', color:'#ffd700', multi:true,  default:null              },
   { type:'goldbutton', label:'Gold Button (Dev)', icon:'💰', color:'#ffd700', multi:true, default:null           },
+  // ── Decorations ──
+  { type:'barrel',     label:'Barrel',            icon:'🛢', color:'#8b5e28', multi:true, default:null, deco:true },
+  { type:'candle',     label:'Candle Cluster',    icon:'🕯', color:'#ffcc66', multi:true, default:null, deco:true },
+  { type:'brazier',    label:'Brazier',           icon:'🔥', color:'#ff6600', multi:true, default:null, deco:true },
+  { type:'bones',      label:'Bones',             icon:'💀', color:'#c8c0a0', multi:true, default:null, deco:true },
+  { type:'bloodstain', label:'Blood Stain',       icon:'🩸', color:'#880000', multi:true, default:null, deco:true },
+  { type:'rune',       label:'Rune',              icon:'✦',  color:'#aa44ff', multi:true, default:null, deco:true },
+  { type:'lantern',    label:'Lantern',           icon:'🏮', color:'#ffaa33', multi:true, default:null, deco:true },
+  { type:'web',        label:'Spider Web',        icon:'🕸', color:'#aabbcc', multi:true, default:null, deco:true },
 ];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -394,6 +406,7 @@ function initDefaultObjects() {
   colorFloors = [];
   objects.doors = [];
   objects.goldbuttons = [];
+  objects.decorations = [];
 }
 
 function newMap() {
@@ -463,7 +476,8 @@ function loadMapFromData(m) {
   objects.doors = (m.objects?.doors || m.doors || []).slice();
   if(m.torches) { torches = m.torches.slice(); }
   colorFloors = (m.colorFloors || []).slice();
-  objects.goldbuttons = (m.objects?.goldbuttons || []).slice();
+  objects.goldbuttons  = (m.objects?.goldbuttons  || []).slice();
+  objects.decorations  = (m.objects?.decorations  || []).slice();
   document.getElementById('map-name-inp').value = m.name || 'Map';
   editId = m.id;
   syncSizeInputs();
@@ -494,7 +508,8 @@ function buildMapObj() {
   const obj = {};
   Object.keys(objects).forEach(k=>{
     if(k==='doors') obj.doors = objects.doors.map(d=>({...d}));
-    else if(k==='goldbuttons') obj.goldbuttons = (objects.goldbuttons||[]).map(g=>({...g}));
+    else if(k==='goldbuttons')  obj.goldbuttons  = (objects.goldbuttons||[]).map(g=>({...g}));
+    else if(k==='decorations')  obj.decorations  = (objects.decorations||[]).map(d=>({...d}));
     else obj[k]={...objects[k]};
   });
 
@@ -587,13 +602,21 @@ function buildToolbar() {
 function buildAssetList() {
   const list = document.getElementById('asset-list');
   list.innerHTML = '';
-  ASSETS.forEach(a=>{
+  ASSETS.filter(a=>!a.deco).forEach(a=>{
     const btn = document.createElement('button');
     btn.className = 'abtn' + (activeTool===a.type ? ' active' : '');
     btn.id = 'abtn-'+a.type;
     btn.innerHTML = `<span class="aico" style="color:${a.color}">${a.icon}</span><span>${a.label}</span>${a.multi?'<span class="amulti">multi</span>':''}`;
     btn.onclick = ()=>selectAsset(a.type);
     list.appendChild(btn);
+  });
+  ASSETS.filter(a=>a.deco).forEach((a)=>{
+    const btn = document.createElement('button');
+    btn.className = 'abtn' + (activeTool===a.type ? ' active' : '');
+    btn.id = 'abtn-'+a.type;
+    btn.innerHTML = `<span class="aico" style="color:${a.color}">${a.icon}</span><span>${a.label}</span><span class="amulti">multi</span>`;
+    btn.onclick = ()=>selectAsset(a.type);
+    document.getElementById('deco-list').appendChild(btn);
   });
 }
 
@@ -754,6 +777,16 @@ function placeAsset(e, rightClick) {
       objects.goldbuttons.push({ cx:pos.cx, cy:pos.cy });
       redraw();
     }
+  } else if(ASSETS.find(a=>a.type===type)?.deco) {
+    const pos = assetPosAt(e);
+    if(!objects.decorations) objects.decorations = [];
+    if(rightClick) {
+      const idx = objects.decorations.findIndex(d=>d.type===type && Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
+      if(idx>=0) { objects.decorations.splice(idx,1); redraw(); }
+    } else {
+      objects.decorations.push({ type, cx:pos.cx, cy:pos.cy });
+      redraw();
+    }
   } else {
     const pos = assetPosAt(e);
     objects[type] = { cx:pos.cx, cy:pos.cy };
@@ -908,6 +941,29 @@ function drawAssets() {
       ctx.fillStyle = '#ffd700';
       ctx.textBaseline = 'top';
       ctx.fillText(`${d.name} — ${d.cost}g`, px, py+ts*.58);
+    }
+    ctx.restore();
+  });
+
+  // Draw decoration markers
+  (objects.decorations||[]).forEach(d=>{
+    const adef = ASSETS.find(a=>a.type===d.type);
+    if(!adef) return;
+    const px=d.cx*ts, py=d.cy*ts;
+    const isActive = activeTool===d.type;
+    ctx.save();
+    const gg2=ctx.createRadialGradient(px,py,0,px,py,ts*.6);
+    gg2.addColorStop(0,adef.color+'44'); gg2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gg2; ctx.beginPath(); ctx.arc(px,py,ts*.6,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = isActive ? '#fff' : adef.color; ctx.lineWidth = isActive ? 2 : 1.2;
+    ctx.beginPath(); ctx.arc(px,py,ts*.34,0,Math.PI*2); ctx.stroke();
+    ctx.font=`${Math.max(9,ts*.34)}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(adef.icon, px, py);
+    if(ts>=16){
+      ctx.font=`bold ${Math.max(7,ts*.2)}px Segoe UI`;
+      ctx.fillStyle=adef.color; ctx.textBaseline='top';
+      ctx.fillText(adef.label, px, py+ts*.38);
     }
     ctx.restore();
   });

@@ -33,6 +33,7 @@ let TORCHES = [
 
 let PLAYER_START = { cx:19.5, cy:13.5 };
 let GOLD_BUTTONS = [];
+let DECORATIONS = []; // [{type, cx, cy}, ...]
 
 // ─── DOORS ────────────────────────────────────────────────────────────────────
 const DOORS = [
@@ -125,7 +126,8 @@ function applyMapData(data) {
     if (o.pistolvendor) { PISTOL_VENDOR_POS.cx=o.pistolvendor.cx; PISTOL_VENDOR_POS.cy=o.pistolvendor.cy; }
     if (o.box)          { BOX_POS.cx=o.box.cx;                    BOX_POS.cy=o.box.cy; }
     if (o.devchest)   { DEV_CHEST_POS.cx=o.devchest.cx;    DEV_CHEST_POS.cy=o.devchest.cy; }
-    if (o.goldbuttons) GOLD_BUTTONS = o.goldbuttons.map(g=>({cx:g.cx,cy:g.cy}));
+    if (o.goldbuttons)  GOLD_BUTTONS = o.goldbuttons.map(g=>({cx:g.cx,cy:g.cy}));
+    if (o.decorations)  DECORATIONS  = o.decorations.map(d=>({...d}));
     if (o.ricochet)   { RICOCHET_POS.cx=o.ricochet.cx;    RICOCHET_POS.cy=o.ricochet.cy; }
   }
 }
