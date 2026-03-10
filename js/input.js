@@ -106,9 +106,16 @@ document.addEventListener('keydown', e => {
       if (distPap < PAP_RADIUS) {
         const wk = player.weaponKey;
         if (!player.packedWeapons.has(wk)) {
+          // First PAP — 3× damage
           if (player.money < PAP_COST) return;
           player.money -= PAP_COST;
           player.packedWeapons.add(wk);
+          playPapSound();
+        } else if (!player.doublePapWeapons.has(wk) && wk !== 'thundergun') {
+          // Second PAP — adds wall bounce (thundergun excluded, it's a wave)
+          if (player.money < PAP_COST) return;
+          player.money -= PAP_COST;
+          player.doublePapWeapons.add(wk);
           playPapSound();
         }
         return;

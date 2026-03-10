@@ -225,9 +225,15 @@ function drawPapMachine() {
       const canAfford = player.money >= PAP_COST;
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz * 1.5 + 1);
       ctx.fillStyle = canAfford ? `hsl(${hue},100%,72%)` : '#888'; ctx.fillText(label, px, py - sz * 1.5);
+    } else if (!player.doublePapWeapons.has(wk) && wk !== 'thundergun') {
+      const label = `[E] Pack II — Add Ricochet  $${PAP_COST}`;
+      const canAfford = player.money >= PAP_COST;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz * 1.5 + 1);
+      ctx.fillStyle = canAfford ? `hsl(${hue},100%,72%)` : '#888'; ctx.fillText(label, px, py - sz * 1.5);
     } else {
-      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText('Already Packed!', px+1, py - sz*1.5+1);
-      ctx.fillStyle = `hsl(${hue},100%,70%)`; ctx.fillText('Already Packed!', px, py - sz*1.5);
+      const label = wk === 'thundergun' ? 'Thunder cannot ricochet!' : 'MAX — Double Packed!';
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz*1.5+1);
+      ctx.fillStyle = `hsl(${hue},100%,70%)`; ctx.fillText(label, px, py - sz*1.5);
     }
     ctx.restore();
   }

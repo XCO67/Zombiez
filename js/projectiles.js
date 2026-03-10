@@ -26,7 +26,7 @@ function spawnBullet(sx,sy,angle,wkey) {
     x:sx, y:sy,
     vx:Math.cos(angle)*w.speed, vy:Math.sin(angle)*w.speed,
     trail:[], life:90, wkey, papped,
-    bouncesLeft: player.ricochets,
+    bouncesLeft: player.ricochets + (player.doublePapWeapons.has(wkey) ? 1 : 0),
   });
 }
 
@@ -102,35 +102,56 @@ function playLaserFireSound() {
 function fireLaser(sx, sy, angle) {
   const wkey = 'lasergun';
   const papped = player.packedWeapons.has(wkey);
-  const dx = Math.cos(angle), dy = Math.sin(angle);
-  const maxDist = (MAP_W + MAP_H) * TW;
-  // Raycast to first wall
-  let beamLen = maxDist;
-  for (let d = TW * 0.5; d < maxDist; d += TW * 0.5) {
-    const tc = (sx + dx*d)/TW|0, tr = (sy + dy*d)/TH|0;
-    if (tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR) {
-      beamLen = d; break;
-    }
-  }
-  const hitR = TW * 0.55;
-  function onBeam(ex, ey) {
-    const rx = ex-sx, ry = ey-sy;
-    const proj = rx*dx + ry*dy;
-    if (proj < 0 || proj > beamLen) return false;
-    return Math.abs(rx*dy - ry*dx) <= hitR;
-  }
+  const doublePapped = player.doublePapWeapons.has(wkey);
   const pm = papped ? 3 : 1;
-  ZOMBIES.forEach(z  => { if (!z.dead  && onBeam(z.cx*TW,  z.cy*TH))  hitZombie(z, wkey, z.cx*TW, z.cy*TH, pm); });
-  SKELETONS.forEach(s=> { if (!s.dead  && onBeam(s.cx*TW,  s.cy*TH))  hitSkeleton(s, wkey, pm); });
-  DRAGONS.forEach(d  => { if (!d.dead  && onBeam(d.cx*TW,  d.cy*TH))  hitDragon(d, wkey, pm); });
-  LAVA_ZOMBIES.forEach(lz=>{ if (!lz.dead && onBeam(lz.cx*TW, lz.cy*TH)) hitLavaZombie(lz, wkey, pm); });
-  EXPLODERS.forEach(ex=> { if (!ex.dead && onBeam(ex.cx*TW, ex.cy*TH)) hitExploder(ex, wkey, pm); });
-  PHANTOMS.forEach(ph => { if (!ph.dead && onBeam(ph.cx*TW, ph.cy*TH)) hitPhantom(ph, wkey, pm); });
-  BOSS_DEMONS.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitBoss(b, wkey, pm); });
-  SPIDER_BOSSES.forEach(b => { if (!b.dead && onBeam(b.cx*TW, b.cy*TH)) hitSpiderBoss(b, wkey, pm); });
-  SPIDER_MINIONS.forEach(m => { if (!m.dead && onBeam(m.cx*TW, m.cy*TH)) hitSpiderMinion(m, wkey, pm); });
+  const maxDist = (MAP_W + MAP_H) * TW;
+  const hitR = TW * 0.55;
+
+  function raycast(ox, oy, ddx, ddy) {
+    for (let d = TW * 0.5; d < maxDist; d += TW * 0.5) {
+      const tc = (ox + ddx*d)/TW|0, tr = (oy + ddy*d)/TH|0;
+      if (tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR) return d;
+    }
+    return maxDist;
+  }
+
+  function damageOnSegment(ox, oy, ddx, ddy, len) {
+    function onBeam(ex, ey) {
+      const rx=ex-ox, ry=ey-oy, proj=rx*ddx+ry*ddy;
+      return proj>=0 && proj<=len && Math.abs(rx*ddy - ry*ddx)<=hitR;
+    }
+    ZOMBIES.forEach(z      => { if (!z.dead  && onBeam(z.cx*TW,  z.cy*TH))  hitZombie(z, wkey, z.cx*TW, z.cy*TH, pm); });
+    SKELETONS.forEach(s    => { if (!s.dead  && onBeam(s.cx*TW,  s.cy*TH))  hitSkeleton(s, wkey, pm); });
+    DRAGONS.forEach(d      => { if (!d.dead  && onBeam(d.cx*TW,  d.cy*TH))  hitDragon(d, wkey, pm); });
+    LAVA_ZOMBIES.forEach(lz=> { if (!lz.dead && onBeam(lz.cx*TW, lz.cy*TH)) hitLavaZombie(lz, wkey, pm); });
+    EXPLODERS.forEach(ex   => { if (!ex.dead && onBeam(ex.cx*TW, ex.cy*TH)) hitExploder(ex, wkey, pm); });
+    PHANTOMS.forEach(ph    => { if (!ph.dead && onBeam(ph.cx*TW, ph.cy*TH)) hitPhantom(ph, wkey, pm); });
+    BOSS_DEMONS.forEach(b  => { if (!b.dead  && onBeam(b.cx*TW,  b.cy*TH))  hitBoss(b, wkey, pm); });
+    SPIDER_BOSSES.forEach(b=> { if (!b.dead  && onBeam(b.cx*TW,  b.cy*TH))  hitSpiderBoss(b, wkey, pm); });
+    SPIDER_MINIONS.forEach(m=>{ if (!m.dead  && onBeam(m.cx*TW,  m.cy*TH))  hitSpiderMinion(m, wkey, pm); });
+  }
+
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const len1 = raycast(sx, sy, dx, dy);
+  const ex1 = sx + dx*len1, ey1 = sy + dy*len1;
+  damageOnSegment(sx, sy, dx, dy, len1);
+
+  const segments = [{ sx, sy, ex: ex1, ey: ey1 }];
+
+  if (doublePapped) {
+    // Reflect off wall — detect which axis was hit
+    const px2 = ex1 - dx*TW*0.5, py2 = ey1 - dy*TW*0.5;
+    const hitX = ((px2+dx*TW)/TW|0) !== (px2/TW|0) || (((sx+dx*(len1))/TW|0) !== ((sx+dx*(len1-TW))/TW|0));
+    const rdx = hitX ? -dx : dx;
+    const rdy = hitX ? dy : -dy;
+    const len2 = raycast(ex1, ey1, rdx, rdy);
+    const ex2 = ex1 + rdx*len2, ey2 = ey1 + rdy*len2;
+    damageOnSegment(ex1, ey1, rdx, rdy, len2);
+    segments.push({ sx: ex1, sy: ey1, ex: ex2, ey: ey2 });
+  }
+
   stopLaserChargeSound();
-  laserBeam = { sx, sy, ex: sx+dx*beamLen, ey: sy+dy*beamLen, life:35, maxLife:35, papped };
+  laserBeam = { segments, life:35, maxLife:35, papped };
   muzzleFlash = 15; muzzleColor = '#ff00cc';
   playLaserFireSound();
 }
@@ -487,32 +508,36 @@ function drawProjectiles() {
     const hue = lb.papped ? (performance.now()/3)%360 : 300;
     ctx.save();
     ctx.lineCap = 'round';
-    // Outer wide glow
-    ctx.globalAlpha = a * 0.35;
-    ctx.strokeStyle = `hsl(${hue},100%,70%)`;
-    ctx.lineWidth = TW * 1.2 * a;
-    ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 28;
-    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
-    // Mid beam
-    ctx.globalAlpha = a * 0.8;
-    ctx.strokeStyle = `hsl(${hue},100%,85%)`;
-    ctx.lineWidth = TW * 0.38 * a;
-    ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
-    // White hot core
-    ctx.globalAlpha = a;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = TW * 0.09;
-    ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.moveTo(lb.sx, lb.sy); ctx.lineTo(lb.ex, lb.ey); ctx.stroke();
-    // Impact flash at endpoint
-    if (a > 0.5) {
-      const ig = ctx.createRadialGradient(lb.ex,lb.ey,0,lb.ex,lb.ey,TW*0.9*a);
-      ig.addColorStop(0,`hsla(${hue},100%,95%,${a})`);
-      ig.addColorStop(0.5,`hsla(${hue},100%,70%,${a*0.6})`);
-      ig.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(lb.ex,lb.ey,TW*0.9*a,0,Math.PI*2); ctx.fill();
-    }
+    lb.segments.forEach((seg, si) => {
+      // Outer wide glow
+      ctx.globalAlpha = a * 0.35;
+      ctx.strokeStyle = `hsl(${hue},100%,70%)`;
+      ctx.lineWidth = TW * 1.2 * a;
+      ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 28;
+      ctx.beginPath(); ctx.moveTo(seg.sx, seg.sy); ctx.lineTo(seg.ex, seg.ey); ctx.stroke();
+      // Mid beam
+      ctx.globalAlpha = a * 0.8;
+      ctx.strokeStyle = `hsl(${hue},100%,85%)`;
+      ctx.lineWidth = TW * 0.38 * a;
+      ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.moveTo(seg.sx, seg.sy); ctx.lineTo(seg.ex, seg.ey); ctx.stroke();
+      // White hot core
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = TW * 0.09;
+      ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(seg.sx, seg.sy); ctx.lineTo(seg.ex, seg.ey); ctx.stroke();
+      // Impact flash at final endpoint
+      const isLast = si === lb.segments.length - 1;
+      if (isLast && a > 0.5) {
+        const ig = ctx.createRadialGradient(seg.ex,seg.ey,0,seg.ex,seg.ey,TW*0.9*a);
+        ig.addColorStop(0,`hsla(${hue},100%,95%,${a})`);
+        ig.addColorStop(0.5,`hsla(${hue},100%,70%,${a*0.6})`);
+        ig.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.globalAlpha = a;
+        ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(seg.ex,seg.ey,TW*0.9*a,0,Math.PI*2); ctx.fill();
+      }
+    });
     ctx.restore();
     lb.life--;
     if (lb.life <= 0) laserBeam = null;

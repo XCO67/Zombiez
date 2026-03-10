@@ -27,6 +27,7 @@ const player = {
   spreadOrbs: 0,          // collected orbs waiting to be spent at Pistol Upgrade Vendor
   webSlowTimer: 0,        // frames remaining of Venom Queen web slow effect
   packedWeapons: new Set(),
+  doublePapWeapons: new Set(),
   ricochets: 0,
   perks: { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 },
   shield:0, shieldRechargeTimer:0,
