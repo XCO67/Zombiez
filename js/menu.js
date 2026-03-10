@@ -193,20 +193,81 @@ async function saveScore() {
   }
 }
 
+// ── Fake leaderboard stats (UI-only, calibrated from real gameplay) ───────────
+// Massari's organic R30 run: 1340 kills / $164,124 / 18,890 score — used as anchor.
+// [username, round, kills, gold, score, date]
+const FAKE_LB = [
+  ['mikeyd97',     42, 2722, 422700, 38800, '2026-03-08'],
+  ['ChrisVortex',  38, 2199, 308000, 30630, '2026-03-04'],
+  ['jake_irl',     33, 1549, 197800, 21570, '2026-03-01'],
+  ['ethanrr',      27, 1161, 123900, 15500, '2026-03-07'],
+  ['liam_online',  24,  800,  78000, 10460, '2026-02-27'],
+  ['OliverPlays',  22,  762,  71800, 10050, '2026-03-01'],
+  ['nathan_x99',   19,  490,  35900,  5590, '2026-02-19'],
+  ['Khalid_FPS',   16,  413,  27400,  4650, '2026-02-24'],
+  ['harrygg',      13,  244,  12500,  2390, '2026-02-16'],
+  ['sam_wrecks',   11,  195,   8900,  1860, '2026-02-21'],
+  ['TomFPS',       10,  143,   6200,  1360, '2026-02-08'],
+  ['MaxDiesel',     9,  144,   5800,  1350, '2026-02-13'],
+  ['dylan_v2',      9,  118,   4800,  1110, '2026-02-02'],
+  ['callumrr',      8,  116,   4400,  1070, '2026-02-10'],
+  ['JamieOnFire',   7,   90,   3200,   830, '2026-01-31'],
+  ['Ahmad_gg',      7,   81,   2800,   740, '2026-01-26'],
+  ['scottygaming',  6,   75,   2500,   680, '2026-01-19'],
+  ['ryanx_plays',   6,   62,   2000,   560, '2026-02-05'],
+  ['BradleyK',      6,   70,   2300,   630, '2026-01-23'],
+  ['Youssefgaming', 5,   50,   1600,   460, '2026-01-29'],
+  ['Connor_irl',    5,   57,   1700,   510, '2026-01-14'],
+  ['aaronftw',      5,   49,   1500,   450, '2026-01-21'],
+  ['ConnorV3',      5,   55,   1700,   500, '2026-01-07'],
+  ['OmarRages',     4,   38,   1000,   350, '2026-01-12'],
+  ['will_gamez',    4,   34,    900,   310, '2026-01-01'],
+  ['joshplays99',   4,   41,   1100,   380, '2026-01-08'],
+  ['AlexTV',        4,   31,    800,   290, '2025-12-28'],
+  ['lukenotluke',   3,   27,    650,   250, '2025-12-24'],
+  ['Tariq_online',  3,   23,    550,   210, '2025-12-11'],
+  ['KieranRages',   3,   26,    650,   240, '2025-12-19'],
+  ['paulfps',       3,   22,    550,   200, '2025-12-07'],
+  ['LucasGaming',   3,   28,    700,   260, '2025-12-14'],
+  ['benoverit',     3,   24,    600,   220, '2025-12-03'],
+  ['Faisal_gg',     3,   28,    650,   250, '2025-11-29'],
+  ['sean_midnight', 2,   16,    350,   150, '2025-12-09'],
+  ['daningame',     2,   14,    300,   130, '2025-11-21'],
+  ['SteveMayhem',   2,   17,    350,   160, '2025-12-04'],
+  ['Rami_xo',       2,   13,    250,   120, '2025-11-15'],
+  ['markv99',       2,   16,    300,   150, '2025-11-18'],
+  ['phil_plays',    2,   14,    300,   130, '2025-11-12'],
+  ['RichardXX',     2,   16,    300,   150, '2025-11-09'],
+  ['patrickggs',    1,    8,    100,    70, '2025-11-04'],
+  ['Hassan_pw',     1,    7,    100,    60, '2025-10-27'],
+  ['nick_dostuff',  1,    7,    100,    60, '2025-10-21'],
+  ['simon_grind',   1,    6,    100,    50, '2025-10-14'],
+  ['andypwns',      1,    8,    100,    70, '2025-10-19'],
+  ['tim_rage',      1,    7,    100,    60, '2025-10-09'],
+  ['kyleoffline',   1,    7,    100,    60, '2025-10-24'],
+  ['brett_plays',   1,    7,    100,    60, '2025-10-05'],
+  ['Mohammed_k',    1,    7,    100,    60, '2025-10-12'],
+].map(([username, round, kills, gold, score, date]) => ({ username, round, kills, gold, score, date }));
+
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 async function refreshLeaderboard() {
   const el = document.getElementById('lbContent');
   el.innerHTML = '<div class="lb-empty">Loading…</div>';
 
-  let rows = [];
+  let real = [];
   try {
     const { ok, data } = await apiGet('/api/leaderboard');
-    if (ok && Array.isArray(data)) rows = data;
+    if (ok && Array.isArray(data)) real = data;
   } catch {
-    // Fallback to local storage
-    rows = (JSON.parse(localStorage.getItem('deadsurge_lb_local') || '[]'))
+    real = (JSON.parse(localStorage.getItem('deadsurge_lb_local') || '[]'))
       .map(e => ({ username: e.name, round: e.round, kills: e.kills, gold: e.gold, score: e.score, date: e.date }));
   }
+
+  // Merge real players with fake entries, real players take priority (remove fake if same username)
+  const realNames = new Set(real.map(r => (r.username||r.name).toLowerCase()));
+  const fakeFiltered = FAKE_LB.filter(f => !realNames.has(f.username.toLowerCase()));
+  const rows = [...real, ...fakeFiltered]
+    .sort((a, b) => b.round - a.round || b.score - a.score || b.kills - a.kills);
 
   if (!rows.length) { el.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>'; return; }
   const med = ['gold','silver','bronze'];
@@ -214,8 +275,8 @@ async function refreshLeaderboard() {
     <tr><th>#</th><th>Player</th><th>Round</th><th>Kills</th><th>Gold</th><th>Score</th><th>Date</th></tr>
     ${rows.map((r,i) => `<tr class="${med[i]||''}">
       <td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-      <td>${r.username||r.name}</td>
-      <td>${r.round}</td><td>${r.kills}</td><td>$${r.gold}</td><td>${r.score}</td>
+      <td>${escHtml(r.username||r.name)}</td>
+      <td>${r.round}</td><td>${r.kills}</td><td>$${Number(r.gold).toLocaleString()}</td><td>${r.score}</td>
       <td style="font-size:11px;color:rgba(255,255,255,.35)">${r.date||''}</td>
     </tr>`).join('')}
   </table>`;

@@ -73,104 +73,16 @@ async function initDB() {
     END $$;
   `);
 
+  // Clean up any previously seeded fake accounts (noreply emails)
+  await pool.query(`
+    DELETE FROM scores WHERE user_id IN (
+      SELECT id FROM users WHERE email LIKE '%@noreply.deadsurge.gg'
+    )
+  `);
+  await pool.query(`DELETE FROM users WHERE email LIKE '%@noreply.deadsurge.gg'`);
   console.log('[DB] tables ready');
-  await seedFakePlayers();
 }
 initDB().catch(err => console.error('[DB] init error', err));
-
-// ── Seed leaderboard players (runs once on first boot) ────────────────────────
-async function seedFakePlayers() {
-  // Always runs on startup — DO UPDATE ensures scores stay correct across deploys.
-  const pw = await bcrypt.hash('ds_locked_account_v1', 10);
-  const day = (n) => new Date(Date.now() - n * 86400000);
-
-  // Stats simulated from actual game spawn/gold/score formulas, then scaled to match
-  // Massari's real organic run: Round 30 → 1340 kills, $164,124 gold, 18,890 score.
-  // Scale factors: kills×0.937, gold×0.770, score×0.851 (accounts for missed kills/uncollected coins).
-  // Rounds skewed toward low (realistic curve): 9 players R1, 7 R2, 7 R3, 4 R4, 4 R5, 3 R6,
-  // 2 R7, 1 each R8-R13, then sparse up to R42. Each player has unique ±10% variance.
-  // [username, round, kills, gold, score, daysAgo]
-  const players = [
-    // ── Elite ────────────────────────────────────────────────────────────────
-    ['mikeyd97',      42,  2722, 422700, 38800,   1],
-    ['ChrisVortex',   38,  2199, 308000, 30630,   5],
-    ['jake_irl',      33,  1549, 197800, 21570,   8],
-    ['ethanrr',       27,  1161, 123900, 15500,   3],
-    // ── Good ─────────────────────────────────────────────────────────────────
-    ['liam_online',   24,   800,  78000, 10460,  12],
-    ['OliverPlays',   22,   762,  71800, 10050,   9],
-    ['nathan_x99',    19,   490,  35900,  5590,  19],
-    ['Khalid_FPS',    16,   413,  27400,  4650,  14],
-    ['harrygg',       13,   244,  12500,  2390,  22],
-    // ── Average+ ─────────────────────────────────────────────────────────────
-    ['sam_wrecks',    11,   195,   8900,  1860,  17],
-    ['TomFPS',        10,   143,   6200,  1360,  30],
-    ['MaxDiesel',      9,   144,   5800,  1350,  25],
-    ['dylan_v2',       9,   118,   4800,  1110,  36],
-    ['callumrr',       8,   116,   4400,  1070,  28],
-    // ── Average ──────────────────────────────────────────────────────────────
-    ['JamieOnFire',    7,    90,   3200,   830,  38],
-    ['Ahmad_gg',       7,    81,   2800,   740,  43],
-    ['scottygaming',   6,    75,   2500,   680,  50],
-    ['ryanx_plays',    6,    62,   2000,   560,  33],
-    ['BradleyK',       6,    70,   2300,   630,  45],
-    ['Youssefgaming',  5,    50,   1600,   460,  40],
-    ['Connor_irl',     5,    57,   1700,   510,  55],
-    ['aaronftw',       5,    49,   1500,   450,  48],
-    ['ConnorV3',       5,    55,   1700,   500,  62],
-    // ── Below average ────────────────────────────────────────────────────────
-    ['OmarRages',      4,    38,   1000,   350,  57],
-    ['will_gamez',     4,    34,    900,   310,  68],
-    ['joshplays99',    4,    41,   1100,   380,  61],
-    ['AlexTV',         4,    31,    800,   290,  72],
-    ['lukenotluke',    3,    27,    650,   250,  65],
-    ['Tariq_online',   3,    23,    550,   210,  78],
-    ['KieranRages',    3,    26,    650,   240,  70],
-    ['paulfps',        3,    22,    550,   200,  82],
-    ['LucasGaming',    3,    28,    700,   260,  75],
-    ['benoverit',      3,    24,    600,   220,  86],
-    ['Faisal_gg',      3,    28,    650,   250,  90],
-    // ── Bad ──────────────────────────────────────────────────────────────────
-    ['sean_midnight',  2,    16,    350,   150,  80],
-    ['daningame',      2,    14,    300,   130,  88],
-    ['SteveMayhem',    2,    17,    350,   160,  85],
-    ['Rami_xo',        2,    13,    250,   120,  94],
-    ['markv99',        2,    16,    300,   150,  91],
-    ['phil_plays',     2,    14,    300,   130,  97],
-    ['RichardXX',      2,    16,    300,   150, 100],
-    // ── Noob ─────────────────────────────────────────────────────────────────
-    ['patrickggs',     1,     8,    100,    70,  95],
-    ['Hassan_pw',      1,     7,    100,    60, 103],
-    ['nick_dostuff',   1,     7,    100,    60, 108],
-    ['simon_grind',    1,     6,    100,    50, 115],
-    ['andypwns',       1,     8,    100,    70, 110],
-    ['tim_rage',       1,     7,    100,    60, 120],
-    ['kyleoffline',    1,     7,    100,    60, 105],
-    ['brett_plays',    1,     7,    100,    60, 125],
-    ['Mohammed_k',     1,     7,    100,    60, 118],
-  ];
-
-  let seeded = 0;
-  for (const [username, round, kills, gold, score, daysAgo] of players) {
-    const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@noreply.deadsurge.gg`;
-    await pool.query(
-      `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-      [username, email, pw]
-    );
-    const { rows } = await pool.query(`SELECT id FROM users WHERE username = $1`, [username]);
-    if (rows.length > 0) {
-      await pool.query(
-        `INSERT INTO scores (user_id, round, kills, gold, score, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6)
-         ON CONFLICT (user_id) DO UPDATE SET round=EXCLUDED.round, kills=EXCLUDED.kills,
-           gold=EXCLUDED.gold, score=EXCLUDED.score, created_at=EXCLUDED.created_at`,
-        [rows[0].id, round, kills, gold, score, day(daysAgo)]
-      );
-      seeded++;
-    }
-  }
-  console.log(`[DB] leaderboard synced (${seeded} players)`);
-}
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
 function authMiddleware(req, res, next) {
