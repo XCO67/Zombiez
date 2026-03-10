@@ -153,6 +153,7 @@ function render(now) {
   drawMinimap();
   drawShopUI();
   drawPerkShopUI();
+  drawPistolUpgradePanel();
   drawDownedHUD();
   drawPingHUD();
   drawCursor();

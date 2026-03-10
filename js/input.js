@@ -44,7 +44,7 @@ document.addEventListener('keydown', e => {
     if (game.state === 'playing' || game.state === 'wave_clear') {
       game._prevState = game.state;
       game.state = 'paused';
-      shopOpen = false; perkShopOpen = false; weaponInfoOpen = false;
+      shopOpen = false; perkShopOpen = false; pistolUpgradeOpen = false; weaponInfoOpen = false;
       openPauseMenu();
       return;
     }
@@ -91,6 +91,17 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === KEYBINDS.interact) {
     if (shopOpen) { shopOpen=false; return; }
     if (perkShopOpen) { perkShopOpen=false; return; }
+    if (pistolUpgradeOpen) {
+      // If upgrade is possible, buy it; always close the panel
+      if (player.spreadOrbs > 0 && player.pistolSpread < 2 && player.money >= PISTOL_UPGRADE_COST) {
+        player.money -= PISTOL_UPGRADE_COST;
+        player.spreadOrbs--;
+        player.pistolSpread++;
+        playPapSound();
+      }
+      pistolUpgradeOpen = false;
+      return;
+    }
     if (!player.dead && game.state==='playing') {
       const distShop=Math.hypot(player.cx-SHOP_POS.cx,player.cy-SHOP_POS.cy);
       const distBox =Math.hypot(player.cx-BOX_POS.cx, player.cy-BOX_POS.cy);
@@ -142,14 +153,10 @@ document.addEventListener('keydown', e => {
           return;
         }
       }
-      // Ricochet Vendor — stackable wall bounces
+      // Ricochet Vendor — opens Pistol Upgrade panel
       const distRico = Math.hypot(player.cx-RICOCHET_POS.cx, player.cy-RICOCHET_POS.cy);
       if (distRico < RICOCHET_RADIUS) {
-        if (player.money >= RICOCHET_COST) {
-          player.money -= RICOCHET_COST;
-          player.ricochets++;
-          playPapSound();
-        }
+        pistolUpgradeOpen = true;
         return;
       }
       // Pistol Upgrade Vendor — spend an orb + gold to unlock spread

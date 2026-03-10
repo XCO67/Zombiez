@@ -223,7 +223,7 @@ function drawPapMachine() {
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz * 1.5 + 1);
       ctx.fillStyle = canAfford ? `hsl(${hue},100%,72%)` : '#888'; ctx.fillText(label, px, py - sz * 1.5);
     } else if (!player.doublePapWeapons.has(wk) && wk !== 'thundergun') {
-      const label = `[E] Pack II — Add Ricochet  $${PAP_COST}`;
+      const label = `[E] Pack II — Wall Bounce  $${PAP_COST}`;
       const canAfford = player.money >= PAP_COST;
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px+1, py - sz * 1.5 + 1);
       ctx.fillStyle = canAfford ? `hsl(${hue},100%,72%)` : '#888'; ctx.fillText(label, px, py - sz * 1.5);
@@ -289,17 +289,10 @@ function drawRicochetVendor() {
   // [E] prompt when near
   const dist = Math.hypot(player.cx-RICOCHET_POS.cx, player.cy-RICOCHET_POS.cy);
   if (dist < RICOCHET_RADIUS) {
-    const bounces = player.ricochets;
-    const canAfford = player.money >= RICOCHET_COST;
-    const line1 = `[E] +1 Wall Bounce  $${RICOCHET_COST.toLocaleString()}  (bullets currently bounce ${bounces}x)`;
-    const line2 = `Bullets ricochet off walls — each purchase adds 1 extra bounce`;
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom';
     ctx.font=`${Math.round(TH*.26)}px Segoe UI`;
-    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillText(line1,px+1,py-sz*1.35+1);
-    ctx.fillStyle=canAfford?'#44ffee':'#888'; ctx.fillText(line1,px,py-sz*1.35);
-    ctx.font=`${Math.round(TH*.20)}px Segoe UI`;
-    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillText(line2,px+1,py-sz*1.35-TH*.3+1);
-    ctx.fillStyle='rgba(0,220,210,0.75)'; ctx.fillText(line2,px,py-sz*1.35-TH*.3);
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillText('[E] Pistol Upgrades',px+1,py-sz*1.35+1);
+    ctx.fillStyle='#44ffee'; ctx.fillText('[E] Pistol Upgrades',px,py-sz*1.35);
     ctx.restore();
   }
 }

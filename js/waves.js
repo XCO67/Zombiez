@@ -88,7 +88,7 @@ function restartGame() {
   Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false,playTimeFrames:0});
   Object.assign(box,{state:'idle',spinTimer:0,result:null,notifTimer:0,notifWeapon:''});
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
-  shopOpen=false; COINS.length=0; DROPPED_PERKS.length=0; effects.length=0;
+  shopOpen=false; pistolUpgradeOpen=false; COINS.length=0; DROPPED_PERKS.length=0; effects.length=0;
   DRAGONS.length=0; SKELETONS.length=0; FLAMES.length=0; LAVA_ZOMBIES.length=0; LAVA_SHARDS.length=0; LAVA_POOLS.length=0;
   BOSS_DEMONS.length=0; BOSS_SHOTS.length=0; SPREAD_DROPS.length=0; firstBossDropped=false;
   SPIDER_BOSSES.length=0; SPIDER_WEB_SHOTS.length=0; SPIDER_MINIONS.length=0; secondSpiderDropped=false;

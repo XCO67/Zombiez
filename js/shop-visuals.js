@@ -167,6 +167,128 @@ function _drawShopPanel(title, titleCol, items, getLvl, getMaxLevel, getPrice, g
   ctx.restore();
 }
 
+// ─── PISTOL UPGRADE PANEL ─────────────────────────────────────────────────────
+let pistolUpgradeOpen = false;
+
+function drawPistolUpgradePanel() {
+  if (!pistolUpgradeOpen) return;
+  const W = canvas.width, H = canvas.height;
+  const pw = Math.min(520, W - 40);
+  const ph = Math.min(360, H - HUD_H - 40);
+  const px = W/2 - pw/2;
+  const py = H - ph - HUD_H - 12;
+
+  ctx.save();
+  pixelPanel(ctx, px, py, pw, ph, '#0a1622');
+
+  // Top strip
+  const stripH = 38;
+  ctx.fillStyle = '#060e18';
+  ctx.fillRect(px + 2, py + 2, pw - 4, stripH - 2);
+  ctx.fillStyle = '#1a2a3e';
+  ctx.fillRect(px + 2, py + stripH, pw - 4, 1);
+
+  // Title
+  ctx.font = "10px 'Press Start 2P'";
+  ctx.fillStyle = '#60c0ff';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('\uD83D\uDD2B PISTOL UPGRADE', px + 14, py + 2 + stripH/2);
+
+  // Gold display
+  ctx.font = "18px 'VT323'";
+  ctx.fillStyle = '#f5c518';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText(`$ ${player.money}`, px + pw - 14, py + 2 + stripH/2);
+
+  const bodyY = py + stripH + 14;
+  const spread = player.pistolSpread;
+  const orbs = player.spreadOrbs;
+  const maxSpread = 2;
+
+  // ─── Current spread visual ────────────────────────────────────────────────
+  ctx.font = "9px 'Press Start 2P'";
+  ctx.fillStyle = '#5599cc';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('CURRENT SPREAD', px + pw/2, bodyY);
+
+  // Bullet icons
+  [-30, 0, 30].forEach((ox, k) => {
+    const unlocked = k < spread + 1;
+    const bx = px + pw/2 + ox, by = bodyY + 24;
+    ctx.fillStyle = unlocked ? 'rgba(80,180,255,0.9)' : 'rgba(60,90,120,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(bx, by + 16, 7, 19, 0, 0, Math.PI*2);
+    ctx.fill();
+    if (unlocked) {
+      ctx.fillStyle = 'rgba(200,235,255,0.9)';
+      ctx.beginPath(); ctx.arc(bx, by + 4, 5, Math.PI, 0); ctx.fill();
+    }
+  });
+
+  ctx.font = "17px 'VT323'";
+  ctx.fillStyle = '#aaddff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(`Level ${spread} / ${maxSpread}  —  ${spread + 1} bullet${spread + 1 > 1 ? 's' : ''}`, px + pw/2, bodyY + 78);
+
+  // Divider
+  ctx.fillStyle = '#1a2a3e';
+  ctx.fillRect(px + 20, bodyY + 100, pw - 40, 1);
+
+  // ─── Requirements ─────────────────────────────────────────────────────────
+  const reqY = bodyY + 112;
+  ctx.font = "9px 'Press Start 2P'";
+  ctx.fillStyle = '#556677';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('REQUIRED TO UPGRADE:', px + 20, reqY);
+
+  const hasOrb = orbs > 0;
+  const canAfford = player.money >= PISTOL_UPGRADE_COST;
+
+  ctx.font = "18px 'VT323'";
+  ctx.fillStyle = hasOrb ? '#ff88bb' : '#ff5555';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(`\u25C6  Pistol Orb  (dropped by Eye Demon boss)`, px + 20, reqY + 20);
+  ctx.fillStyle = hasOrb ? '#ff88bb' : '#ff5555';
+  ctx.fillText(hasOrb ? `  You have: ${orbs} orb${orbs > 1 ? 's' : ''}  \u2713` : '  You have: 0 orbs  \u2717', px + 20, reqY + 40);
+
+  ctx.fillStyle = canAfford ? '#f5c518' : '#dd4444';
+  ctx.fillText(`\u25C6  $${PISTOL_UPGRADE_COST.toLocaleString()}  gold`, px + 20, reqY + 62);
+  ctx.fillStyle = canAfford ? '#88ffaa' : '#dd4444';
+  ctx.fillText(`  You have: $${player.money.toLocaleString()}  ${canAfford ? '\u2713' : '\u2717'}`, px + 20, reqY + 82);
+
+  // ─── Upgrade levels info ───────────────────────────────────────────────────
+  ctx.font = "18px 'VT323'";
+  ctx.fillStyle = 'rgba(150,190,220,0.6)';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.fillText('Lv1: 2 bullets   Lv2: 3 bullets (MAX)', px + pw - 20, reqY + 20);
+
+  // ─── Buy button ───────────────────────────────────────────────────────────
+  const btnY = reqY + 112;
+  if (spread >= maxSpread) {
+    ctx.font = "10px 'Press Start 2P'";
+    ctx.fillStyle = '#445566';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('FULLY UPGRADED', px + pw/2, btnY + 16);
+  } else {
+    const canBuy = hasOrb && canAfford;
+    const btnW = 250, btnH = 34;
+    const btnX = px + pw/2 - btnW/2;
+    pixelPanel(ctx, btnX, btnY, btnW, btnH, canBuy ? '#0a1f0a' : '#1a0a0a');
+    ctx.font = "9px 'Press Start 2P'";
+    ctx.fillStyle = canBuy ? '#44ff88' : '#664444';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(canBuy ? `[E] UPGRADE  \u2192  ${spread + 2} BULLETS` : 'CANNOT UPGRADE YET', px + pw/2, btnY + 17);
+  }
+
+  // Close hint
+  ctx.font = "15px 'VT323'";
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('[E] CLOSE', px + pw/2, py + ph - 6);
+
+  ctx.restore();
+}
+
 function drawPerkShopUI() {
   if (!perkShopOpen) return;
   _drawShopPanel(
