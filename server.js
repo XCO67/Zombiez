@@ -78,72 +78,73 @@ async function initDB() {
 }
 initDB().catch(err => console.error('[DB] init error', err));
 
-// ── Seed fake leaderboard players (runs once, skips if already seeded) ────────
+// ── Seed leaderboard players (runs once on first boot) ────────────────────────
 async function seedFakePlayers() {
-  const check = await pool.query(`SELECT 1 FROM users WHERE username = 'xX_DeadHunter_Xx' LIMIT 1`);
+  const check = await pool.query(`SELECT 1 FROM users WHERE username = 'mikeyd97' LIMIT 1`);
   if (check.rows.length > 0) return;
 
-  const fakeHash = await bcrypt.hash('__fake_nosignin__', 10);
+  const pw = await bcrypt.hash('ds_locked_account_v1', 10);
   const day = (n) => new Date(Date.now() - n * 86400000);
 
   // [username, round, kills, gold, score, daysAgo]
   const players = [
-    ['xX_DeadHunter_Xx',         42, 524, 7840, 22350, 1],
-    ['GraveDigger99',            38, 461, 6790, 19480, 3],
-    ['ZombieSlayer42',           35, 418, 6120, 17650, 2],
-    ['NightSurvivor',            33, 389, 5740, 16100, 5],
-    ['DarkBladeX',               31, 358, 5260, 14750, 4],
-    ['SurvivorKing',             29, 323, 4710, 13180, 7],
-    ['BasedHunter_',             28, 307, 4450, 12540, 6],
-    ['BloodMoon88',              26, 281, 4030, 11220, 8],
-    ['GhostWalker_',             25, 265, 3810, 10480, 9],
-    ['VoidWalker420',            24, 249, 3620,  9760, 10],
-    ['NecroKnight',              23, 236, 3430,  9150, 11],
-    ['DeathBringer7',            22, 220, 3220,  8580, 12],
-    ['PlagueDoc_X',              21, 205, 3010,  7990, 13],
-    ['MidnightRaider',           20, 188, 2720,  7260, 14],
-    ['tryhardsurvivor',          19, 172, 2460,  6590, 10],
-    ['UrbanDecay',               18, 158, 2260,  6010, 15],
-    ['ShadowFighter',            17, 144, 2060,  5420, 16],
-    ['ProGamerMike',             17, 140, 1990,  5230, 18],
-    ['WastedLandKing',           16, 130, 1850,  4830, 17],
-    ['ZombieHunter_',            16, 124, 1760,  4510, 19],
-    ['RagingBullet',             15, 114, 1620,  4210, 20],
-    ['ApocalypseNow',            15, 109, 1550,  4010, 21],
-    ['SkullCrusher88',           14,  98, 1410,  3620, 22],
-    ['NotYourAverageSurvivor',   14,  95, 1360,  3460, 23],
-    ['LastStanding',             13,  86, 1210,  3120, 20],
-    ['HordeSmasher',             13,  82, 1160,  2960, 25],
-    ['darkweb_gamer',            12,  73, 1040,  2620, 26],
-    ['GoldFarmer69',             12,  69,  990,  2460, 24],
-    ['ChaoticGood_',             11,  61,  870,  2210, 27],
-    ['BrotherOfMayhem',          11,  59,  840,  2110, 28],
-    ['ZealotDestroyer',          10,  51,  730,  1820, 29],
-    ['ihatezombies_',            10,  49,  700,  1740, 30],
-    ['WeekendWarrior',            9,  43,  610,  1510, 31],
-    ['NerfThisPlease',            9,  41,  580,  1450, 29],
-    ['justacasual99',             8,  35,  500,  1210, 32],
-    ['CarefulPlayer1',            8,  33,  470,  1150, 33],
-    ['GrindHard99',               7,  27,  385,   950, 34],
-    ['EasyModePlz',               7,  26,  368,   910, 35],
-    ['NightOwl_Plays',            7,  25,  352,   870, 33],
-    ['HereForTheLoot',            6,  20,  282,   690, 36],
-    ['GlitchHunter',              6,  19,  268,   660, 37],
-    ['EndlessRounds',             6,  18,  252,   620, 36],
-    ['CorpsePileUp',              5,  14,  196,   478, 38],
-    ['CryptoZombie',              5,  13,  182,   448, 39],
-    ['RealDarkMatter',            4,   9,  118,   295, 40],
-    ['TheLastHero',               4,   8,  108,   268, 41],
-    ['notafakeacc',               3,   5,   65,   155, 42],
-    ['SurvivorOfHell',            3,   4,   50,   118, 43],
+    ['mikeyd97',          42, 521, 7820, 22180,  1],
+    ['jake_irl',          40, 493, 7310, 20940,  2],
+    ['ChrisVortex',       38, 464, 6840, 19450,  3],
+    ['liam_online',       36, 437, 6390, 18020,  2],
+    ['ethanrr',           34, 408, 5980, 16680,  5],
+    ['OliverPlays',       32, 378, 5530, 15210,  4],
+    ['nathan_x99',        30, 347, 5080, 13800,  6],
+    ['Khalid_FPS',        29, 331, 4840, 13050,  7],
+    ['harrygg',           27, 298, 4360, 11740,  8],
+    ['sam_wrecks',        26, 283, 4140, 11080,  9],
+    ['TomFPS',            25, 267, 3900, 10420,  7],
+    ['MaxDiesel',         24, 251, 3670,  9750, 10],
+    ['dylan_v2',          23, 236, 3450,  9090, 11],
+    ['callumrr',          22, 220, 3220,  8460, 12],
+    ['JamieOnFire',       21, 205, 3000,  7870, 13],
+    ['Ahmad_gg',          20, 189, 2760,  7230, 14],
+    ['scottygaming',      19, 174, 2540,  6620, 11],
+    ['ryanx_plays',       18, 160, 2330,  6060, 15],
+    ['BradleyK',          17, 146, 2130,  5510, 16],
+    ['Youssefgaming',     16, 133, 1940,  4990, 17],
+    ['aaronftw',          15, 120, 1750,  4490, 18],
+    ['ConnorV3',          14, 108, 1570,  4010, 19],
+    ['OmarRages',         13,  96, 1400,  3560, 20],
+    ['will_gamez',        13,  92, 1340,  3390, 21],
+    ['joshplays99',       12,  82, 1190,  3010, 22],
+    ['AlexTV',            12,  78, 1130,  2850, 20],
+    ['lukenotluke',       11,  69, 1000,  2530, 23],
+    ['Tariq_online',      11,  66,  960,  2410, 24],
+    ['KieranRages',       10,  58,  845,  2130, 25],
+    ['paulfps',           10,  55,  800,  2010, 26],
+    ['LucasGaming',        9,  48,  700,  1760, 27],
+    ['benoverit',          9,  46,  670,  1680, 28],
+    ['Faisal_gg',          8,  39,  570,  1430, 29],
+    ['sean_midnight',      8,  37,  540,  1360, 30],
+    ['daningame',          7,  31,  455,  1140, 31],
+    ['SteveMayhem',        7,  30,  440,  1100, 29],
+    ['Rami_xo',            6,  25,  365,   910, 32],
+    ['markv99',            6,  24,  350,   875, 33],
+    ['phil_plays',         6,  23,  335,   840, 31],
+    ['RichardXX',          5,  18,  265,   660, 34],
+    ['nick_dostuff',       5,  17,  250,   625, 35],
+    ['patrickggs',         4,  13,  190,   475, 36],
+    ['Hassan_pw',          4,  12,  175,   440, 37],
+    ['simon_grind',        3,   8,  120,   295, 38],
+    ['andypwns',           3,   8,  115,   280, 39],
+    ['tim_rage',           2,   5,   75,   185, 40],
+    ['kyleoffline',        2,   4,   60,   150, 41],
+    ['brett_plays',        1,   2,   30,    70, 42],
+    ['Mohammed_k',         1,   2,   25,    55, 43],
   ];
 
   let seeded = 0;
   for (const [username, round, kills, gold, score, daysAgo] of players) {
-    const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@deadsurge.gg`;
+    const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@noreply.deadsurge.gg`;
     const { rows } = await pool.query(
       `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id`,
-      [username, email, fakeHash]
+      [username, email, pw]
     );
     if (rows.length > 0) {
       await pool.query(
@@ -154,7 +155,7 @@ async function seedFakePlayers() {
       seeded++;
     }
   }
-  if (seeded > 0) console.log(`[DB] seeded ${seeded} fake leaderboard players`);
+  if (seeded > 0) console.log(`[DB] leaderboard seeded (${seeded} players)`);
 }
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
