@@ -374,6 +374,7 @@ function tryOpenBox() {
   box.state = 'spinning';
   box.spinTimer = SPIN_FRAMES;
   box.result = BOX_POOL[Math.floor(Math.random()*BOX_POOL.length)];
+  playMysteryBoxSpinSound();
 }
 
 function updateBox() {
@@ -390,6 +391,7 @@ function updateBox() {
       player.secondaryAmmo = WEAPONS[box.result].ammoMax;
       box.notifWeapon = WEAPONS[box.result].name;
       box.notifTimer = 180;
+      playMysteryBoxResultSound();
     }
   }
   if (box.notifTimer>0) box.notifTimer--;

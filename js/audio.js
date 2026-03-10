@@ -146,3 +146,110 @@ function playPistolSound() {
   osc2.connect(gain2); gain2.connect(masterGain);
   osc2.start(now); osc2.stop(now + 0.10);
 }
+
+function playMysteryBoxSpinSound() {
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+
+  // Carnival music-box jingle — triangle waves, fast attack, medium decay
+  // Melody: ascending run → descending variation (CoD mystery box feel)
+  const melody = [
+    // [freq Hz, startOffset, duration, gain]
+    [784,  0.00, 0.14, 0.20],  // G5
+    [988,  0.11, 0.14, 0.20],  // B5
+    [1175, 0.22, 0.14, 0.22],  // D6
+    [1319, 0.33, 0.16, 0.24],  // E6
+    [1568, 0.46, 0.18, 0.26],  // G6
+    [1319, 0.60, 0.14, 0.22],  // E6
+    [1175, 0.71, 0.14, 0.20],  // D6
+    [988,  0.82, 0.14, 0.18],  // B5
+    [880,  0.93, 0.14, 0.18],  // A5
+    [1047, 1.04, 0.14, 0.20],  // C6
+    [1319, 1.15, 0.16, 0.22],  // E6
+    [1047, 1.28, 0.14, 0.20],  // C6
+    [880,  1.39, 0.14, 0.18],  // A5
+    [784,  1.50, 0.14, 0.18],  // G5
+    [988,  1.61, 0.14, 0.20],  // B5
+    [1175, 1.72, 0.18, 0.22],  // D6
+    [1568, 1.87, 0.30, 0.28],  // G6 — held ending note
+  ];
+  melody.forEach(([freq, t, dur, gainVal]) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, now + t);
+    g.gain.linearRampToValueAtTime(gainVal, now + t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(now + t); osc.stop(now + t + dur + 0.02);
+  });
+
+  // Twinkle shimmer — rapid high-freq sine burst underneath the melody
+  const shimmer = [784, 1047, 1319, 1568, 1319, 1047, 784];
+  shimmer.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq * 2; // two octaves up
+    const t = i * 0.09;
+    g.gain.setValueAtTime(0, now + t);
+    g.gain.linearRampToValueAtTime(0.06, now + t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.09);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(now + t); osc.stop(now + t + 0.10);
+  });
+}
+
+function playMysteryBoxResultSound() {
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+
+  // Magical reveal — sparkling ascending arpeggio then a warm chord swell
+  const sparkle = [
+    [1047, 0.00, 0.12, 0.18],  // C6
+    [1319, 0.08, 0.12, 0.20],  // E6
+    [1568, 0.16, 0.14, 0.22],  // G6
+    [2093, 0.25, 0.18, 0.24],  // C7
+    [2637, 0.36, 0.22, 0.26],  // E7
+    [3136, 0.50, 0.30, 0.22],  // G7
+  ];
+  sparkle.forEach(([freq, t, dur, gainVal]) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, now + t);
+    g.gain.linearRampToValueAtTime(gainVal, now + t + 0.010);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(now + t); osc.stop(now + t + dur + 0.02);
+  });
+
+  // Warm chord swell underneath (G major: G3, B3, D4, G4)
+  [[196, 0.38], [247, 0.40], [294, 0.42], [392, 0.44]].forEach(([freq, t]) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, now + t);
+    g.gain.linearRampToValueAtTime(0.12, now + t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.70);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(now + t); osc.stop(now + t + 0.75);
+  });
+
+  // Bright noise sparkle burst
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.15);
+  const buf  = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+  const noise = audioCtx.createBufferSource(); noise.buffer = buf;
+  const hpf = audioCtx.createBiquadFilter();
+  hpf.type = 'highpass'; hpf.frequency.value = 4000;
+  const gn = audioCtx.createGain();
+  gn.gain.setValueAtTime(0.18, now + 0.30);
+  gn.gain.exponentialRampToValueAtTime(0.0001, now + 0.50);
+  noise.connect(hpf); hpf.connect(gn); gn.connect(masterGain);
+  noise.start(now + 0.30); noise.stop(now + 0.55);
+}
