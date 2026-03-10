@@ -52,6 +52,34 @@ function playCooledSound() {
   osc2.start(now + 0.14); osc2.stop(now + 0.38);
 }
 
+function playThundergunSound() {
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  // Wind rush — filtered noise burst
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.65);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource(); noise.buffer = buf;
+  const bpf = audioCtx.createBiquadFilter();
+  bpf.type = 'bandpass'; bpf.Q.value = 1.2;
+  bpf.frequency.setValueAtTime(200, now);
+  bpf.frequency.exponentialRampToValueAtTime(1400, now + 0.28);
+  bpf.frequency.exponentialRampToValueAtTime(400, now + 0.6);
+  const gn = audioCtx.createGain();
+  gn.gain.setValueAtTime(0, now);
+  gn.gain.linearRampToValueAtTime(0.55, now + 0.07);
+  gn.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+  noise.connect(bpf); bpf.connect(gn); gn.connect(masterGain);
+  noise.start(now); noise.stop(now + 0.65);
+  // Deep boom underneath
+  const osc = audioCtx.createOscillator(); const gb = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.setValueAtTime(55, now);
+  osc.frequency.exponentialRampToValueAtTime(22, now + 0.5);
+  gb.gain.setValueAtTime(0.4, now); gb.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+  osc.connect(gb); gb.connect(masterGain); osc.start(now); osc.stop(now + 0.55);
+}
+
 function playPistolSound() {
   if (audioCtx.state !== 'running') return;
   const now = audioCtx.currentTime;

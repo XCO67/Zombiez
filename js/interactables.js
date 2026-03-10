@@ -117,42 +117,39 @@ const PAP_RADIUS = 2.0;
 const PAP_COST = 2500;
 
 function playPapSound() {
-  try {
-    const ac = new AudioContext();
-    const master = ac.createGain(); master.gain.value = 0.55; master.connect(ac.destination);
-    // Deep resonant bass thud
-    const osc1 = ac.createOscillator(); const g1 = ac.createGain();
-    osc1.type = 'sine'; osc1.frequency.setValueAtTime(80, ac.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(30, ac.currentTime + 0.5);
-    g1.gain.setValueAtTime(1.2, ac.currentTime); g1.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
-    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 0.5);
-    // Mid punch
-    const osc2 = ac.createOscillator(); const g2 = ac.createGain();
-    osc2.type = 'square'; osc2.frequency.setValueAtTime(220, ac.currentTime + 0.05);
-    osc2.frequency.exponentialRampToValueAtTime(60, ac.currentTime + 0.35);
-    g2.gain.setValueAtTime(0.6, ac.currentTime + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.45);
-    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.05); osc2.stop(ac.currentTime + 0.45);
-    // Bright metallic ping
-    const osc3 = ac.createOscillator(); const g3 = ac.createGain();
-    osc3.type = 'triangle'; osc3.frequency.setValueAtTime(1200, ac.currentTime + 0.1);
-    osc3.frequency.exponentialRampToValueAtTime(400, ac.currentTime + 0.8);
-    g3.gain.setValueAtTime(0.4, ac.currentTime + 0.1); g3.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.9);
-    osc3.connect(g3); g3.connect(master); osc3.start(ac.currentTime + 0.1); osc3.stop(ac.currentTime + 0.9);
-    // Magical shimmer sweep
-    const osc4 = ac.createOscillator(); const g4 = ac.createGain();
-    osc4.type = 'sawtooth'; osc4.frequency.setValueAtTime(600, ac.currentTime + 0.15);
-    osc4.frequency.exponentialRampToValueAtTime(2400, ac.currentTime + 0.6);
-    g4.gain.setValueAtTime(0.2, ac.currentTime + 0.15); g4.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.7);
-    osc4.connect(g4); g4.connect(master); osc4.start(ac.currentTime + 0.15); osc4.stop(ac.currentTime + 0.7);
-    // Choir-like pad
-    const osc5 = ac.createOscillator(); const g5 = ac.createGain();
-    osc5.type = 'sine'; osc5.frequency.setValueAtTime(440, ac.currentTime + 0.2);
-    osc5.frequency.setValueAtTime(880, ac.currentTime + 0.5);
-    g5.gain.setValueAtTime(0, ac.currentTime + 0.2); g5.gain.linearRampToValueAtTime(0.35, ac.currentTime + 0.4);
-    g5.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 1.2);
-    osc5.connect(g5); g5.connect(master); osc5.start(ac.currentTime + 0.2); osc5.stop(ac.currentTime + 1.2);
-    setTimeout(() => ac.close(), 1500);
-  } catch(e) {}
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  // Deep resonant bass thud
+  const osc1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
+  osc1.type = 'sine'; osc1.frequency.setValueAtTime(80, now);
+  osc1.frequency.exponentialRampToValueAtTime(30, now + 0.5);
+  g1.gain.setValueAtTime(0.38, now); g1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  osc1.connect(g1); g1.connect(masterGain); osc1.start(now); osc1.stop(now + 0.5);
+  // Mid punch
+  const osc2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
+  osc2.type = 'square'; osc2.frequency.setValueAtTime(220, now + 0.05);
+  osc2.frequency.exponentialRampToValueAtTime(60, now + 0.35);
+  g2.gain.setValueAtTime(0.22, now + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+  osc2.connect(g2); g2.connect(masterGain); osc2.start(now + 0.05); osc2.stop(now + 0.45);
+  // Bright metallic ping
+  const osc3 = audioCtx.createOscillator(); const g3 = audioCtx.createGain();
+  osc3.type = 'triangle'; osc3.frequency.setValueAtTime(1200, now + 0.1);
+  osc3.frequency.exponentialRampToValueAtTime(400, now + 0.8);
+  g3.gain.setValueAtTime(0.18, now + 0.1); g3.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  osc3.connect(g3); g3.connect(masterGain); osc3.start(now + 0.1); osc3.stop(now + 0.9);
+  // Magical shimmer sweep
+  const osc4 = audioCtx.createOscillator(); const g4 = audioCtx.createGain();
+  osc4.type = 'sawtooth'; osc4.frequency.setValueAtTime(600, now + 0.15);
+  osc4.frequency.exponentialRampToValueAtTime(2400, now + 0.6);
+  g4.gain.setValueAtTime(0.10, now + 0.15); g4.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+  osc4.connect(g4); g4.connect(masterGain); osc4.start(now + 0.15); osc4.stop(now + 0.7);
+  // Choir-like pad
+  const osc5 = audioCtx.createOscillator(); const g5 = audioCtx.createGain();
+  osc5.type = 'sine'; osc5.frequency.setValueAtTime(440, now + 0.2);
+  osc5.frequency.setValueAtTime(880, now + 0.5);
+  g5.gain.setValueAtTime(0, now + 0.2); g5.gain.linearRampToValueAtTime(0.18, now + 0.4);
+  g5.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+  osc5.connect(g5); g5.connect(masterGain); osc5.start(now + 0.2); osc5.stop(now + 1.2);
 }
 
 function drawPapMachine() {

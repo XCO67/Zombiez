@@ -44,59 +44,52 @@ function applyDamage(tgt, amount) {
   tgt.hurtTimer = 45;
 }
 
-let _laserChargeAC = null;
+let _laserChargeOscs = [];
 function playLaserChargeSound() {
-  try {
-    if (_laserChargeAC) { try { _laserChargeAC.close(); } catch(e) {} }
-    const ac = new AudioContext();
-    _laserChargeAC = ac;
-    const master = ac.createGain(); master.gain.value = 0.4; master.connect(ac.destination);
-    // Low hum that rises over 2 seconds
-    const osc1 = ac.createOscillator(); const g1 = ac.createGain();
-    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(80, ac.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 2.0);
-    g1.gain.setValueAtTime(0.0, ac.currentTime);
-    g1.gain.linearRampToValueAtTime(0.7, ac.currentTime + 0.3);
-    g1.gain.linearRampToValueAtTime(0.9, ac.currentTime + 1.8);
-    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 2.1);
-    // High shimmer layered in
-    const osc2 = ac.createOscillator(); const g2 = ac.createGain();
-    osc2.type = 'triangle'; osc2.frequency.setValueAtTime(400, ac.currentTime + 0.2);
-    osc2.frequency.exponentialRampToValueAtTime(3200, ac.currentTime + 2.0);
-    g2.gain.setValueAtTime(0.0, ac.currentTime + 0.2);
-    g2.gain.linearRampToValueAtTime(0.5, ac.currentTime + 1.0);
-    g2.gain.linearRampToValueAtTime(0.8, ac.currentTime + 2.0);
-    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.2); osc2.stop(ac.currentTime + 2.1);
-    setTimeout(() => { try { ac.close(); } catch(e) {} _laserChargeAC = null; }, 2500);
-  } catch(e) {}
+  stopLaserChargeSound();
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  // Low hum rising over 2 seconds
+  const osc1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
+  osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(80, now);
+  osc1.frequency.exponentialRampToValueAtTime(600, now + 2.0);
+  g1.gain.setValueAtTime(0, now); g1.gain.linearRampToValueAtTime(0.22, now + 0.3);
+  g1.gain.linearRampToValueAtTime(0.30, now + 1.8);
+  osc1.connect(g1); g1.connect(masterGain); osc1.start(now); osc1.stop(now + 2.1);
+  // High shimmer layered in
+  const osc2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
+  osc2.type = 'triangle'; osc2.frequency.setValueAtTime(400, now + 0.2);
+  osc2.frequency.exponentialRampToValueAtTime(3200, now + 2.0);
+  g2.gain.setValueAtTime(0, now + 0.2); g2.gain.linearRampToValueAtTime(0.12, now + 1.0);
+  g2.gain.linearRampToValueAtTime(0.20, now + 2.0);
+  osc2.connect(g2); g2.connect(masterGain); osc2.start(now + 0.2); osc2.stop(now + 2.1);
+  _laserChargeOscs = [osc1, osc2];
 }
 function stopLaserChargeSound() {
-  if (_laserChargeAC) { try { _laserChargeAC.close(); } catch(e) {} _laserChargeAC = null; }
+  _laserChargeOscs.forEach(o => { try { o.stop(); } catch(e) {} });
+  _laserChargeOscs = [];
 }
 function playLaserFireSound() {
-  try {
-    const ac = new AudioContext();
-    const master = ac.createGain(); master.gain.value = 0.55; master.connect(ac.destination);
-    // Instant high-pitched ZAP
-    const osc1 = ac.createOscillator(); const g1 = ac.createGain();
-    osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(4000, ac.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(200, ac.currentTime + 0.3);
-    g1.gain.setValueAtTime(1.0, ac.currentTime); g1.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
-    osc1.connect(g1); g1.connect(master); osc1.start(); osc1.stop(ac.currentTime + 0.35);
-    // Sizzle tail
-    const osc2 = ac.createOscillator(); const g2 = ac.createGain();
-    osc2.type = 'sine'; osc2.frequency.setValueAtTime(2200, ac.currentTime + 0.05);
-    osc2.frequency.exponentialRampToValueAtTime(400, ac.currentTime + 0.6);
-    g2.gain.setValueAtTime(0.5, ac.currentTime + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.65);
-    osc2.connect(g2); g2.connect(master); osc2.start(ac.currentTime + 0.05); osc2.stop(ac.currentTime + 0.65);
-    // Deep thump
-    const osc3 = ac.createOscillator(); const g3 = ac.createGain();
-    osc3.type = 'sine'; osc3.frequency.setValueAtTime(120, ac.currentTime);
-    osc3.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.25);
-    g3.gain.setValueAtTime(0.8, ac.currentTime); g3.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3);
-    osc3.connect(g3); g3.connect(master); osc3.start(); osc3.stop(ac.currentTime + 0.3);
-    setTimeout(() => ac.close(), 1000);
-  } catch(e) {}
+  if (audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  // Instant high-pitched ZAP
+  const osc1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
+  osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(4000, now);
+  osc1.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+  g1.gain.setValueAtTime(0.32, now); g1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  osc1.connect(g1); g1.connect(masterGain); osc1.start(now); osc1.stop(now + 0.35);
+  // Sizzle tail
+  const osc2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
+  osc2.type = 'sine'; osc2.frequency.setValueAtTime(2200, now + 0.05);
+  osc2.frequency.exponentialRampToValueAtTime(400, now + 0.6);
+  g2.gain.setValueAtTime(0.18, now + 0.05); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+  osc2.connect(g2); g2.connect(masterGain); osc2.start(now + 0.05); osc2.stop(now + 0.65);
+  // Deep thump
+  const osc3 = audioCtx.createOscillator(); const g3 = audioCtx.createGain();
+  osc3.type = 'sine'; osc3.frequency.setValueAtTime(120, now);
+  osc3.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+  g3.gain.setValueAtTime(0.28, now); g3.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+  osc3.connect(g3); g3.connect(masterGain); osc3.start(now); osc3.stop(now + 0.3);
 }
 
 function fireLaser(sx, sy, angle) {
@@ -375,6 +368,7 @@ function fireWindWave(sx, sy, angle) {
   }
   // Spawn visual
   spawnEffect('windwave', sx, sy, { ang: angle, halfAng: WAVE_HALFANG, range: WAVE_RANGE });
+  playThundergunSound();
   muzzleFlash = 10; muzzleColor = '#60e8ff';
 }
 
