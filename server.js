@@ -74,8 +74,88 @@ async function initDB() {
   `);
 
   console.log('[DB] tables ready');
+  await seedFakePlayers();
 }
 initDB().catch(err => console.error('[DB] init error', err));
+
+// ── Seed fake leaderboard players (runs once, skips if already seeded) ────────
+async function seedFakePlayers() {
+  const check = await pool.query(`SELECT 1 FROM users WHERE username = 'xX_DeadHunter_Xx' LIMIT 1`);
+  if (check.rows.length > 0) return;
+
+  const fakeHash = await bcrypt.hash('__fake_nosignin__', 10);
+  const day = (n) => new Date(Date.now() - n * 86400000);
+
+  // [username, round, kills, gold, score, daysAgo]
+  const players = [
+    ['xX_DeadHunter_Xx',         42, 524, 7840, 22350, 1],
+    ['GraveDigger99',            38, 461, 6790, 19480, 3],
+    ['ZombieSlayer42',           35, 418, 6120, 17650, 2],
+    ['NightSurvivor',            33, 389, 5740, 16100, 5],
+    ['DarkBladeX',               31, 358, 5260, 14750, 4],
+    ['SurvivorKing',             29, 323, 4710, 13180, 7],
+    ['BasedHunter_',             28, 307, 4450, 12540, 6],
+    ['BloodMoon88',              26, 281, 4030, 11220, 8],
+    ['GhostWalker_',             25, 265, 3810, 10480, 9],
+    ['VoidWalker420',            24, 249, 3620,  9760, 10],
+    ['NecroKnight',              23, 236, 3430,  9150, 11],
+    ['DeathBringer7',            22, 220, 3220,  8580, 12],
+    ['PlagueDoc_X',              21, 205, 3010,  7990, 13],
+    ['MidnightRaider',           20, 188, 2720,  7260, 14],
+    ['tryhardsurvivor',          19, 172, 2460,  6590, 10],
+    ['UrbanDecay',               18, 158, 2260,  6010, 15],
+    ['ShadowFighter',            17, 144, 2060,  5420, 16],
+    ['ProGamerMike',             17, 140, 1990,  5230, 18],
+    ['WastedLandKing',           16, 130, 1850,  4830, 17],
+    ['ZombieHunter_',            16, 124, 1760,  4510, 19],
+    ['RagingBullet',             15, 114, 1620,  4210, 20],
+    ['ApocalypseNow',            15, 109, 1550,  4010, 21],
+    ['SkullCrusher88',           14,  98, 1410,  3620, 22],
+    ['NotYourAverageSurvivor',   14,  95, 1360,  3460, 23],
+    ['LastStanding',             13,  86, 1210,  3120, 20],
+    ['HordeSmasher',             13,  82, 1160,  2960, 25],
+    ['darkweb_gamer',            12,  73, 1040,  2620, 26],
+    ['GoldFarmer69',             12,  69,  990,  2460, 24],
+    ['ChaoticGood_',             11,  61,  870,  2210, 27],
+    ['BrotherOfMayhem',          11,  59,  840,  2110, 28],
+    ['ZealotDestroyer',          10,  51,  730,  1820, 29],
+    ['ihatezombies_',            10,  49,  700,  1740, 30],
+    ['WeekendWarrior',            9,  43,  610,  1510, 31],
+    ['NerfThisPlease',            9,  41,  580,  1450, 29],
+    ['justacasual99',             8,  35,  500,  1210, 32],
+    ['CarefulPlayer1',            8,  33,  470,  1150, 33],
+    ['GrindHard99',               7,  27,  385,   950, 34],
+    ['EasyModePlz',               7,  26,  368,   910, 35],
+    ['NightOwl_Plays',            7,  25,  352,   870, 33],
+    ['HereForTheLoot',            6,  20,  282,   690, 36],
+    ['GlitchHunter',              6,  19,  268,   660, 37],
+    ['EndlessRounds',             6,  18,  252,   620, 36],
+    ['CorpsePileUp',              5,  14,  196,   478, 38],
+    ['CryptoZombie',              5,  13,  182,   448, 39],
+    ['RealDarkMatter',            4,   9,  118,   295, 40],
+    ['TheLastHero',               4,   8,  108,   268, 41],
+    ['notafakeacc',               3,   5,   65,   155, 42],
+    ['SurvivorOfHell',            3,   4,   50,   118, 43],
+  ];
+
+  let seeded = 0;
+  for (const [username, round, kills, gold, score, daysAgo] of players) {
+    const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@deadsurge.gg`;
+    const { rows } = await pool.query(
+      `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id`,
+      [username, email, fakeHash]
+    );
+    if (rows.length > 0) {
+      await pool.query(
+        `INSERT INTO scores (user_id, round, kills, gold, score, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (user_id) DO NOTHING`,
+        [rows[0].id, round, kills, gold, score, day(daysAgo)]
+      );
+      seeded++;
+    }
+  }
+  if (seeded > 0) console.log(`[DB] seeded ${seeded} fake leaderboard players`);
+}
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
 function authMiddleware(req, res, next) {
