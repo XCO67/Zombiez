@@ -1014,7 +1014,7 @@ canvas.addEventListener('mousedown', e=>{
   if(activeTool==='tile') {
     painting=true; erasing=e.button===2;
     const {r,c}=tileAt(e); paintAt(r,c,erasing); lastPainted={r,c};
-  } else if(e.button===0 || (activeTool==='door' && e.button===2)) {
+  } else if(e.button===0 || e.button===2) {
     placeAsset(e, e.button===2);
   }
 });
