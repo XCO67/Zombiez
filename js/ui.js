@@ -684,13 +684,20 @@ function drawHUD() {
       const bg  = active ? activeCol + '33' : ready ? readyCol + '18' : '#0d0d18';
       pixelSlot(ctx, slotX, abilSlotY, ABIL_SW, abilSlotH, bg, ready || active);
 
-      // Layout: icon top ~30%, cooldown ring bottom ~60%
-      const iconY  = abilSlotY + abilSlotH * 0.20; // icon centre
-      const aR     = Math.min(ABIL_SW, abilSlotH) * 0.24;
-      const aCy    = abilSlotY + abilSlotH * 0.70; // ring centre
+      // Layout (top→bottom): keyhint | icon | ring+status
+      const khY   = abilSlotY + 5;                  // key hint top baseline
+      const iconY = abilSlotY + abilSlotH * 0.36;   // icon centre
+      const aR    = abilSlotH * 0.175;              // ring radius
+      const aCy   = abilSlotY + abilSlotH * 0.73;   // ring centre — well below icon
 
-      // Icon — always full opacity, large
-      ctx.font = '20px Segoe UI';
+      // Key hint — top, small, faint
+      ctx.font = "9px 'VT323'";
+      ctx.fillStyle = 'rgba(180,200,220,0.45)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(keyhint, cx2, khY);
+
+      // Icon
+      ctx.font = '18px Segoe UI';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = 1;
       ctx.fillText(icon, cx2, iconY);
@@ -700,7 +707,6 @@ function drawHUD() {
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(cx2, aCy, aR, 0, Math.PI * 2); ctx.stroke();
-      // Fill arc
       ctx.strokeStyle = ready ? (active ? activeCol : readyCol) : cdCol;
       ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath();
@@ -709,7 +715,7 @@ function drawHUD() {
       if (ready) { ctx.shadowColor = readyCol; ctx.shadowBlur = 7; ctx.stroke(); ctx.shadowBlur = 0; }
       ctx.restore();
 
-      // Status text centred inside ring
+      // Status text inside ring
       ctx.font = "11px 'VT323'";
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (active) {
@@ -722,12 +728,6 @@ function drawHUD() {
         ctx.fillStyle = cdCol;
         ctx.fillText(labelCd, cx2, aCy);
       }
-
-      // Key hint at bottom
-      ctx.font = "10px 'VT323'";
-      ctx.fillStyle = 'rgba(180,200,220,0.4)';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(keyhint, cx2, abilSlotY + abilSlotH - 2);
     }
 
     // Dash

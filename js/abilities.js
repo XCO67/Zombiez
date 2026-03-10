@@ -194,36 +194,50 @@ const SPEED_BOOST_COOLDOWN = 900; // 15 s at 60 fps
 const SPEED_BOOST_DURATION = 360; // 6 s active
 const SPEED_BOOST_MULT     = 2.2; // movement speed multiplier
 
+// Persistent offscreen canvas so source-atop tinting stays isolated from the main canvas
+const _spdOff = document.createElement('canvas');
+const _spdPC  = _spdOff.getContext('2d');
+
 function updateSpeedBoost() {
   if (player.speedBoostCooldown > 0) player.speedBoostCooldown--;
+
+  // Always fade trail first — prevents ghost images getting stuck when timer expires
+  for (let i = player.speedBoostTrail.length - 1; i >= 0; i--) {
+    player.speedBoostTrail[i].a -= 0.04;
+    if (player.speedBoostTrail[i].a <= 0) player.speedBoostTrail.splice(i, 1);
+  }
+
   if (player.speedBoostTimer <= 0) return;
   player.speedBoostTimer--;
 
-  // Record trail position every 2 frames while moving
-  if (player.moving && player.speedBoostTimer % 2 === 0) {
-    player.speedBoostTrail.push({ cx: player.cx, cy: player.cy, facing: player.facing, a: 0.72 });
-    if (player.speedBoostTrail.length > 28) player.speedBoostTrail.shift();
-  }
-  // Fade existing trail points
-  for (let i = player.speedBoostTrail.length - 1; i >= 0; i--) {
-    player.speedBoostTrail[i].a -= 0.035;
-    if (player.speedBoostTrail[i].a <= 0) player.speedBoostTrail.splice(i, 1);
+  // Record trail position every 3 frames while moving
+  if (player.moving && player.speedBoostTimer % 3 === 0) {
+    player.speedBoostTrail.push({ cx: player.cx, cy: player.cy, facing: player.facing, a: 0.75 });
+    if (player.speedBoostTrail.length > 20) player.speedBoostTrail.shift();
   }
 }
 
 function drawSpeedBoostTrail() {
   if (!player.speedBoostTrail || player.speedBoostTrail.length === 0) return;
-  const sz = TW * 1.5;
-  for (let i = 0; i < player.speedBoostTrail.length; i++) {
-    const t = player.speedBoostTrail[i];
+  const sz = Math.round(TW * 1.5);
+  if (_spdOff.width !== sz) { _spdOff.width = sz; _spdOff.height = sz; }
+
+  for (const t of player.speedBoostTrail) {
     const img = charIdle[t.facing];
     if (!img || !img.complete || !img.naturalWidth) continue;
+
+    // Render tinted silhouette onto the isolated offscreen canvas
+    _spdPC.clearRect(0, 0, sz, sz);
+    _spdPC.drawImage(img, 0, 0, sz, sz);
+    _spdPC.globalCompositeOperation = 'source-atop';
+    _spdPC.fillStyle = 'rgba(170,40,255,1)';
+    _spdPC.fillRect(0, 0, sz, sz);
+    _spdPC.globalCompositeOperation = 'source-over';
+
+    // Blit purple silhouette onto the main canvas — no floor bleed possible
     ctx.save();
-    ctx.globalAlpha = t.a * 0.5;
-    ctx.drawImage(img, t.cx * TW - sz / 2, t.cy * TH - sz / 2, sz, sz);
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = `rgba(180,50,255,${t.a * 0.8})`;
-    ctx.fillRect(t.cx * TW - sz / 2, t.cy * TH - sz / 2, sz, sz);
+    ctx.globalAlpha = t.a * 0.52;
+    ctx.drawImage(_spdOff, t.cx * TW - sz / 2, t.cy * TH - sz / 2);
     ctx.restore();
   }
 }
