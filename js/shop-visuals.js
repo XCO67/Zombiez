@@ -235,7 +235,7 @@ function drawPistolUpgradePanel() {
   ctx.fillRect(px + 20, bodyY + 100, pw - 40, 1);
 
   // ─── Requirements ─────────────────────────────────────────────────────────
-  const reqY = bodyY + 112;
+  const reqY = bodyY + 108;
   ctx.font = "9px 'Press Start 2P'";
   ctx.fillStyle = '#556677';
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
@@ -245,25 +245,24 @@ function drawPistolUpgradePanel() {
   const canAfford = player.money >= PISTOL_UPGRADE_COST;
 
   ctx.font = "18px 'VT323'";
-  ctx.fillStyle = hasOrb ? '#ff88bb' : '#ff5555';
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText(`\u25C6  Pistol Orb  (dropped by Eye Demon boss)`, px + 20, reqY + 20);
-  ctx.fillStyle = hasOrb ? '#ff88bb' : '#ff5555';
-  ctx.fillText(hasOrb ? `  You have: ${orbs} orb${orbs > 1 ? 's' : ''}  \u2713` : '  You have: 0 orbs  \u2717', px + 20, reqY + 40);
 
+  // Orb row
+  ctx.fillStyle = hasOrb ? '#ff88bb' : '#ff5555';
+  ctx.fillText(`\u25C6  Pistol Orb  (Eye Demon drop)  —  have: ${orbs}  ${hasOrb ? '\u2713' : '\u2717'}`, px + 20, reqY + 20);
+
+  // Gold row
   ctx.fillStyle = canAfford ? '#f5c518' : '#dd4444';
-  ctx.fillText(`\u25C6  $${PISTOL_UPGRADE_COST.toLocaleString()}  gold`, px + 20, reqY + 62);
-  ctx.fillStyle = canAfford ? '#88ffaa' : '#dd4444';
-  ctx.fillText(`  You have: $${player.money.toLocaleString()}  ${canAfford ? '\u2713' : '\u2717'}`, px + 20, reqY + 82);
+  ctx.fillText(`\u25C6  $${PISTOL_UPGRADE_COST.toLocaleString()} gold  —  have: $${player.money.toLocaleString()}  ${canAfford ? '\u2713' : '\u2717'}`, px + 20, reqY + 42);
 
   // ─── Upgrade levels info ───────────────────────────────────────────────────
-  ctx.font = "18px 'VT323'";
-  ctx.fillStyle = 'rgba(150,190,220,0.6)';
-  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-  ctx.fillText('Lv1: 2 bullets   Lv2: 3 bullets (MAX)', px + pw - 20, reqY + 20);
+  ctx.font = "17px 'VT323'";
+  ctx.fillStyle = 'rgba(120,170,210,0.55)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('Lv0: 1 bullet   \u2192   Lv1: 2 bullets   \u2192   Lv2: 3 bullets (MAX)', px + pw/2, reqY + 66);
 
   // ─── Buy button ───────────────────────────────────────────────────────────
-  const btnY = reqY + 112;
+  const btnY = reqY + 92;
   if (spread >= maxSpread) {
     ctx.font = "10px 'Press Start 2P'";
     ctx.fillStyle = '#445566';
