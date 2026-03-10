@@ -80,11 +80,7 @@ initDB().catch(err => console.error('[DB] init error', err));
 
 // ── Seed leaderboard players (runs once on first boot) ────────────────────────
 async function seedFakePlayers() {
-  // Version marker — bump to force re-seed
-  const SEED_VERSION = 'seedv5@noreply.deadsurge.gg';
-  const vcheck = await pool.query(`SELECT 1 FROM users WHERE email = $1 LIMIT 1`, [SEED_VERSION]);
-  if (vcheck.rows.length > 0) return;
-
+  // Always runs on startup — DO UPDATE ensures scores stay correct across deploys.
   const pw = await bcrypt.hash('ds_locked_account_v1', 10);
   const day = (n) => new Date(Date.now() - n * 86400000);
 
@@ -173,11 +169,7 @@ async function seedFakePlayers() {
       seeded++;
     }
   }
-  await pool.query(
-    `INSERT INTO users (username, email, password_hash) VALUES ('_seedv5', $1, $2) ON CONFLICT DO NOTHING`,
-    [SEED_VERSION, pw]
-  );
-  console.log(`[DB] leaderboard seeded/updated (${seeded} players)`);
+  console.log(`[DB] leaderboard synced (${seeded} players)`);
 }
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
