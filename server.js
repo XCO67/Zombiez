@@ -81,76 +81,77 @@ initDB().catch(err => console.error('[DB] init error', err));
 // ── Seed leaderboard players (runs once on first boot) ────────────────────────
 async function seedFakePlayers() {
   // Version marker — bump to force re-seed
-  const SEED_VERSION = 'seedv4@noreply.deadsurge.gg';
+  const SEED_VERSION = 'seedv5@noreply.deadsurge.gg';
   const vcheck = await pool.query(`SELECT 1 FROM users WHERE email = $1 LIMIT 1`, [SEED_VERSION]);
   if (vcheck.rows.length > 0) return;
 
   const pw = await bcrypt.hash('ds_locked_account_v1', 10);
   const day = (n) => new Date(Date.now() - n * 86400000);
 
-  // Calibrated from real run: round 30 → 1340 kills, $164,124 gold, 18,890 score
-  // kills = 1.264·R² + 6.736·R  |  gold = 171.4·R² + 328.6·R  |  score = 18.26·R² + 81.74·R
-  // Rounds are randomly distributed — heavy skew toward low rounds (realistic player curve).
-  // Only 4 players reach R>20; most players die in R1–5. Each row has a unique variance (±13%).
+  // Stats simulated from actual game spawn/gold/score formulas, then scaled to match
+  // Massari's real organic run: Round 30 → 1340 kills, $164,124 gold, 18,890 score.
+  // Scale factors: kills×0.937, gold×0.770, score×0.851 (accounts for missed kills/uncollected coins).
+  // Rounds skewed toward low (realistic curve): 9 players R1, 7 R2, 7 R3, 4 R4, 4 R5, 3 R6,
+  // 2 R7, 1 each R8-R13, then sparse up to R42. Each player has unique ±10% variance.
   // [username, round, kills, gold, score, daysAgo]
   const players = [
-    // ── Elite ─────────────────────────────────────────────────────
-    ['mikeyd97',       42,  2588, 325500, 36710,   1],  // v=1.03
-    ['ChrisVortex',    38,  2185, 273000, 30950,   5],  // v=1.05
-    ['jake_irl',       33,  1550, 191500, 21910,   8],  // v=0.97
-    ['ethanrr',        27,  1191, 144500, 16760,   3],  // v=1.08
-    // ── Good ──────────────────────────────────────────────────────
-    ['liam_online',    24,   836, 100200, 11730,  12],  // v=0.94
-    ['OliverPlays',    22,   806,  95600, 11280,   9],  // v=1.06
-    ['nathan_x99',     19,   543,  63400,  7580,  19],  // v=0.93
-    ['Khalid_FPS',     16,   470,  53600,  6520,  14],  // v=1.09
-    ['harrygg',        13,   289,  31900,  3980,  22],  // v=0.96
-    // ── Average+ ──────────────────────────────────────────────────
-    ['sam_wrecks',     11,   236,  25300,  3230,  17],  // v=1.04
-    ['TomFPS',         10,   177,  18600,  2410,  30],  // v=0.91
-    ['MaxDiesel',       9,   181,  18700,  2460,  25],  // v=1.11
-    ['dylan_v2',        9,   143,  14800,  1950,  36],  // v=0.88
-    ['callumrr',        8,   144,  14500,  1950,  28],  // v=1.07
-    // ── Average ───────────────────────────────────────────────────
-    ['JamieOnFire',     7,   114,  11200,  1540,  38],  // v=1.05
-    ['Ahmad_gg',        7,   102,  10100,  1380,  43],  // v=0.94
-    ['scottygaming',    6,    96,   9100,  1290,  50],  // v=1.12
-    ['ryanx_plays',     6,    79,   7500,  1060,  33],  // v=0.92
-    ['BradleyK',        6,    89,   8500,  1190,  45],  // v=1.04
-    ['Youssefgaming',   5,    63,   5800,   840,  40],  // v=0.97
-    ['Connor_irl',      5,    71,   6500,   940,  55],  // v=1.09
-    ['aaronftw',        5,    62,   5600,   820,  48],  // v=0.95
-    ['ConnorV3',        5,    69,   6300,   920,  62],  // v=1.06
-    // ── Below average ─────────────────────────────────────────────
-    ['OmarRages',       4,    48,   4200,   640,  57],  // v=1.03
-    ['will_gamez',      4,    43,   3700,   560,  68],  // v=0.91
-    ['joshplays99',     4,    53,   4500,   690,  61],  // v=1.12
-    ['AlexTV',          4,    41,   3500,   540,  72],  // v=0.87
-    ['lukenotluke',     3,    35,   2700,   440,  65],  // v=1.08
-    ['Tariq_online',    3,    30,   2400,   390,  78],  // v=0.94
-    ['KieranRages',     3,    34,   2700,   430,  70],  // v=1.05
-    ['paulfps',         3,    28,   2300,   360,  82],  // v=0.89
-    ['LucasGaming',     3,    36,   2900,   460,  75],  // v=1.13
-    ['benoverit',       3,    31,   2500,   400,  86],  // v=0.97
-    ['Faisal_gg',       3,    35,   2800,   450,  90],  // v=1.10
-    // ── Bad ───────────────────────────────────────────────────────
-    ['sean_midnight',   2,    21,   1500,   260,  80],  // v=1.09
-    ['daningame',       2,    18,   1300,   220,  88],  // v=0.94
-    ['SteveMayhem',     2,    22,   1500,   270,  85],  // v=1.15
-    ['Rami_xo',         2,    17,   1200,   210,  94],  // v=0.88
-    ['markv99',         2,    20,   1400,   250,  91],  // v=1.05
-    ['phil_plays',      2,    18,   1300,   230,  97],  // v=0.96
-    ['RichardXX',       2,    21,   1500,   260, 100],  // v=1.08
-    // ── Noob ──────────────────────────────────────────────────────
-    ['patrickggs',      1,     9,    600,   110,  95],  // v=1.12
-    ['Hassan_pw',       1,     8,    500,   100, 103],  // v=0.95
-    ['nick_dostuff',    1,     8,    500,   110, 108],  // v=1.05
-    ['simon_grind',     1,     7,    400,    90, 115],  // v=0.88
-    ['andypwns',        1,     9,    600,   110, 110],  // v=1.10
-    ['tim_rage',        1,     7,    500,    90, 120],  // v=0.93
-    ['kyleoffline',     1,     9,    500,   110, 105],  // v=1.07
-    ['brett_plays',     1,     8,    500,   100, 125],  // v=0.97
-    ['Mohammed_k',      1,     8,    500,   100, 118],  // v=1.03
+    // ── Elite ────────────────────────────────────────────────────────────────
+    ['mikeyd97',      42,  2722, 422700, 38800,   1],
+    ['ChrisVortex',   38,  2199, 308000, 30630,   5],
+    ['jake_irl',      33,  1549, 197800, 21570,   8],
+    ['ethanrr',       27,  1161, 123900, 15500,   3],
+    // ── Good ─────────────────────────────────────────────────────────────────
+    ['liam_online',   24,   800,  78000, 10460,  12],
+    ['OliverPlays',   22,   762,  71800, 10050,   9],
+    ['nathan_x99',    19,   490,  35900,  5590,  19],
+    ['Khalid_FPS',    16,   413,  27400,  4650,  14],
+    ['harrygg',       13,   244,  12500,  2390,  22],
+    // ── Average+ ─────────────────────────────────────────────────────────────
+    ['sam_wrecks',    11,   195,   8900,  1860,  17],
+    ['TomFPS',        10,   143,   6200,  1360,  30],
+    ['MaxDiesel',      9,   144,   5800,  1350,  25],
+    ['dylan_v2',       9,   118,   4800,  1110,  36],
+    ['callumrr',       8,   116,   4400,  1070,  28],
+    // ── Average ──────────────────────────────────────────────────────────────
+    ['JamieOnFire',    7,    90,   3200,   830,  38],
+    ['Ahmad_gg',       7,    81,   2800,   740,  43],
+    ['scottygaming',   6,    75,   2500,   680,  50],
+    ['ryanx_plays',    6,    62,   2000,   560,  33],
+    ['BradleyK',       6,    70,   2300,   630,  45],
+    ['Youssefgaming',  5,    50,   1600,   460,  40],
+    ['Connor_irl',     5,    57,   1700,   510,  55],
+    ['aaronftw',       5,    49,   1500,   450,  48],
+    ['ConnorV3',       5,    55,   1700,   500,  62],
+    // ── Below average ────────────────────────────────────────────────────────
+    ['OmarRages',      4,    38,   1000,   350,  57],
+    ['will_gamez',     4,    34,    900,   310,  68],
+    ['joshplays99',    4,    41,   1100,   380,  61],
+    ['AlexTV',         4,    31,    800,   290,  72],
+    ['lukenotluke',    3,    27,    650,   250,  65],
+    ['Tariq_online',   3,    23,    550,   210,  78],
+    ['KieranRages',    3,    26,    650,   240,  70],
+    ['paulfps',        3,    22,    550,   200,  82],
+    ['LucasGaming',    3,    28,    700,   260,  75],
+    ['benoverit',      3,    24,    600,   220,  86],
+    ['Faisal_gg',      3,    28,    650,   250,  90],
+    // ── Bad ──────────────────────────────────────────────────────────────────
+    ['sean_midnight',  2,    16,    350,   150,  80],
+    ['daningame',      2,    14,    300,   130,  88],
+    ['SteveMayhem',    2,    17,    350,   160,  85],
+    ['Rami_xo',        2,    13,    250,   120,  94],
+    ['markv99',        2,    16,    300,   150,  91],
+    ['phil_plays',     2,    14,    300,   130,  97],
+    ['RichardXX',      2,    16,    300,   150, 100],
+    // ── Noob ─────────────────────────────────────────────────────────────────
+    ['patrickggs',     1,     8,    100,    70,  95],
+    ['Hassan_pw',      1,     7,    100,    60, 103],
+    ['nick_dostuff',   1,     7,    100,    60, 108],
+    ['simon_grind',    1,     6,    100,    50, 115],
+    ['andypwns',       1,     8,    100,    70, 110],
+    ['tim_rage',       1,     7,    100,    60, 120],
+    ['kyleoffline',    1,     7,    100,    60, 105],
+    ['brett_plays',    1,     7,    100,    60, 125],
+    ['Mohammed_k',     1,     7,    100,    60, 118],
   ];
 
   let seeded = 0;
@@ -173,7 +174,7 @@ async function seedFakePlayers() {
     }
   }
   await pool.query(
-    `INSERT INTO users (username, email, password_hash) VALUES ('_seedv4', $1, $2) ON CONFLICT DO NOTHING`,
+    `INSERT INTO users (username, email, password_hash) VALUES ('_seedv5', $1, $2) ON CONFLICT DO NOTHING`,
     [SEED_VERSION, pw]
   );
   console.log(`[DB] leaderboard seeded/updated (${seeded} players)`);
