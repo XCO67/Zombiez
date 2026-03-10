@@ -181,7 +181,7 @@ function drawPauseScreen() {
   ctx.beginPath(); ctx.moveTo(cx2-cw*.38, cy2+ch*0.02); ctx.lineTo(cx2+cw*.38, cy2+ch*0.02); ctx.stroke();
   // Hint
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = `${Math.round(W*0.018)}px Segoe UI`;
-  ctx.fillText('Press  ESC  to resume', cx2, cy2 + ch*0.22);
+  ctx.fillText('Press  ESC  to close', cx2, cy2 + ch*0.22);
 }
 
 render(0);

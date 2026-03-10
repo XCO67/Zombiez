@@ -38,11 +38,20 @@ let clickIndicator = null; // {x, y, life} screen pixel coords for visual feedba
 
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
-  // ESC toggles pause (single-player only)
-  if (e.key === 'Escape' && !mp.active && gameStarted && (game.state === 'playing' || game.state === 'wave_clear' || game.state === 'paused')) {
-    game.state = game.state === 'paused' ? game._prevState || 'playing' : (game._prevState = game.state, 'paused');
-    shopOpen = false; perkShopOpen = false; weaponInfoOpen = false;
-    return;
+  // ESC: pause + open settings (single-player only)
+  if (e.key === 'Escape' && !mp.active && gameStarted) {
+    if (game.state === 'playing' || game.state === 'wave_clear') {
+      game._prevState = game.state;
+      game.state = 'paused';
+      shopOpen = false; perkShopOpen = false; weaponInfoOpen = false;
+      openSettingsFromGame();
+      return;
+    }
+    if (game.state === 'paused') {
+      game.state = game._prevState || 'playing';
+      closeSettingsFromGame();
+      return;
+    }
   }
   if (game.state === 'paused') return; // block all other keys while paused
   if (e.key.toLowerCase() === 'r' && game.state === 'game_over') {

@@ -60,9 +60,21 @@ function openModal(id) {
   document.getElementById(id).style.display = 'flex';
 }
 function closeModal(id) {
-  if (id === 'settingsModal') cancelRebind();
+  if (id === 'settingsModal') {
+    cancelRebind();
+    if (_settingsFromGame) {
+      _settingsFromGame = false;
+      if (typeof game !== 'undefined' && game.state === 'paused')
+        game.state = game._prevState || 'playing';
+    }
+  }
   document.getElementById(id).style.display = 'none';
 }
+
+// Open settings from in-game ESC (pauses game while open)
+let _settingsFromGame = false;
+function openSettingsFromGame()  { _settingsFromGame = true;  openModal('settingsModal'); }
+function closeSettingsFromGame() { closeModal('settingsModal'); } // closeModal handles the flag
 
 document.querySelectorAll('.modal-ov').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.style.display = 'none'; });

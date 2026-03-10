@@ -1,6 +1,6 @@
 
 // ─── WAVE / GAME STATE ────────────────────────────────────────────────────────
-const game = { round:1, kills:0, score:0, state:'playing', waveTimer:0, scoreSaved:false };
+const game = { round:1, kills:0, score:0, state:'playing', waveTimer:0, scoreSaved:false, playTimeFrames:0 };
 let spawnRemaining=0, spawnTimer=0;
 
 function dragonCount(round) {
@@ -48,6 +48,7 @@ function startWave(round) {
 
 function updateWave() {
   if (game.state==='game_over') return;
+  game.playTimeFrames++; // counts real play time (paused & game_over excluded)
   if (game.state==='wave_clear'){
     game.waveTimer--;
     if(game.waveTimer<=0){game.round++;startWave(game.round);game.state='playing';}
@@ -80,7 +81,7 @@ function restartGame() {
   player.perks = { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 };
   player.shield = 0; player.shieldRechargeTimer = 0;
   perkShopOpen = false;
-  Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false});
+  Object.assign(game,{round:1,kills:0,score:0,state:'playing',waveTimer:0,scoreSaved:false,playTimeFrames:0});
   Object.assign(box,{state:'idle',spinTimer:0,result:null,notifTimer:0,notifWeapon:''});
   DOORS.forEach(d=>{ if(!d.unlocked) return; d.unlocked=false; d.tiles.forEach(({r,c})=>{ MAP[r][c]=T.DOOR; }); });
   shopOpen=false; COINS.length=0; DROPPED_PERKS.length=0; effects.length=0;

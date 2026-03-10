@@ -337,11 +337,24 @@ function drawWeaponInfo() {
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 const HUD_H = 100; // bottom bar height
 
+function _fmtTime(frames) {
+  const s = Math.floor(frames / 60);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 function drawHUD() {
   const W = canvas.width, H = canvas.height;
   ctx.save();
 
   const pad = 14;
+
+  // ── Session timer (top-left)
+  const timerW = 112, timerH = 30;
+  pixelPanel(ctx, pad, pad - 4, timerW, timerH, '#0e0e1e');
+  ctx.fillStyle = '#44ddff';
+  ctx.font = "8px 'Press Start 2P'";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⏱ ' + _fmtTime(game.playTimeFrames), pad + timerW / 2, pad - 4 + timerH / 2);
 
   // ── Round (top-center)
   const roundW = 160, roundH = 30;
@@ -387,6 +400,9 @@ function drawHUD() {
     ctx.fillStyle='rgba(200,190,220,0.8)';
     ctx.font = "8px 'Press Start 2P'";
     ctx.fillText(`Round ${game.round}  •  Kills: ${game.kills}  •  Score: ${game.score}`, W/2, H/2 + 4);
+    ctx.fillStyle='rgba(68,221,255,0.6)';
+    ctx.font = "7px 'Press Start 2P'";
+    ctx.fillText(`Time: ${_fmtTime(game.playTimeFrames)}`, W/2, H/2 + 24);
     ctx.fillStyle='rgba(255,255,255,0.3)';
     ctx.font = "7px 'Press Start 2P'";
     ctx.fillText('[R] Restart    [M] Main Menu', W/2, H/2 + 42);
