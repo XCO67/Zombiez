@@ -304,19 +304,27 @@ function drawPlayer() {
   // Speed boost purple shadow trail
   drawSpeedBoostTrail();
 
-  // Dash afterimage trail
+  // Dash afterimage trail — offscreen canvas prevents bleed onto floors/walls
   if (player.dashTrail && player.dashTrail.length > 0) {
+    if (!drawPlayer._dashOff) {
+      drawPlayer._dashOff = document.createElement('canvas');
+      drawPlayer._dashPC  = drawPlayer._dashOff.getContext('2d');
+    }
+    const dOff = drawPlayer._dashOff, dPC = drawPlayer._dashPC;
+    if (dOff.width !== sz) { dOff.width = sz; dOff.height = sz; }
     for (let i = player.dashTrail.length - 1; i >= 0; i--) {
       const t = player.dashTrail[i];
       const timg = charIdle[t.facing];
       if (timg && timg.complete && timg.naturalWidth) {
+        dPC.clearRect(0, 0, sz, sz);
+        dPC.drawImage(timg, 0, 0, sz, sz);
+        dPC.globalCompositeOperation = 'source-atop';
+        dPC.fillStyle = 'rgba(100,180,255,1)';
+        dPC.fillRect(0, 0, sz, sz);
+        dPC.globalCompositeOperation = 'source-over';
         ctx.save();
         ctx.globalAlpha = t.a * 0.45;
-        // Blue-white tint: draw with composite
-        ctx.drawImage(timg, t.cx*TW - sz/2, t.cy*TH - sz/2, sz, sz);
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = `rgba(100,180,255,${t.a * 0.55})`;
-        ctx.fillRect(t.cx*TW - sz/2, t.cy*TH - sz/2, sz, sz);
+        ctx.drawImage(dOff, t.cx*TW - sz/2, t.cy*TH - sz/2);
         ctx.restore();
       }
       t.a -= 0.08;
