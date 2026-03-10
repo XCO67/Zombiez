@@ -348,28 +348,28 @@ function drawHUD() {
 
   const pad = 14;
 
-  // ── Session timer (top-left)
-  const timerW = 120, timerH = 42;
-  const timerX = pad, timerY = pad - 4;
-  pixelPanel(ctx, timerX, timerY, timerW, timerH, '#0a0a1a');
-  // Label
-  ctx.font = "6px 'Press Start 2P'";
-  ctx.fillStyle = 'rgba(68,200,255,0.55)';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('TIME', timerX + timerW / 2, timerY + 6);
-  // Time value — large VT323
-  ctx.font = "26px 'VT323'";
-  ctx.fillStyle = '#44ddff';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(_fmtTime(game.playTimeFrames), timerX + timerW / 2, timerY + timerH - 5);
+  // ── Round + Timer (top-center, stacked)
+  const roundW = 160, roundH = 28;
+  const timerW = 120, timerH = 28;
+  const topCX = W / 2;
+  const roundY = pad - 4;
+  const timerY2 = roundY + roundH + 3;
 
-  // ── Round (top-center)
-  const roundW = 160, roundH = 30;
-  pixelPanel(ctx, W/2 - roundW/2, pad - 4, roundW, roundH, '#0e0e1e');
+  pixelPanel(ctx, topCX - roundW/2, roundY, roundW, roundH, '#0e0e1e');
   ctx.fillStyle = '#c8a040';
   ctx.font = "9px 'Press Start 2P'";
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`ROUND ${game.round}`, W/2, pad - 4 + roundH/2);
+  ctx.fillText(`ROUND ${game.round}`, topCX, roundY + roundH/2);
+
+  pixelPanel(ctx, topCX - timerW/2, timerY2, timerW, timerH, '#0a0a1a');
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = 'rgba(68,200,255,0.5)';
+  ctx.textBaseline = 'top';
+  ctx.fillText('TIME', topCX - 28, timerY2 + 8);
+  ctx.font = "20px 'VT323'";
+  ctx.fillStyle = '#44ddff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(_fmtTime(game.playTimeFrames), topCX + 14, timerY2 + timerH/2);
 
   // ── Kills / score (top-right)
   const killsW = 200, killsH = 30;
