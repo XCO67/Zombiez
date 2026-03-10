@@ -34,11 +34,35 @@ function drawSpreadDrops() {
     const glowHex = isGreen ? '#40ff80' : '#60aaff';
     const labelCol = isGreen ? `rgba(80,255,140,${0.8+pulse*0.2})` : `rgba(120,190,255,${0.8+pulse*0.2})`;
 
-    // Outer glow
-    const g = ctx.createRadialGradient(px, py, 0, px, py, TW * 2.2);
-    g.addColorStop(0, `rgba(${c1[0]},${c1[1]},${c1[2]},${0.28 + pulse * 0.18})`);
+    // ── Tall vertical beacon (so player can see it across the map) ──────────
+    const beamH = TH * 14;
+    const beamW = TW * 0.55 + pulse * TW * 0.25;
+    const beamGrad = ctx.createLinearGradient(px, py - beamH, px, py);
+    beamGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    beamGrad.addColorStop(0.5, isGreen ? `rgba(40,255,100,${0.06+pulse*0.04})` : `rgba(60,160,255,${0.06+pulse*0.04})`);
+    beamGrad.addColorStop(1, isGreen ? `rgba(40,255,100,${0.35+pulse*0.2})` : `rgba(60,160,255,${0.35+pulse*0.2})`);
+    ctx.save();
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(px - beamW / 2, py - beamH, beamW, beamH);
+    ctx.restore();
+
+    // Outer glow — larger than before
+    const g = ctx.createRadialGradient(px, py, 0, px, py, TW * 3.5);
+    g.addColorStop(0, `rgba(${c1[0]},${c1[1]},${c1[2]},${0.42 + pulse * 0.22})`);
+    g.addColorStop(0.5, `rgba(${c1[0]},${c1[1]},${c1[2]},${0.12 + pulse * 0.08})`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, TW * 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, TW * 3.5, 0, Math.PI * 2); ctx.fill();
+
+    // Spinning ring
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(tt * 1.8);
+    ctx.strokeStyle = isGreen ? `rgba(60,255,120,${0.5+pulse*0.3})` : `rgba(80,180,255,${0.5+pulse*0.3})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([TW * 0.3, TW * 0.2]);
+    ctx.beginPath(); ctx.arc(0, 0, TW * 0.72, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
 
     // Orb
     const og = ctx.createRadialGradient(px - TW * 0.08, py - TH * 0.09, 0, px, py, TW * 0.42);
