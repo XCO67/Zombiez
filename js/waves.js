@@ -62,7 +62,7 @@ function updateWave() {
   }
   // Check clear — all enemies and bosses must be dead (spiderlings don't count)
   if(spawnRemaining===0&&ZOMBIES.every(z=>z.dead)&&DRAGONS.every(d=>d.dead)&&SKELETONS.every(s=>s.dead)&&BOSS_DEMONS.every(b=>b.dead)&&LAVA_ZOMBIES.every(z=>z.dead)&&SPIDER_BOSSES.every(b=>b.dead)&&EXPLODERS.every(e=>e.dead)&&PHANTOMS.every(p=>p.dead)){
-    game.state='wave_clear';game.waveTimer=180;
+    game.state='wave_clear';game.waveTimer=600;
   }
 }
 
