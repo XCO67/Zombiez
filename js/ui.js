@@ -349,12 +349,19 @@ function drawHUD() {
   const pad = 14;
 
   // ── Session timer (top-left)
-  const timerW = 112, timerH = 30;
-  pixelPanel(ctx, pad, pad - 4, timerW, timerH, '#0e0e1e');
+  const timerW = 120, timerH = 42;
+  const timerX = pad, timerY = pad - 4;
+  pixelPanel(ctx, timerX, timerY, timerW, timerH, '#0a0a1a');
+  // Label
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillStyle = 'rgba(68,200,255,0.55)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('TIME', timerX + timerW / 2, timerY + 6);
+  // Time value — large VT323
+  ctx.font = "26px 'VT323'";
   ctx.fillStyle = '#44ddff';
-  ctx.font = "8px 'Press Start 2P'";
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('⏱ ' + _fmtTime(game.playTimeFrames), pad + timerW / 2, pad - 4 + timerH / 2);
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(_fmtTime(game.playTimeFrames), timerX + timerW / 2, timerY + timerH - 5);
 
   // ── Round (top-center)
   const roundW = 160, roundH = 30;
