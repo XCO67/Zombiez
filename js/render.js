@@ -115,6 +115,7 @@ function render(now) {
   drawPapMachine();
   drawPerkVendor();
   drawPistolVendor();
+  drawRicochetVendor();
   drawMysteryBox();
   drawCoins();
   drawPerks();

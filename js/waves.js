@@ -72,6 +72,7 @@ function restartGame() {
     secondaryKey:null, secondaryAmmo:0, regenTimer:0, regenAccum:0, heat:0, overheated:false,
     downed:false, downedTimer:0, reviveProgress:0});
   player.packedWeapons = new Set();
+  player.ricochets = 0;
   player.pistolSpread = 0;
   player.spreadOrbs = 0;
   player.webSlowTimer = 0;

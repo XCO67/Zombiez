@@ -233,6 +233,70 @@ function drawPapMachine() {
   }
 }
 
+// ─── RICOCHET VENDOR ──────────────────────────────────────────────────────────
+const RICOCHET_POS    = { cx:26, cy:13.5 };
+const RICOCHET_RADIUS = 2.0;
+const RICOCHET_COST   = 10000;
+
+function drawRicochetVendor() {
+  const px = RICOCHET_POS.cx * TW, py = RICOCHET_POS.cy * TH;
+  const sz = Math.min(TW,TH) * 0.58, tt = performance.now() / 1000;
+  const pulse = Math.sin(tt * 3.0) * 0.5 + 0.5;
+
+  ctx.save();
+
+  // Outer glow — cyan/teal
+  const gg = ctx.createRadialGradient(px,py,sz*.2,px,py,sz*2.6);
+  gg.addColorStop(0, `rgba(0,240,220,${0.18+pulse*0.12})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(px,py,sz*2.6,0,Math.PI*2); ctx.fill();
+
+  // Machine body
+  ctx.fillStyle='#001a1a';
+  roundRect(ctx, px-sz, py-sz*.7, sz*2, sz*1.4, sz*.12, true, false);
+  ctx.strokeStyle=`rgba(0,220,210,${0.5+pulse*0.35})`; ctx.lineWidth=2;
+  roundRect(ctx, px-sz, py-sz*.7, sz*2, sz*1.4, sz*.12, false, true);
+
+  // Bouncing bullet animation
+  const bangle = tt * 2.4;
+  const bx = px + Math.cos(bangle) * sz * 0.42;
+  const by = py - sz * 0.1 + Math.sin(bangle * 2) * sz * 0.22;
+  const bg = ctx.createRadialGradient(bx,by,0,bx,by,sz*.22);
+  bg.addColorStop(0,'rgba(180,255,255,1)');
+  bg.addColorStop(0.5,`rgba(0,200,220,${0.8+pulse*0.2})`);
+  bg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(bx,by,sz*.22,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(bx,by,sz*.06,0,Math.PI*2); ctx.fill();
+
+  // Ricochet trail lines
+  ctx.strokeStyle=`rgba(0,220,210,${0.4+pulse*0.3})`; ctx.lineWidth=1.5;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();
+  ctx.moveTo(px-sz*.55, py-sz*.35); ctx.lineTo(px, py-sz*.08); ctx.lineTo(px+sz*.55, py-sz*.35);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Label
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.font=`bold ${Math.round(sz*.21)}px Segoe UI`;
+  ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillText('RICOCHET',px+1,py+sz*.55+1);
+  ctx.fillStyle=`rgba(0,220,210,${0.85+pulse*0.15})`; ctx.fillText('RICOCHET',px,py+sz*.55);
+
+  ctx.restore();
+
+  // [E] prompt when near
+  const dist = Math.hypot(player.cx-RICOCHET_POS.cx, player.cy-RICOCHET_POS.cy);
+  if (dist < RICOCHET_RADIUS) {
+    const bounces = player.ricochets;
+    const label = `[E] +1 Ricochet (${bounces}→${bounces+1})  $${RICOCHET_COST.toLocaleString()}`;
+    const canAfford = player.money >= RICOCHET_COST;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.font=`${Math.round(TH*.26)}px Segoe UI`;
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillText(label,px+1,py-sz*1.4+1);
+    ctx.fillStyle=canAfford?'#44ffee':'#888'; ctx.fillText(label,px,py-sz*1.4);
+    ctx.restore();
+  }
+}
+
 // ─── PERK VENDOR ──────────────────────────────────────────────────────────────
 function drawPerkVendor() {
   const px = PERK_VENDOR_POS.cx * TW, py = PERK_VENDOR_POS.cy * TH;

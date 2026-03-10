@@ -23,6 +23,7 @@ function spawnBullet(sx,sy,angle,wkey) {
     x:sx, y:sy,
     vx:Math.cos(angle)*w.speed, vy:Math.sin(angle)*w.speed,
     trail:[], life:90, wkey, papped,
+    bouncesLeft: player.ricochets,
   });
 }
 
@@ -255,11 +256,17 @@ function updateProjectiles() {
     const p=projectiles[i]; const w=WEAPONS[p.wkey];
     p.trail.unshift({x:p.x,y:p.y}); if(p.trail.length>8) p.trail.pop();
     p.x+=p.vx; p.y+=p.vy; p.life--;
-    const tc=p.x/TW|0, tr=p.y/TH|0;
-    const wallHit=p.life<=0||tr<0||tr>=MAP_H||tc<0||tc>=MAP_W||MAP[tr]?.[tc]===T.WALL||MAP[tr]?.[tc]===T.PILLAR;
+    const isWall=(x,y)=>{ const r=y/TH|0,c=x/TW|0; return r<0||r>=MAP_H||c<0||c>=MAP_W||MAP[r]?.[c]===T.WALL||MAP[r]?.[c]===T.PILLAR; };
+    const wallHit=p.life<=0||isWall(p.x,p.y);
     if(wallHit){
-      // (legacy thunder effect removed — thundergun now uses wind wave)
-      projectiles.splice(i,1); continue;
+      if(p.life>0&&p.bouncesLeft>0){
+        const px2=p.x-p.vx, py2=p.y-p.vy;
+        const hitX=isWall(p.x,py2), hitY=isWall(px2,p.y);
+        if(hitX) p.vx=-p.vx;
+        if(hitY) p.vy=-p.vy;
+        if(!hitX&&!hitY){p.vx=-p.vx;p.vy=-p.vy;}
+        p.x=px2+p.vx; p.y=py2+p.vy; p.bouncesLeft--;
+      } else { projectiles.splice(i,1); continue; }
     }
     // Zombie hits
     let hitAny=false;

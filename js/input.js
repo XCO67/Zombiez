@@ -126,6 +126,16 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
+      // Ricochet Vendor — stackable wall bounces
+      const distRico = Math.hypot(player.cx-RICOCHET_POS.cx, player.cy-RICOCHET_POS.cy);
+      if (distRico < RICOCHET_RADIUS) {
+        if (player.money >= RICOCHET_COST) {
+          player.money -= RICOCHET_COST;
+          player.ricochets++;
+          playPapSound();
+        }
+        return;
+      }
       // Pistol Upgrade Vendor — spend an orb + gold to unlock spread
       const distPU = Math.hypot(player.cx - PISTOL_VENDOR_POS.cx, player.cy - PISTOL_VENDOR_POS.cy);
       if (distPU < PISTOL_VENDOR_RADIUS) {
