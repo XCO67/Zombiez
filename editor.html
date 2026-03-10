@@ -748,6 +748,34 @@ function placeAsset(e, rightClick) {
   const type = activeTool;
   const adef = ASSETS.find(a=>a.type===type);
   if(!adef) return;
+
+  // Universal right-click removal — remove nearest placed item regardless of active tool
+  if(rightClick) {
+    const pos = assetPosAt(e);
+    // Goldbuttons (multi)
+    if(objects.goldbuttons) {
+      const idx = objects.goldbuttons.findIndex(g=>Math.hypot(g.cx-pos.cx,g.cy-pos.cy)<2);
+      if(idx>=0) { objects.goldbuttons.splice(idx,1); redraw(); return; }
+    }
+    // Decorations (multi)
+    if(objects.decorations) {
+      const idx = objects.decorations.findIndex(d=>Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
+      if(idx>=0) { objects.decorations.splice(idx,1); redraw(); return; }
+    }
+    // Doors (multi)
+    if(objects.doors) {
+      const idx = objects.doors.findIndex(d=>Math.hypot(d.cx-pos.cx,d.cy-pos.cy)<2);
+      if(idx>=0) { objects.doors.splice(idx,1); redraw(); return; }
+    }
+    // Single assets
+    for(const a of ASSETS.filter(a=>!a.multi&&!a.deco)) {
+      if(objects[a.type] && Math.hypot(objects[a.type].cx-pos.cx, objects[a.type].cy-pos.cy)<2) {
+        delete objects[a.type]; redraw(); return;
+      }
+    }
+    return; // nothing hit
+  }
+
   if(type==='torch') {
     const {r,c} = tileAt(e);
     if(r<0||r>=mapH||c<0||c>=mapW) return;
