@@ -20,17 +20,17 @@ let weaponInfoOpen = false;
 // ─── PERK VENDOR ──────────────────────────────────────────────────────────────
 const PERK_VENDOR_POS = { cx:24.5, cy:18 };
 const PERK_VENDOR_RADIUS = 2.0;
-const SHIELD_MAXHP = [0, 25,  50,  75,  100, 150];
-const SHIELD_DELAY = [0, 300, 270, 240, 210, 180]; // frames before recharge
-const SHIELD_RATE  = [0, 8,   12,  15,  18,  25 ]; // HP regen per second
-const LIFESTEAL_HP = [0, 2,   5,   8,   12,  16 ];
+const SHIELD_MAXHP = [0, 15,  25,  40,  55,  70 ];
+const SHIELD_DELAY = [0, 420, 390, 360, 330, 300]; // frames before recharge
+const SHIELD_RATE  = [0, 4,   6,   8,   10,  13 ]; // HP regen per second
+const LIFESTEAL_HP = [0, 1,   2,   4,   6,   8  ];
 const MAGNET_RADII = [8, 10,  12,  14,  16,  18 ]; // index 0 = base (temp perk), 1-5 = bought levels
 const PERK_SHOP_ITEMS = [
   { key:'magnet',    name:'MAGNET',    icon:'🧲', color:'#60ccff',
     desc: l => `Radius ${MAGNET_RADII[l]}→${MAGNET_RADII[l+1]} tiles  •  Always active`,
     price: l => (l+1)*200, maxLevel:5 },
   { key:'shield',    name:'SHIELD',    icon:'🛡', color:'#4499ff',
-    desc: l => `${SHIELD_MAXHP[l]}→${SHIELD_MAXHP[l+1]} HP shield  •  Recharges after ${['-',5,4.5,4,3.5,3][l+1]}s`,
+    desc: l => `${SHIELD_MAXHP[l]}→${SHIELD_MAXHP[l+1]} HP shield  •  Recharges after ${['-',7,6.5,6,5.5,5][l+1]}s`,
     price: l => (l+1)*300, maxLevel:5 },
   { key:'lifesteal', name:'LIFESTEAL', icon:'🩸', color:'#ff4466',
     desc: l => `${LIFESTEAL_HP[l]}→${LIFESTEAL_HP[l+1]} HP healed per kill`,
