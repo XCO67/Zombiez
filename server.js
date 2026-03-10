@@ -334,8 +334,8 @@ app.get('/api/leaderboard', async (req, res) => {
              to_char(s.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date
       FROM   scores s
       JOIN   users  u ON s.user_id = u.id
-      ORDER  BY s.score DESC, s.round DESC, s.kills DESC
-      LIMIT  20
+      ORDER  BY s.round DESC, s.score DESC, s.kills DESC
+      LIMIT  53
     `);
     res.json(rows);
   } catch (e) {
