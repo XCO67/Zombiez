@@ -65,7 +65,8 @@ document.addEventListener('keydown',   tryStartMusic, { once: false });
 // Called from settings slider
 function setMusicVol(v) {
   musicVolume = parseInt(v, 10);
-  document.getElementById('musicVal').textContent = v + '%';
+  ['musicSlider','pmMusicSlider'].forEach(id => { const el=document.getElementById(id); if(el) el.value=v; });
+  ['musicVal','pmMusicVal'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=v+'%'; });
   localStorage.setItem('deadsurge_music_vol', v);
   if (ytPlayer && musicReady) {
     ytPlayer.setVolume(musicVolume);

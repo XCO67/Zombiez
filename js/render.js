@@ -152,36 +152,8 @@ function render(now) {
   drawPerkShopUI();
   drawDownedHUD();
   drawPingHUD();
-  if (game.state === 'paused') drawPauseScreen();
   drawCursor();
 
-}
-
-function drawPauseScreen() {
-  const W = canvas.width, H = canvas.height;
-  // Dim overlay
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(0, 0, W, H);
-  // Card
-  const cw = Math.round(W * 0.36), ch = Math.round(H * 0.28);
-  const cx2 = W/2, cy2 = H/2;
-  ctx.save();
-  ctx.shadowColor = '#00ffaa'; ctx.shadowBlur = 32;
-  ctx.fillStyle = 'rgba(8,4,20,0.92)';
-  roundRect(ctx, cx2-cw/2, cy2-ch/2, cw, ch, 18, true, false);
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(0,255,170,0.35)'; ctx.lineWidth = 2;
-  roundRect(ctx, cx2-cw/2, cy2-ch/2, cw, ch, 18, false, true);
-  // Title
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#00ffaa'; ctx.font = `bold ${Math.round(W*0.038)}px Segoe UI`;
-  ctx.fillText('PAUSED', cx2, cy2 - ch*0.18);
-  // Divider
-  ctx.strokeStyle = 'rgba(0,255,170,0.2)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx2-cw*.38, cy2+ch*0.02); ctx.lineTo(cx2+cw*.38, cy2+ch*0.02); ctx.stroke();
-  // Hint
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = `${Math.round(W*0.018)}px Segoe UI`;
-  ctx.fillText('Press  ESC  to close', cx2, cy2 + ch*0.22);
 }
 
 render(0);

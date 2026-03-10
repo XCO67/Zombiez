@@ -183,6 +183,71 @@
   </div>
 </div>
 
+<!-- ═══ IN-GAME PAUSE MENU (outside #menu so it shows during gameplay) ═══ -->
+<div id="pauseMenu" class="pm-overlay" style="display:none">
+  <div class="pm-box">
+
+    <!-- ── Main panel ────────────────────────────────────────────── -->
+    <div id="pmPanelMain">
+      <div class="pm-title">⏸ Paused</div>
+      <button class="pm-btn pm-resume" onclick="resumeFromPause()">▶  Resume</button>
+      <button class="pm-btn" onclick="pmNav('audio')">🔊  Audio</button>
+      <button class="pm-btn" onclick="pmNav('keybinds')">⌨  Keybinds</button>
+      <hr class="pm-divider">
+      <button class="pm-btn pm-quit" onclick="goToMenu()">⬅  Main Menu</button>
+    </div>
+
+    <!-- ── Audio panel ───────────────────────────────────────────── -->
+    <div id="pmPanelAudio" style="display:none">
+      <div class="pm-title">🔊 Audio</div>
+      <div class="srow">
+        <span class="slabel">Master Vol</span>
+        <input type="range" class="sslider" id="pmVolSlider" min="0" max="100" value="80"
+               oninput="setMasterVol(this.value)">
+        <span class="sval" id="pmVolVal">80%</span>
+      </div>
+      <div class="srow" style="margin-bottom:0">
+        <span class="slabel">Music Vol</span>
+        <input type="range" class="sslider" id="pmMusicSlider" min="0" max="100" value="40"
+               oninput="setMusicVol(this.value)">
+        <span class="sval" id="pmMusicVal">40%</span>
+      </div>
+      <button class="pm-btn pm-back" onclick="pmNav('main')">← Back</button>
+    </div>
+
+    <!-- ── Keybinds panel ────────────────────────────────────────── -->
+    <div id="pmPanelKeybinds" style="display:none">
+      <div class="pm-title">⌨ Keybinds</div>
+      <div class="srow"><span class="slabel">Dash</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="dash" onclick="startRebind('dash',this)">SPACE</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('dash')" title="Reset">↺</button>
+      </div>
+      <div class="srow"><span class="slabel">Fire Ring</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="fireRing" onclick="startRebind('fireRing',this)">4</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('fireRing')" title="Reset">↺</button>
+      </div>
+      <div class="srow"><span class="slabel">Barrier</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="barrier" onclick="startRebind('barrier',this)">5</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('barrier')" title="Reset">↺</button>
+      </div>
+      <div class="srow"><span class="slabel">Swap Weapon</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="swapWeapon" onclick="startRebind('swapWeapon',this)">Q</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('swapWeapon')" title="Reset">↺</button>
+      </div>
+      <div class="srow"><span class="slabel">Interact</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="interact" onclick="startRebind('interact',this)">E</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('interact')" title="Reset">↺</button>
+      </div>
+      <div class="srow" style="margin-bottom:0"><span class="slabel">Info Card</span>
+        <button class="mbtn cfg kb-btn" data-kb-action="infoCard" onclick="startRebind('infoCard',this)">I</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('infoCard')" title="Reset">↺</button>
+      </div>
+      <button class="pm-btn pm-back" onclick="pmNav('main')">← Back</button>
+    </div>
+
+  </div>
+</div>
+
 <canvas id="c"></canvas>
 
 <script src="js/map.js"></script>

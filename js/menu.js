@@ -45,6 +45,9 @@ function startGame() {
 }
 
 function goToMenu() {
+  closePauseMenu();
+  if (typeof restartGame !== 'undefined') restartGame();
+  gameStarted = false; // stop render loop game logic while on menu
   document.getElementById('menu').style.display = 'flex';
   document.body.style.cursor = 'default';
   menuBgLoop();
@@ -60,21 +63,40 @@ function openModal(id) {
   document.getElementById(id).style.display = 'flex';
 }
 function closeModal(id) {
-  if (id === 'settingsModal') {
-    cancelRebind();
-    if (_settingsFromGame) {
-      _settingsFromGame = false;
-      if (typeof game !== 'undefined' && game.state === 'paused')
-        game.state = game._prevState || 'playing';
-    }
-  }
+  if (id === 'settingsModal') cancelRebind();
   document.getElementById(id).style.display = 'none';
 }
 
-// Open settings from in-game ESC (pauses game while open)
-let _settingsFromGame = false;
-function openSettingsFromGame()  { _settingsFromGame = true;  openModal('settingsModal'); }
-function closeSettingsFromGame() { closeModal('settingsModal'); } // closeModal handles the flag
+// ── In-game Pause Menu ────────────────────────────────────────────────────────
+function openPauseMenu() {
+  // Sync volume sliders to current values
+  const mv = Math.round(masterGain.gain.value * 100);
+  const pmv = document.getElementById('pmVolSlider');
+  const pmvl = document.getElementById('pmVolVal');
+  if (pmv) { pmv.value = mv; }
+  if (pmvl) { pmvl.textContent = mv + '%'; }
+  const pmm = document.getElementById('pmMusicSlider');
+  const pmml = document.getElementById('pmMusicVal');
+  if (pmm) { pmm.value = musicVolume; }
+  if (pmml) { pmml.textContent = musicVolume + '%'; }
+  updateKeybindUI();
+  pmNav('main');
+  document.getElementById('pauseMenu').style.display = 'flex';
+}
+function closePauseMenu() {
+  cancelRebind();
+  document.getElementById('pauseMenu').style.display = 'none';
+}
+function resumeFromPause() {
+  closePauseMenu();
+  if (typeof game !== 'undefined' && game.state === 'paused')
+    game.state = game._prevState || 'playing';
+}
+function pmNav(panel) {
+  document.getElementById('pmPanelMain').style.display     = panel === 'main'     ? 'block' : 'none';
+  document.getElementById('pmPanelAudio').style.display    = panel === 'audio'    ? 'block' : 'none';
+  document.getElementById('pmPanelKeybinds').style.display = panel === 'keybinds' ? 'block' : 'none';
+}
 
 document.querySelectorAll('.modal-ov').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.style.display = 'none'; });
@@ -200,7 +222,8 @@ async function refreshLeaderboard() {
 // ── Volume / Fullscreen ───────────────────────────────────────────────────────
 function setMasterVol(v) {
   masterGain.gain.value = v / 100;
-  document.getElementById('volVal').textContent = v + '%';
+  ['volSlider','pmVolSlider'].forEach(id => { const el=document.getElementById(id); if(el) el.value=v; });
+  ['volVal','pmVolVal'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=v+'%'; });
   localStorage.setItem('deadsurge_vol', v);
 }
 function toggleFS() {
@@ -262,6 +285,11 @@ function keyDisplayName(key) {
 }
 
 function updateKeybindUI() {
+  // Update all keybind buttons — both settings modal (id=kbbtn-*) and pause menu (data-kb-action)
+  document.querySelectorAll('[data-kb-action]').forEach(btn => {
+    if (!btn.classList.contains('kb-listening'))
+      btn.textContent = keyDisplayName(KEYBINDS[btn.dataset.kbAction]);
+  });
   for (const action of Object.keys(DEFAULT_KEYBINDS)) {
     const btn = document.getElementById('kbbtn-' + action);
     if (btn && !btn.classList.contains('kb-listening')) btn.textContent = keyDisplayName(KEYBINDS[action]);
@@ -292,8 +320,7 @@ function resetKeybind(action) {
   if (_rebindAction === action) cancelRebind();
   KEYBINDS[action] = DEFAULT_KEYBINDS[action];
   saveKeybinds();
-  const btn = document.getElementById('kbbtn-' + action);
-  if (btn) btn.textContent = keyDisplayName(DEFAULT_KEYBINDS[action]);
+  updateKeybindUI();
 }
 
 function _kbFeedback(msg, color) {
