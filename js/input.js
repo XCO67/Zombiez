@@ -1,4 +1,20 @@
 
+// ─── KEYBINDS ─────────────────────────────────────────────────────────────────
+// Defaults — stored as e.key.toLowerCase() values (' ' = Space)
+const DEFAULT_KEYBINDS = {
+  dash:       ' ',
+  fireRing:   '4',
+  barrier:    '5',
+  swapWeapon: 'q',
+  interact:   'e',
+  infoCard:   'i',
+};
+let KEYBINDS = { ...DEFAULT_KEYBINDS };
+(function loadKeybinds() {
+  try { Object.assign(KEYBINDS, JSON.parse(localStorage.getItem('deadsurge_keybinds') || '{}')); } catch {}
+})();
+function saveKeybinds() { localStorage.setItem('deadsurge_keybinds', JSON.stringify(KEYBINDS)); }
+
 // ─── DASH CONSTANTS ───────────────────────────────────────────────────────────
 const DASH_COOLDOWN = 360; // 6 s at 60 fps
 const DASH_FRAMES   = 10;  // burst duration frames
@@ -33,25 +49,25 @@ document.addEventListener('keydown', e => {
     if (mp.active) { mp.socket.emit('restart_game'); } else { restartGame(); }
   }
   if (e.key.toLowerCase() === 'm' && game.state === 'game_over') goToMenu();
-  if (e.key.toLowerCase() === 'q' && game.state === 'playing' && !shopOpen) swapWeapon();
-  if (e.key.toLowerCase() === 'i' && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
+  if (e.key.toLowerCase() === KEYBINDS.swapWeapon && game.state === 'playing' && !shopOpen) swapWeapon();
+  if (e.key.toLowerCase() === KEYBINDS.infoCard && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
     weaponInfoOpen = !weaponInfoOpen;
-  // Dash ability (Space)
-  if (e.key === ' ' && game.state === 'playing' && !player.dead && !player.downed
+  // Dash ability
+  if (e.key.toLowerCase() === KEYBINDS.dash && game.state === 'playing' && !player.dead && !player.downed
       && player.dashCooldown <= 0 && player.dashTimer <= 0) {
     player.dashTimer    = DASH_FRAMES;
     player.dashCooldown = DASH_COOLDOWN;
     player.dashTrail    = [];
   }
-  // Fire Ring ability (4)
-  if (e.key === '4' && game.state === 'playing' && !player.dead && !player.downed
+  // Fire Ring ability
+  if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
       && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
     player.fireRingTimer = FIRE_RING_DURATION;
     player.fireCooldown  = FIRE_RING_COOLDOWN;
     player.fireRingAngle = 0;
   }
-  // Barrier ability (5)
-  if (e.key === '5' && game.state === 'playing' && !player.dead && !player.downed
+  // Barrier ability
+  if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
       && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
     player.barrierTimer    = BARRIER_DURATION;
     player.barrierCooldown = BARRIER_COOLDOWN;
@@ -60,7 +76,7 @@ document.addEventListener('keydown', e => {
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
     clickTarget = null;
   // Shop, mystery box & door interaction
-  if (e.key.toLowerCase() === 'e') {
+  if (e.key.toLowerCase() === KEYBINDS.interact) {
     if (shopOpen) { shopOpen=false; return; }
     if (perkShopOpen) { perkShopOpen=false; return; }
     if (!player.dead && game.state==='playing') {

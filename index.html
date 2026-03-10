@@ -86,7 +86,7 @@
 
   <!-- Settings -->
   <div id="settingsModal" class="modal-ov" style="display:none">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width:500px">
       <button class="modal-x" onclick="closeModal('settingsModal')">✕</button>
       <div class="modal-title">⚙ Settings</div>
       <div class="srow">
@@ -103,6 +103,41 @@
         <span class="slabel">Fullscreen</span>
         <button class="mbtn cfg" style="width:auto;padding:8px 18px;font-size:12px" onclick="toggleFS()">Toggle</button>
         <span class="sval"></span>
+      </div>
+      <!-- ─ Keybinds ─ -->
+      <div class="srow kb-header">
+        <span class="slabel" style="color:#99aaee;flex:1">⌨ Keybinds</span>
+        <span style="font-family:'Press Start 2P',monospace;font-size:6px;color:rgba(100,120,220,.55)">CLICK TO REBIND</span>
+      </div>
+      <div class="srow">
+        <span class="slabel">Dash</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-dash" onclick="startRebind('dash',this)">SPACE</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('dash')" title="Reset to default">↺</button>
+      </div>
+      <div class="srow">
+        <span class="slabel">Fire Ring</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-fireRing" onclick="startRebind('fireRing',this)">4</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('fireRing')" title="Reset to default">↺</button>
+      </div>
+      <div class="srow">
+        <span class="slabel">Barrier</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-barrier" onclick="startRebind('barrier',this)">5</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('barrier')" title="Reset to default">↺</button>
+      </div>
+      <div class="srow">
+        <span class="slabel">Swap Weapon</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-swapWeapon" onclick="startRebind('swapWeapon',this)">Q</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('swapWeapon')" title="Reset to default">↺</button>
+      </div>
+      <div class="srow">
+        <span class="slabel">Interact</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-interact" onclick="startRebind('interact',this)">E</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('interact')" title="Reset to default">↺</button>
+      </div>
+      <div class="srow" style="margin-bottom:0">
+        <span class="slabel">Info Card</span>
+        <button class="mbtn cfg kb-btn" id="kbbtn-infoCard" onclick="startRebind('infoCard',this)">I</button>
+        <button class="mbtn cfg kb-reset" onclick="resetKeybind('infoCard')" title="Reset to default">↺</button>
       </div>
     </div>
   </div>

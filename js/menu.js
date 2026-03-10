@@ -54,11 +54,15 @@ function goToMenu() {
 
 // ── Modals ────────────────────────────────────────────────────────────────────
 function openModal(id) {
-  if (id === 'lbModal')    refreshLeaderboard();
-  if (id === 'loginModal') renderAuthModal();
+  if (id === 'lbModal')       refreshLeaderboard();
+  if (id === 'loginModal')    renderAuthModal();
+  if (id === 'settingsModal') updateKeybindUI();
   document.getElementById(id).style.display = 'flex';
 }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function closeModal(id) {
+  if (id === 'settingsModal') cancelRebind();
+  document.getElementById(id).style.display = 'none';
+}
 
 document.querySelectorAll('.modal-ov').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.style.display = 'none'; });
@@ -224,10 +228,106 @@ function menuBgLoop() {
   draw();
 }
 
+// ─── KEYBIND UI ───────────────────────────────────────────────────────────────
+const KB_RESERVED = new Set([
+  'w','a','s','d',
+  'arrowup','arrowdown','arrowleft','arrowright',
+  'escape',
+]);
+
+function keyDisplayName(key) {
+  if (key === ' ')          return 'SPACE';
+  if (key === 'arrowup')    return '↑';
+  if (key === 'arrowdown')  return '↓';
+  if (key === 'arrowleft')  return '←';
+  if (key === 'arrowright') return '→';
+  if (key === 'tab')        return 'TAB';
+  if (key === 'enter')      return 'ENTER';
+  if (key === 'backspace')  return 'BKSP';
+  if (key === 'delete')     return 'DEL';
+  if (key === 'capslock')   return 'CAPS';
+  return key.toUpperCase();
+}
+
+function updateKeybindUI() {
+  for (const action of Object.keys(DEFAULT_KEYBINDS)) {
+    const btn = document.getElementById('kbbtn-' + action);
+    if (btn && !btn.classList.contains('kb-listening')) btn.textContent = keyDisplayName(KEYBINDS[action]);
+  }
+}
+
+let _rebindAction = null;
+let _rebindBtn    = null;
+
+function cancelRebind() {
+  if (!_rebindAction) return;
+  _rebindBtn.textContent = keyDisplayName(KEYBINDS[_rebindAction]);
+  _rebindBtn.style.color = '';
+  _rebindBtn.classList.remove('kb-listening');
+  _rebindAction = null;
+  _rebindBtn    = null;
+}
+
+function startRebind(action, btn) {
+  if (_rebindAction) cancelRebind();
+  _rebindAction = action;
+  _rebindBtn    = btn;
+  btn.textContent = '...';
+  btn.classList.add('kb-listening');
+}
+
+function resetKeybind(action) {
+  if (_rebindAction === action) cancelRebind();
+  KEYBINDS[action] = DEFAULT_KEYBINDS[action];
+  saveKeybinds();
+  const btn = document.getElementById('kbbtn-' + action);
+  if (btn) btn.textContent = keyDisplayName(DEFAULT_KEYBINDS[action]);
+}
+
+function _kbFeedback(msg, color) {
+  _rebindBtn.textContent = msg;
+  _rebindBtn.style.color = color;
+  setTimeout(() => {
+    if (_rebindBtn) { _rebindBtn.textContent = '...'; _rebindBtn.style.color = ''; }
+  }, 1100);
+}
+
+// Capture phase — fires before game keydown handler so we can block propagation
+document.addEventListener('keydown', e => {
+  if (!_rebindAction) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+
+  const key = e.key === ' ' ? ' ' : e.key.toLowerCase();
+
+  if (key === 'escape') { cancelRebind(); return; }
+
+  // Block reserved keys (WASD, arrows, escape)
+  if (KB_RESERVED.has(key)) { _kbFeedback('RESERVED!', '#ff4444'); return; }
+
+  // Block pure modifier keys
+  if (['shift','control','alt','meta'].includes(key)) { _kbFeedback('INVALID', '#ff8844'); return; }
+
+  // Block duplicate — already assigned to another action
+  for (const [act, k] of Object.entries(KEYBINDS)) {
+    if (act !== _rebindAction && k === key) { _kbFeedback('IN USE!', '#ffaa22'); return; }
+  }
+
+  // Apply
+  KEYBINDS[_rebindAction] = key;
+  saveKeybinds();
+  _rebindBtn.textContent = keyDisplayName(key);
+  _rebindBtn.style.color = '';
+  _rebindBtn.classList.remove('kb-listening');
+  _rebindAction = null;
+  _rebindBtn    = null;
+}, true); // useCapture = true
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 (function boot() {
   updateLoginLabel();
   const sv = localStorage.getItem('deadsurge_vol');
   if (sv !== null) { document.getElementById('volSlider').value=sv; setMasterVol(sv); }
   menuBgLoop();
+  updateKeybindUI(); // show saved keybinds on first open
 })();
