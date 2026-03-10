@@ -189,6 +189,45 @@ function drawBarrier() {
   ctx.restore();
 }
 
+// ── Speed Boost ───────────────────────────────────────────────────────────────
+const SPEED_BOOST_COOLDOWN = 900; // 15 s at 60 fps
+const SPEED_BOOST_DURATION = 360; // 6 s active
+const SPEED_BOOST_MULT     = 2.2; // movement speed multiplier
+
+function updateSpeedBoost() {
+  if (player.speedBoostCooldown > 0) player.speedBoostCooldown--;
+  if (player.speedBoostTimer <= 0) return;
+  player.speedBoostTimer--;
+
+  // Record trail position every 2 frames while moving
+  if (player.moving && player.speedBoostTimer % 2 === 0) {
+    player.speedBoostTrail.push({ cx: player.cx, cy: player.cy, facing: player.facing, a: 0.72 });
+    if (player.speedBoostTrail.length > 28) player.speedBoostTrail.shift();
+  }
+  // Fade existing trail points
+  for (let i = player.speedBoostTrail.length - 1; i >= 0; i--) {
+    player.speedBoostTrail[i].a -= 0.035;
+    if (player.speedBoostTrail[i].a <= 0) player.speedBoostTrail.splice(i, 1);
+  }
+}
+
+function drawSpeedBoostTrail() {
+  if (!player.speedBoostTrail || player.speedBoostTrail.length === 0) return;
+  const sz = TW * 1.5;
+  for (let i = 0; i < player.speedBoostTrail.length; i++) {
+    const t = player.speedBoostTrail[i];
+    const img = charIdle[t.facing];
+    if (!img || !img.complete || !img.naturalWidth) continue;
+    ctx.save();
+    ctx.globalAlpha = t.a * 0.5;
+    ctx.drawImage(img, t.cx * TW - sz / 2, t.cy * TH - sz / 2, sz, sz);
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = `rgba(180,50,255,${t.a * 0.8})`;
+    ctx.fillRect(t.cx * TW - sz / 2, t.cy * TH - sz / 2, sz, sz);
+    ctx.restore();
+  }
+}
+
 function drawFireRing() {
   if (player.fireRingTimer <= 0) return;
 

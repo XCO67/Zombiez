@@ -36,4 +36,7 @@ const player = {
   fireRingAngle: 0,  // current orbit angle (radians)
   barrierCooldown: 0, // frames remaining on barrier cooldown (2100 = 35s)
   barrierTimer: 0,    // frames remaining of active barrier (360 = 6s)
+  speedBoostCooldown: 0, // frames remaining on speed boost cooldown (900 = 15s)
+  speedBoostTimer: 0,    // frames remaining of active speed boost (360 = 6s)
+  speedBoostTrail: [],   // [{cx,cy,facing,frame,a}] purple shadow positions
 };

@@ -78,6 +78,7 @@ function restartGame() {
   player.dashCooldown = 0; player.dashTimer = 0; player.dashTrail = [];
   player.fireCooldown = 0; player.fireRingTimer = 0; player.fireRingAngle = 0;
   player.barrierCooldown = 0; player.barrierTimer = 0;
+  player.speedBoostCooldown = 0; player.speedBoostTimer = 0; player.speedBoostTrail = [];
   player.perks = { magnet:0, shield:0, lifesteal:0, moveSpeed:0, hpRegen:0 };
   player.shield = 0; player.shieldRechargeTimer = 0;
   perkShopOpen = false;

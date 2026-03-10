@@ -43,6 +43,7 @@ function render(now) {
     updateSpiderWebShots();
     updateFireRing();
     updateBarrier();
+    updateSpeedBoost();
     updateSpreadDrops();
     updateLavaZombies();
     updateLavaShards();

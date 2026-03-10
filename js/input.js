@@ -5,6 +5,7 @@ const DEFAULT_KEYBINDS = {
   dash:       ' ',
   fireRing:   '4',
   barrier:    '5',
+  speedBoost: '6',
   swapWeapon: 'q',
   interact:   'e',
   infoCard:   'i',
@@ -76,6 +77,12 @@ document.addEventListener('keydown', e => {
       && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
     player.barrierTimer    = BARRIER_DURATION;
     player.barrierCooldown = BARRIER_COOLDOWN;
+  }
+  // Speed Boost ability
+  if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
+      && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
+    player.speedBoostTimer    = SPEED_BOOST_DURATION;
+    player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
   }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
@@ -229,8 +236,9 @@ function updatePlayer() {
   // Web slow (Venom Queen)
   if (player.webSlowTimer > 0) player.webSlowTimer--;
   // Apply move speed perk (capped at +75% = level 5), reduced by web slow
-  const webMult = player.webSlowTimer > 0 ? 0.38 : 1;
-  player.speed = PLAYER_SPEED * (1 + Math.min(player.perks.moveSpeed, 5) * 0.15) * webMult;
+  const webMult   = player.webSlowTimer > 0 ? 0.38 : 1;
+  const boostMult = player.speedBoostTimer > 0 ? SPEED_BOOST_MULT : 1;
+  player.speed = PLAYER_SPEED * (1 + Math.min(player.perks.moveSpeed, 5) * 0.15) * webMult * boostMult;
   if (player.moving) {
     const nx=player.cx+dx*player.speed, ny=player.cy+dy*player.speed;
     if (!isBlocked(nx,player.cy)) player.cx=nx;
@@ -292,6 +300,9 @@ function updatePlayer() {
 
 function drawPlayer() {
   const px=player.cx*TW, py=player.cy*TH, sz=TW*1.5;
+
+  // Speed boost purple shadow trail
+  drawSpeedBoostTrail();
 
   // Dash afterimage trail
   if (player.dashTrail && player.dashTrail.length > 0) {
