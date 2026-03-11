@@ -39,8 +39,8 @@ function drawFloor(r,c,type) {
     const v2=variant(r+7,c+3);
     ctx.strokeStyle=`rgba(${120+v2*3},0,${180+v2*2},0.22)`; ctx.lineWidth=1;
     ctx.beginPath();
-    ctx.moveTo(x+v2%TW,y+TH*.3); ctx.lineTo(x+TW-v2%8,y+TH*.7);
-    ctx.moveTo(x+TW*.2,y+(v2*3)%TH); ctx.lineTo(x+TW*.75,y+TH-(v2*2)%12);
+    ctx.moveTo(x+(v2%11)/11*TW,y+TH*.3); ctx.lineTo(x+TW*(1-(v2%8)/8*0.15),y+TH*.7);
+    ctx.moveTo(x+TW*.2,y+(v2*3%11)/11*TH); ctx.lineTo(x+TW*.75,y+TH*(1-(v2*2%11)/11*0.2));
     ctx.stroke();
   }
 }
@@ -61,7 +61,7 @@ function drawColorFloor(r, c) {
   ctx.fillStyle=`rgb(${rd},${gd},${bd})`; ctx.fillRect(x+1,y+TH-2,TW-2,1); ctx.fillRect(x+TW-2,y+1,1,TH-2);
   // Subtle color shimmer lines
   const v2=variant(r+5,c+2);
-  ctx.fillStyle=`rgba(${rh},${gh},${bh},0.12)`; ctx.fillRect(x+v2%TW,y+TH*.3,1,TH*.4);
+  ctx.fillStyle=`rgba(${rh},${gh},${bh},0.12)`; ctx.fillRect(x+(v2%11)/11*TW,y+TH*.3,1,TH*.4);
 }
 
 function drawLavaFloor(r, c) {
@@ -76,16 +76,16 @@ function drawLavaFloor(r, c) {
   const crG=140+pulse*80|0;
   ctx.strokeStyle=`rgba(255,${crG},0,${crA})`; ctx.lineWidth=Math.max(1.5,TW*0.055);
   ctx.beginPath();
-  ctx.moveTo(x+(v*6)%TW, y+TH*0.18);
-  ctx.lineTo(x+TW*0.50+(v%5-2)*4, y+TH*0.52);
-  ctx.lineTo(x+TW-(v*4)%14, y+TH*0.82);
+  ctx.moveTo(x+(v*6%11)/11*TW, y+TH*0.18);
+  ctx.lineTo(x+TW*0.50+(v%5-2)*TW*0.04, y+TH*0.52);
+  ctx.lineTo(x+TW*(1-(v*4%11)/11*0.22), y+TH*0.82);
   ctx.stroke();
   // Second crack (thinner)
   ctx.strokeStyle=`rgba(255,${crG+30|0},0,${crA*0.65})`; ctx.lineWidth=Math.max(1,TW*0.03);
   ctx.beginPath();
-  ctx.moveTo(x+TW*0.15, y+(v*9)%TH);
-  ctx.lineTo(x+TW*0.55+(v%3)*3, y+TH*0.52);
-  ctx.lineTo(x+TW*0.80, y+TH-(v*3)%16);
+  ctx.moveTo(x+TW*0.15, y+(v*9%11)/11*TH);
+  ctx.lineTo(x+TW*0.55+(v%3)*TW*0.04, y+TH*0.52);
+  ctx.lineTo(x+TW*0.80, y+TH*(1-(v*3%11)/11*0.22));
   ctx.stroke();
   // Bright molten core dot
   ctx.fillStyle=`rgba(255,${220+pulse*35|0},${60+pulse*60|0},0.9)`;
@@ -103,15 +103,15 @@ function drawIceFloor(r, c) {
   const ca=0.50+shimmer*0.22;
   ctx.strokeStyle=`rgba(160,225,255,${ca})`; ctx.lineWidth=Math.max(1,TW*0.04);
   ctx.beginPath();
-  ctx.moveTo(x+(v*7)%TW, y+TH*0.15);
+  ctx.moveTo(x+(v*7%11)/11*TW, y+TH*0.15);
   ctx.lineTo(x+TW*0.50, y+TH*0.52);
-  ctx.lineTo(x+TW-(v*3)%14, y+TH*0.88);
+  ctx.lineTo(x+TW*(1-(v*3%11)/11*0.18), y+TH*0.88);
   ctx.stroke();
   ctx.strokeStyle=`rgba(200,240,255,${ca*0.55})`; ctx.lineWidth=Math.max(1,TW*0.025);
   ctx.beginPath();
-  ctx.moveTo(x+TW*0.30, y+(v*11)%TH);
+  ctx.moveTo(x+TW*0.30, y+(v*5%11)/11*TH);
   ctx.lineTo(x+TW*0.50, y+TH*0.52);
-  ctx.lineTo(x+TW*0.85, y+TH-(v*5)%18);
+  ctx.lineTo(x+TW*0.85, y+TH*(1-(v*8%11)/11*0.18));
   ctx.stroke();
   // Frost sparkle highlight (solid rects, no gradient)
   const fa=0.12+shimmer*0.08;
@@ -188,26 +188,29 @@ function drawWoodFloor(r, c) {
 
 function drawMossyFloor(r, c) {
   const x=c*TW, y=r*TH, v=variant(r,c);
+  // Stable 0-1 fractions derived only from v (not TW/TH) so zoom doesn't shift patches
+  const f1=(v*5%11)/11, f2=(v*7%11)/11, f3=(v*9%11)/11;
+  const f4=(v*3%11)/11, f5=(v*6%11)/11, f6=(v*4%11)/11;
   // Damp dark stone base
   ctx.fillStyle='#131710'; ctx.fillRect(x,y,TW,TH);
   ctx.fillStyle='#1b2117'; ctx.fillRect(x+1,y+1,TW-2,TH-2);
-  // Moss blob patches — dense coverage
+  // Moss blob patches — positions as stable fractions of tile size
   const patches=[
-    {ox:v*5%TW,  oy:v*7%TH,  ra:TW*0.22, rb:TH*0.17, col:'rgba(30,75,15,0.72)'},
-    {ox:v*9%TW,  oy:v*3%TH,  ra:TW*0.16, rb:TH*0.13, col:'rgba(45,95,20,0.60)'},
-    {ox:v*13%TW, oy:v*11%TH, ra:TW*0.12, rb:TH*0.10, col:'rgba(60,110,28,0.50)'},
+    {ox:f1*TW, oy:f2*TH, ra:TW*0.22, rb:TH*0.17, col:'rgba(30,75,15,0.72)'},
+    {ox:f3*TW, oy:f4*TH, ra:TW*0.16, rb:TH*0.13, col:'rgba(45,95,20,0.60)'},
+    {ox:f5*TW, oy:f6*TH, ra:TW*0.12, rb:TH*0.10, col:'rgba(60,110,28,0.50)'},
   ];
   patches.forEach(p=>{
     ctx.fillStyle=p.col;
     ctx.beginPath(); ctx.ellipse(x+p.ox,y+p.oy,p.ra,p.rb,v*0.3,0,Math.PI*2); ctx.fill();
   });
-  // Bright moss highlight on patches
+  // Bright moss highlight
   ctx.fillStyle='rgba(80,160,35,0.15)';
-  ctx.beginPath(); ctx.ellipse(x+v*5%TW,y+v*7%TH,TW*0.10,TH*0.08,0,0,Math.PI*2); ctx.fill();
-  // Subtle stone crack under moss
+  ctx.beginPath(); ctx.ellipse(x+f1*TW,y+f2*TH,TW*0.10,TH*0.08,0,0,Math.PI*2); ctx.fill();
+  // Subtle stone crack
   ctx.strokeStyle='rgba(0,0,0,0.30)'; ctx.lineWidth=1;
   ctx.strokeRect(x,y,TW,TH);
-  // Damp sheen top highlight
+  // Damp sheen
   ctx.fillStyle='rgba(100,180,50,0.07)'; ctx.fillRect(x+1,y+1,TW-2,1);
 }
 
