@@ -66,23 +66,28 @@ document.addEventListener('keydown', e => {
     player.dashTrail    = [];
   }
   // Fire Ring ability
-  if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
-      && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
-    player.fireRingTimer = FIRE_RING_DURATION;
-    player.fireCooldown  = FIRE_RING_COOLDOWN;
-    player.fireRingAngle = 0;
-  }
-  // Barrier ability
-  if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
-      && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
-    player.barrierTimer    = BARRIER_DURATION;
-    player.barrierCooldown = BARRIER_COOLDOWN;
-  }
-  // Speed Boost ability
-  if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
-      && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
-    player.speedBoostTimer    = SPEED_BOOST_DURATION;
-    player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
+  // In multiplayer abilities are server-authoritative — the keys[] state is sent
+  // to the server each tick and the server activates them. Local activation here
+  // would be overwritten by the server snapshot (arrives every 33ms).
+  if (!mp.active) {
+    if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
+        && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
+      player.fireRingTimer = FIRE_RING_DURATION;
+      player.fireCooldown  = FIRE_RING_COOLDOWN;
+      player.fireRingAngle = 0;
+    }
+    // Barrier ability
+    if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
+        && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
+      player.barrierTimer    = BARRIER_DURATION;
+      player.barrierCooldown = BARRIER_COOLDOWN;
+    }
+    // Speed Boost ability
+    if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
+        && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
+      player.speedBoostTimer    = SPEED_BOOST_DURATION;
+      player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
+    }
   }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))

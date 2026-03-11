@@ -261,7 +261,7 @@ const T_S     = { WALL:0, FLOOR:1, PILLAR:2, SPAWN:3, DOOR:4 };
 const MAP_W_S = 40, MAP_H_S = 28;
 const TW_S = 48, TH_S = 48;
 const PLAYER_R_S = 0.28;
-const PLAYER_SPEED_S = 0.055 * 2;   // tiles/tick  (0.055 tiles/frame × 60fps / 30tps)
+const PLAYER_SPEED_S = 0.038 * 2;   // tiles/tick  (0.038 tiles/frame × 60fps / 30tps) — must match client PLAYER_SPEED
 const ZOMBIE_SPEED_S  = 0.018 * 2;
 const SKEL_SPEED_S    = 0.032 * 2;
 const DRAGON_SPEED_S  = 0.012 * 2;
@@ -1563,7 +1563,12 @@ io.on('connection', socket => {
     if (!room) return;
     const slot = socket.data.slot;
     const cur = room.inputs.get(slot) || {};
-    room.inputs.set(slot, { ...inp, _qprev: cur._qprev, _eprev: cur._eprev });
+    // Preserve ALL edge-detection prev-state keys that _processInputs sets inline
+    room.inputs.set(slot, {
+      ...inp,
+      _qprev:   cur._qprev,   _eprev:   cur._eprev,
+      _ab1prev: cur._ab1prev, _ab2prev: cur._ab2prev, _ab3prev: cur._ab3prev,
+    });
   });
 
   socket.on('buy_upgrade', ({ key }) => {
