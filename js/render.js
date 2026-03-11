@@ -100,6 +100,18 @@ function render(now) {
 
   if (!gameStarted) return;
 
+  // Smooth zoom — must run BEFORE physics so updateCamera() uses correct TW
+  if (Math.abs(_targetViewW - VIEW_W) > 0.05) {
+    VIEW_W += (_targetViewW - VIEW_W) * 0.18;
+    TW = canvas.width / VIEW_W; TH = TW;
+    updateCamera(); // resync camera with new TW immediately
+  } else if (VIEW_W !== _targetViewW) {
+    VIEW_W = _targetViewW;
+    TW = canvas.width / VIEW_W; TH = TW;
+    tileCacheDirty = true; // settled — rebuild cache at final zoom level
+    updateCamera();
+  }
+
   // Fixed-timestep physics — max 2 catch-up steps to avoid spiral of death
   const dt = Math.min(now - lastFrameTime, 100);
   lastFrameTime = now;
@@ -133,16 +145,6 @@ function render(now) {
   // ── World (camera transform) ─────────────────────────────────────────────
   ctx.save();
   ctx.translate(-camX, -camY);
-
-  // Smooth zoom — lerp VIEW_W toward target, rebuild cache only when settled
-  if (Math.abs(_targetViewW - VIEW_W) > 0.05) {
-    VIEW_W += (_targetViewW - VIEW_W) * 0.18;
-    TW = canvas.width / VIEW_W; TH = TW;
-  } else if (VIEW_W !== _targetViewW) {
-    VIEW_W = _targetViewW;
-    TW = canvas.width / VIEW_W; TH = TW;
-    tileCacheDirty = true; // settle: rebuild cache at final zoom level
-  }
 
   // Blit cached tile layer — scaled to current TW (no rebuild on zoom frames)
   if (tileCacheDirty) _buildTileCache();
