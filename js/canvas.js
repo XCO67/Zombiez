@@ -1,7 +1,7 @@
 
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+let ctx = canvas.getContext('2d');
 let TW, TH;
 const lightCanvas = document.createElement('canvas');
 const lx = lightCanvas.getContext('2d');
