@@ -376,9 +376,12 @@ function mpConnect(cb) {
     if (!mp.active || !mp.firstState) return;
     bullets.forEach(b => {
       if (b.sl === mp.slot) return; // skip own — we already have _local bullets
-      const cvx = b.vx / 2, cvy = b.vy / 2; // server px/tick (30tps) → client px/frame (60fps)
-      projectiles.push({ x:b.x, y:b.y, vx:cvx, vy:cvy, wkey:b.wk,
-        life:90, trail:[], prevX:b.x, prevY:b.y, slot:b.sl });
+      // Server uses TW_S=48px/tile; client TW is dynamic. Scale to client pixel space.
+      const scale = TW / 48;
+      const px = b.x * scale, py = b.y * scale;
+      const cvx = b.vx * scale / 2, cvy = b.vy * scale / 2; // px/tick→px/frame (30→60fps)
+      projectiles.push({ x:px, y:py, vx:cvx, vy:cvy, wkey:b.wk,
+        life:90, trail:[], prevX:px, prevY:py, slot:b.sl });
     });
   });
   mp.socket.on('game_start', ({ players }) => {
