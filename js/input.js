@@ -237,9 +237,7 @@ canvas.addEventListener('mouseup',   e => { if (e.button===0) mouse.down=false; 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  // scroll up = zoom in (fewer tiles), scroll down = zoom out (more tiles)
-  VIEW_W = Math.max(MIN_VIEW_W, Math.min(MAX_VIEW_W, VIEW_W + (e.deltaY > 0 ? 2 : -2)));
-  resize();
+  _targetViewW = Math.max(MIN_VIEW_W, Math.min(MAX_VIEW_W, _targetViewW + (e.deltaY > 0 ? 2 : -2)));
 }, { passive: false });
 
 function updatePlayer() {

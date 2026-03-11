@@ -6,9 +6,10 @@ let TW, TH;
 const lightCanvas = document.createElement('canvas');
 const lx = lightCanvas.getContext('2d');
 
-let VIEW_W = 32;        // tiles visible horizontally (default zoom)
-const MIN_VIEW_W = 18;  // most zoomed in
-const MAX_VIEW_W = 42;  // most zoomed out
+let VIEW_W = 28;        // tiles visible horizontally (default zoom)
+let _targetViewW = 28;  // smooth zoom target
+const MIN_VIEW_W = 20;  // most zoomed in  (logical limit)
+const MAX_VIEW_W = 38;  // most zoomed out (logical limit)
 let camX = 0, camY = 0; // top-left of viewport in world pixels
 
 function resize() {
@@ -16,7 +17,9 @@ function resize() {
   TW = canvas.width / VIEW_W;
   TH = TW; // square tiles
   lightCanvas.width = canvas.width; lightCanvas.height = canvas.height;
-  tileCacheDirty = true; // TW/TH changed — rebuild tile cache at new size
+  // Note: tile cache is NOT invalidated on zoom — it's scaled with drawImage instead
+  // Only invalidate on window resize (different screen size, need fresh cache)
+  tileCacheDirty = true;
 }
 resize();
 window.addEventListener('resize', resize);
