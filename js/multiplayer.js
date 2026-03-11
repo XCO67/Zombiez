@@ -61,6 +61,10 @@ function applyServerSnapshot(st) {
       if (pd.sa !== undefined) player.secondaryAmmo = pd.sa === -1 ? Infinity : pd.sa;
       player.heat = pd.ht || 0;
       player.overheated = !!pd.oh;
+      // Ability state from server (cooldowns/timers drive local visual effects)
+      player.fireCooldown    = pd.fc  || 0; player.fireRingTimer   = pd.frt || 0;
+      player.barrierCooldown = pd.bc  || 0; player.barrierTimer    = pd.bt  || 0;
+      player.speedBoostCooldown = pd.sc2 || 0; player.speedBoostTimer = pd.sbt || 0;
       // Position reconciliation — only snap/correct when idle to avoid fighting prediction
       if (!player._snapped) { player.cx = pd.cx; player.cy = pd.cy; player._snapped = true; }
       else {
@@ -117,6 +121,51 @@ function applyServerSnapshot(st) {
     s => ({ cx:s[0],cy:s[1],_tx:s[0],_ty:s[1],hp:s[2],maxHp:SKEL_HP,facing:s[3],frame:s[4],dead:!!s[5],hitFlash:0,deathTimer:0 }));
   syncEnts(DRAGONS, st.dr,
     d => ({ cx:d[0],cy:d[1],_tx:d[0],_ty:d[1],hp:d[2],maxHp:DRAGON_HP,facing:d[3],frame:d[4],dead:!!d[5],hitFlash:0,deathTimer:0,fireTimer:0 }));
+
+  // Lava zombies: [cx,cy,hp,maxHp,facing,frame,dead(6),inv(7)]
+  // syncEnts uses rd[rd.length-1] for dead, but lz has extra inv at end — fix dead+inv in post-pass
+  syncEnts(LAVA_ZOMBIES, st.lz || [],
+    z => ({ cx:z[0],cy:z[1],_tx:z[0],_ty:z[1],hp:z[2],maxHp:z[3]||300,dead:z[6]===1,hitFlash:0,deathTimer:0,
+            invincTimer:z[7]?60:0,abilityTimer:0,chargeTimer:0,state:'walk',vx:0,vy:0,frame:z[5]||0,ft:0 }), 3);
+  LAVA_ZOMBIES.forEach((z, i) => {
+    const rd = (st.lz || [])[i]; if (!rd) return;
+    z.dead = rd[6] === 1;        // correct the dead field (syncEnts used rd[7]=inv by mistake)
+    z.invincTimer = rd[7] ? 60 : 0;
+  });
+
+  // Lava shards & pools (replace-array like FLAMES)
+  LAVA_SHARDS.length = 0;
+  (st.ls || []).forEach(s => {
+    const scale = TW / 48;
+    LAVA_SHARDS.push({ x:s[0]*scale, y:s[1]*scale, vx:s[2]*scale/2, vy:s[3]*scale/2, life:s[4] });
+  });
+  LAVA_POOLS.length = 0;
+  (st.lp || []).forEach(p => LAVA_POOLS.push({ cx:p[0], cy:p[1], life:p[2], dmgTimer:0 }));
+
+  // Exploders: [cx,cy,hp,maxHp,facing,frame,dead(6)]
+  syncEnts(EXPLODERS, st.ex || [],
+    e => ({ cx:e[0],cy:e[1],_tx:e[0],_ty:e[1],hp:e[2],maxHp:e[3]||30,dead:e[6]===1,hitFlash:0,deathTimer:0,exploded:false,vx:0,vy:0 }), 3);
+
+  // Phantoms: [cx,cy,hp,maxHp,facing,frame,dead(6),phase(7)]
+  // Extra phase field at end — fix dead + invincTimer in post-pass
+  syncEnts(PHANTOMS, st.ph || [],
+    p => ({ cx:p[0],cy:p[1],_tx:p[0],_ty:p[1],hp:p[2],maxHp:p[3]||70,dead:p[6]===1,hitFlash:0,deathTimer:0,invincTimer:0,phaseTimer:0 }), 3);
+  PHANTOMS.forEach((p, i) => {
+    const rd = (st.ph || [])[i]; if (!rd) return;
+    p.dead = rd[6] === 1;        // correct dead (syncEnts used rd[7]=phase)
+    p.invincTimer = rd[7] ? 45 : 0;
+  });
+
+  // Boss demons: [cx,cy,hp,maxHp,facing,frame,dead(6)]
+  syncEnts(BOSS_DEMONS, st.bd || [],
+    b => ({ cx:b[0],cy:b[1],_tx:b[0],_ty:b[1],hp:b[2],maxHp:b[3]||7000,dead:b[6]===1,hitFlash:0,deathTimer:0,shootTimer:0,shootPhase:0 }), 3);
+
+  // Boss shots (replace-array like FLAMES)
+  BOSS_SHOTS.length = 0;
+  (st.bs || []).forEach(b => {
+    const scale = TW / 48;
+    BOSS_SHOTS.push({ x:b[0]*scale, y:b[1]*scale, vx:b[2]*scale/2, vy:b[3]*scale/2, life:b[4] });
+  });
 
   // Flames
   FLAMES.length = 0;
@@ -247,6 +296,28 @@ function mpAnimate() {
     if (d._ft >= 0.11) { d._ft = 0; d.frame = (d.frame + 1) % 8; }
     if (d.hitFlash > 0) d.hitFlash--;
   });
+  LAVA_ZOMBIES.forEach(z => {
+    if (z._tx !== undefined) { z.cx += (z._tx - z.cx) * L; z.cy += (z._ty - z.cy) * L; }
+    z._ft = (z._ft || 0) + 1/60;
+    if (z._ft >= 0.11) { z._ft = 0; z.frame = (z.frame + 1) % 8; }
+    if (z.hitFlash > 0) z.hitFlash--;
+    if (z.deathTimer > 0) z.deathTimer--;
+  });
+  EXPLODERS.forEach(e => {
+    if (e._tx !== undefined) { e.cx += (e._tx - e.cx) * L; e.cy += (e._ty - e.cy) * L; }
+    if (e.hitFlash > 0) e.hitFlash--;
+    if (e.deathTimer > 0) e.deathTimer--;
+  });
+  PHANTOMS.forEach(p => {
+    if (p._tx !== undefined) { p.cx += (p._tx - p.cx) * L; p.cy += (p._ty - p.cy) * L; }
+    if (p.hitFlash > 0) p.hitFlash--;
+    if (p.deathTimer > 0) p.deathTimer--;
+  });
+  BOSS_DEMONS.forEach(b => {
+    if (b._tx !== undefined) { b.cx += (b._tx - b.cx) * L; b.cy += (b._ty - b.cy) * L; }
+    if (b.hitFlash > 0) b.hitFlash--;
+    if (b.deathTimer > 0) b.deathTimer--;
+  });
 
   // Advance projectiles locally between snapshots
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -265,6 +336,11 @@ function mpAnimate() {
   // Advance flames
   FLAMES.forEach(f => { f.x += f.vx; f.y += f.vy; f.life--; });
   for (let i = FLAMES.length - 1; i >= 0; i--) { if (FLAMES[i].life <= 0) FLAMES.splice(i, 1); }
+  // Advance lava shards & boss shots between snapshots
+  LAVA_SHARDS.forEach(s => { s.x += s.vx; s.y += s.vy; s.life--; });
+  for (let i = LAVA_SHARDS.length - 1; i >= 0; i--) { if (LAVA_SHARDS[i].life <= 0) LAVA_SHARDS.splice(i, 1); }
+  BOSS_SHOTS.forEach(b => { b.x += b.vx; b.y += b.vy; b.life--; });
+  for (let i = BOSS_SHOTS.length - 1; i >= 0; i--) { if (BOSS_SHOTS[i].life <= 0) BOSS_SHOTS.splice(i, 1); }
 
   COINS.forEach(c => { c.bob = (c.bob || 0) + 0.08; });
   updateDmgNums();
@@ -355,6 +431,9 @@ function sendMpInput() {
     mx: mouse.x + camX, my: mouse.y + camY,
     shooting: !!mouse.down, q: !!keys['q'], f: !!keys['f'], e: !!keys['e'],
     ctx: clickTarget ? clickTarget.cx : null, cty: clickTarget ? clickTarget.cy : null,
+    ab1: !!(keys[KB.fireRing]),
+    ab2: !!(keys[KB.barrier]),
+    ab3: !!(keys[KB.speedBoost]),
   });
 }
 
@@ -390,6 +469,7 @@ function mpConnect(cb) {
     REMOTE_PLAYERS_MAP.clear();
     REMOTE_PLAYERS.length = 0;
     mp.active = true; // set BEFORE startGame so startWave(1) is skipped
+    player._snapped = false; // reset so reconciliation works fresh
     closeModal('mpModal');
     startGame();
   });

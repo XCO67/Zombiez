@@ -266,7 +266,7 @@ const ZOMBIE_SPEED_S  = 0.018 * 2;
 const SKEL_SPEED_S    = 0.032 * 2;
 const DRAGON_SPEED_S  = 0.012 * 2;
 const FLAME_SPEED_S   = 5.5 * 2;    // px/tick
-const SKEL_HP_S       = 110;
+const SKEL_HP_S       = 180;
 const DRAGON_HP_S     = 200;
 const SKEL_STEAL_S    = 20;
 const FLAME_DMG_S     = 20;
@@ -279,6 +279,21 @@ const REVIVE_TICKS_S  = 120;   // ticks  (4s × 30)
 const WAVE_CLEAR_TICKS_S = 90; // ticks  (3s × 30)
 const SPAWN_INT_S     = 13;    // ticks  (0.45s × 30)
 const PROJ_LIFE_S     = 45;    // ticks  (1.5s × 30)
+// New enemy speeds (client_speed × 2 for 30tps)
+const LAVA_SPEED_S    = 0.015 * 2;
+const EXPLODER_SPEED_S= 0.030 * 2;
+const PHANTOM_SPEED_S = 0.024 * 2;
+const BOSS_SPEED_S    = 0.018 * 2;
+// Ability cooldowns/durations in ticks (seconds × 30)
+const FIRE_RING_CD_S     = 900;  // 30s
+const FIRE_RING_DUR_S    = 60;   // 2s
+const FIRE_RING_TICK_S   = 15;   // damage every 15 ticks (0.5s)
+const FIRE_RING_RADIUS_S = 1.8;  // tiles
+const BARRIER_CD_S       = 1050; // 35s
+const BARRIER_DUR_S      = 180;  // 6s
+const SPEED_BOOST_CD_S   = 450;  // 15s
+const SPEED_BOOST_DUR_S  = 180;  // 6s
+const SPEED_BOOST_MULT_S = 1.65;
 const WAVE_RANGE_S    = 10;    // tiles (thundergun cone)
 const WAVE_HALFANG_S  = 0.72;
 const BOX_COST_S      = 750;
@@ -384,6 +399,13 @@ class GameRoom {
     this.skeletons  = [];
     this.dragons    = [];
     this.flames     = [];
+    this.lavaZombies = [];
+    this.lavaShards  = [];
+    this.lavaPools   = [];
+    this.exploders   = [];
+    this.phantoms    = [];
+    this.bossDemos   = [];
+    this.bossShots   = [];
     this.projectiles = [];
     this.coins      = [];
     this.perks      = [];
@@ -431,6 +453,9 @@ class GameRoom {
       secondaryKey: null, secondaryAmmo: 0,
       shootCooldown: 0, regenTimer: 0, regenAccum: 0,
       heat: 0, overheated: false,
+      fireCooldown: 0, fireRingTimer: 0,
+      barrierCooldown: 0, barrierTimer: 0,
+      speedBoostCooldown: 0, speedBoostTimer: 0,
       slot,
     };
   }
@@ -457,6 +482,13 @@ class GameRoom {
       this._updateSkeletons();
       this._updateDragons();
       this._updateFlames();
+      this._updateLavaZombies();
+      this._updateLavaShards();
+      this._updateLavaPools();
+      this._updateExploders();
+      this._updatePhantoms();
+      this._updateBossDemos();
+      this._updateBossShots();
       this._updateCoins();
       this._updatePerks();
       this._updateWave();
@@ -507,7 +539,8 @@ class GameRoom {
         if (dist > 0.12) { dx = cdx / dist; dy = cdy / dist; }
       } else if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
       ps.moving = dx !== 0 || dy !== 0;
-      const sp = PLAYER_SPEED_S * (1 + Math.min(ps.upgrades.moveSpeed, 5) * 0.10);
+      const speedMult = ps.speedBoostTimer > 0 ? SPEED_BOOST_MULT_S : 1;
+      const sp = PLAYER_SPEED_S * speedMult * (1 + Math.min(ps.upgrades.moveSpeed, 5) * 0.12);
       ps.speed = sp;
       if (ps.moving) {
         const nx = ps.cx + dx * sp, ny = ps.cy + dy * sp;
@@ -591,6 +624,27 @@ class GameRoom {
         this._handleInteract(slot, ps);
       }
       inp._eprev = inp.e;
+
+      // Abilities
+      if (ps.fireCooldown > 0) ps.fireCooldown--;
+      if (ps.barrierCooldown > 0) ps.barrierCooldown--;
+      if (ps.speedBoostCooldown > 0) ps.speedBoostCooldown--;
+      if (ps.fireRingTimer > 0) {
+        ps.fireRingTimer--;
+        if (ps.fireRingTimer % FIRE_RING_TICK_S === 0) this._fireRingDamage(ps);
+      }
+      if (ps.barrierTimer > 0) ps.barrierTimer--;
+      if (ps.speedBoostTimer > 0) ps.speedBoostTimer--;
+      if (inp.ab1 && !inp._ab1prev && ps.fireCooldown <= 0) {
+        ps.fireRingTimer = FIRE_RING_DUR_S; ps.fireCooldown = FIRE_RING_CD_S;
+      }
+      if (inp.ab2 && !inp._ab2prev && ps.barrierCooldown <= 0) {
+        ps.barrierTimer = BARRIER_DUR_S; ps.barrierCooldown = BARRIER_CD_S;
+      }
+      if (inp.ab3 && !inp._ab3prev && ps.speedBoostCooldown <= 0) {
+        ps.speedBoostTimer = SPEED_BOOST_DUR_S; ps.speedBoostCooldown = SPEED_BOOST_CD_S;
+      }
+      inp._ab1prev = inp.ab1; inp._ab2prev = inp.ab2; inp._ab3prev = inp.ab3;
     }
   }
 
@@ -600,9 +654,13 @@ class GameRoom {
   }
 
   _rollDamage(baseDmg, upgDmg, upgCrit) {
-    const total = Math.round(baseDmg * (1 + upgDmg * 0.20));
-    const crit = Math.random() < upgCrit * 0.1;
+    const total = Math.round(baseDmg * Math.pow(1.3, upgDmg || 0));
+    const crit = Math.random() < (upgCrit || 0) * 0.1;
     return crit ? total * 2 : total;
+  }
+
+  _hpScale(round) {
+    return Math.pow(1.10, Math.max(0, round - 1));
   }
 
   _fireWindWave(ps, inp) {
@@ -636,6 +694,10 @@ class GameRoom {
     }
     this.dragons.forEach(d => { if (!d.dead) hitEnt(d, 0.7); this._checkDragonDeath(d); });
     this.skeletons.forEach(s => { if (!s.dead) hitEnt(s, 0.9); this._checkSkelDeath(s); });
+    this.lavaZombies.forEach(lz => { if (!lz.dead && !lz.invTimer) hitEnt(lz, 0.8); });
+    this.exploders.forEach(ex => { if (!ex.dead) hitEnt(ex, 0.9); });
+    this.phantoms.forEach(ph => { if (!ph.dead && !ph.phaseTimer) hitEnt(ph, 0.85); });
+    this.bossDemos.forEach(b => { if (!b.dead) hitEnt(b, 0.6); });
   }
 
   _handleInteract(slot, ps) {
@@ -727,6 +789,46 @@ class GameRoom {
           if (!p.pierce) { this.projectiles.splice(i, 1); hit = true; break; }
         }
       }
+      if (hit) continue;
+      // Lava Zombies (only when not invincible)
+      for (let li = this.lavaZombies.length - 1; li >= 0; li--) {
+        const lz = this.lavaZombies[li]; if (lz.dead || lz.invTimer > 0) continue;
+        if (Math.hypot(p.x - lz.cx * TW_S, p.y - lz.cy * TH_S) < TW_S * p.hitR) {
+          lz.hp -= this._rollDamage(WEAPONS_S[p.wkey].baseDmg, p.upgDmg, p.upgCrit);
+          lz.hitFlash = 7;
+          if (!p.pierce) { this.projectiles.splice(i, 1); hit = true; break; }
+        }
+      }
+      if (hit) continue;
+      // Exploders
+      for (let ei = this.exploders.length - 1; ei >= 0; ei--) {
+        const ex = this.exploders[ei]; if (ex.dead) continue;
+        if (Math.hypot(p.x - ex.cx * TW_S, p.y - ex.cy * TH_S) < TW_S * p.hitR) {
+          ex.hp -= this._rollDamage(WEAPONS_S[p.wkey].baseDmg, p.upgDmg, p.upgCrit);
+          ex.hitFlash = 7;
+          if (!p.pierce) { this.projectiles.splice(i, 1); hit = true; break; }
+        }
+      }
+      if (hit) continue;
+      // Phantoms (only when not phasing)
+      for (let phi = this.phantoms.length - 1; phi >= 0; phi--) {
+        const ph = this.phantoms[phi]; if (ph.dead || ph.phaseTimer > 0) continue;
+        if (Math.hypot(p.x - ph.cx * TW_S, p.y - ph.cy * TH_S) < TW_S * p.hitR) {
+          ph.hp -= this._rollDamage(WEAPONS_S[p.wkey].baseDmg, p.upgDmg, p.upgCrit);
+          ph.hitFlash = 7;
+          if (!p.pierce) { this.projectiles.splice(i, 1); hit = true; break; }
+        }
+      }
+      if (hit) continue;
+      // Boss Demons
+      for (let bi = this.bossDemos.length - 1; bi >= 0; bi--) {
+        const b = this.bossDemos[bi]; if (b.dead) continue;
+        if (Math.hypot(p.x - b.cx * TW_S, p.y - b.cy * TH_S) < TW_S * (p.hitR + 0.5)) {
+          b.hp -= this._rollDamage(WEAPONS_S[p.wkey].baseDmg, p.upgDmg, p.upgCrit);
+          b.hitFlash = 9;
+          if (!p.pierce) { this.projectiles.splice(i, 1); hit = true; break; }
+        }
+      }
     }
   }
 
@@ -742,6 +844,7 @@ class GameRoom {
 
   _damagePlayer(ps, dmg, slot) {
     if (ps.dead || ps.downed || ps.hurtTimer > 0) return;
+    if (ps.barrierTimer > 0) return; // barrier blocks all damage
     ps.hp = Math.max(0, ps.hp - dmg);
     ps.hurtTimer = HURT_TICKS_S;
     if (ps.hp <= 0) {
@@ -944,7 +1047,11 @@ class GameRoom {
     if (this.spawnRemaining === 0
       && this.zombies.every(z => z.dead)
       && this.dragons.every(d => d.dead)
-      && this.skeletons.every(s => s.dead)) {
+      && this.skeletons.every(s => s.dead)
+      && this.lavaZombies.every(lz => lz.dead)
+      && this.exploders.every(ex => ex.dead)
+      && this.phantoms.every(ph => ph.dead)
+      && this.bossDemos.every(b => b.dead)) {
       g.state = 'wave_clear'; g.waveTimer = WAVE_CLEAR_TICKS_S;
     }
   }
@@ -972,9 +1079,297 @@ class GameRoom {
     }
   }
 
+  _fireRingDamage(ps) {
+    const range = FIRE_RING_RADIUS_S * TW_S;
+    const sx = ps.cx * TW_S, sy = ps.cy * TH_S;
+    const hitEnt = (ent, score) => {
+      if (ent.dead) return;
+      if (Math.hypot(ent.cx * TW_S - sx, ent.cy * TH_S - sy) < range) {
+        ent.hp -= this._rollDamage(10, ps.upgrades.damage, ps.upgrades.crit);
+        ent.hitFlash = 6;
+        if (ent.hp <= 0 && !ent.dead) {
+          ent.dead = true; ent.deathTimer = 6; this.game.kills++; this.game.score += score;
+          this._spawnCoin(ent.cx, ent.cy, 10 + this.game.round * 3);
+          this._spawnPerk(ent.cx, ent.cy);
+        }
+      }
+    };
+    this.zombies.forEach(z => hitEnt(z, 10));
+    this.skeletons.forEach(s => hitEnt(s, 15));
+    this.dragons.forEach(d => hitEnt(d, 50));
+    this.lavaZombies.forEach(lz => { if (!lz.invTimer) hitEnt(lz, 20); });
+    this.exploders.forEach(ex => hitEnt(ex, 15));
+    this.phantoms.forEach(ph => { if (!ph.phaseTimer) hitEnt(ph, 30); });
+    this.bossDemos.forEach(b => hitEnt(b, 500));
+  }
+
+  // ── Lava Zombies ──────────────────────────────────────────────────────────
+  _spawnLavaZombie() {
+    const pts = getSpawnTilesS(this.map);
+    const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round((300 + this.game.round * 50) * this._hpScale(this.game.round));
+    return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
+             frame: 0, ft: 0, hp, maxHp: hp,
+             dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south',
+             abilityCooldown: 60 + Math.random()*60|0, invTimer: 0 };
+  }
+
+  _updateLavaZombies() {
+    const g = this.game;
+    for (let i = this.lavaZombies.length - 1; i >= 0; i--) {
+      const lz = this.lavaZombies[i];
+      if (lz.dead) { if (--lz.deathTimer <= 0) this.lavaZombies.splice(i, 1); continue; }
+      if (lz.invTimer > 0) { lz.invTimer--; }
+      if (lz.vx || lz.vy) {
+        const nx = lz.cx + lz.vx, ny = lz.cy + lz.vy;
+        if (!isBlockedS(this.map, nx, lz.cy)) lz.cx = nx; else lz.vx = 0;
+        if (!isBlockedS(this.map, lz.cx, ny)) lz.cy = ny; else lz.vy = 0;
+        lz.vx *= 0.78; lz.vy *= 0.78;
+        if (Math.abs(lz.vx) < 0.005) lz.vx = 0;
+        if (Math.abs(lz.vy) < 0.005) lz.vy = 0;
+      }
+      const tgt = this._nearestPlayerTo(lz.cx, lz.cy); if (!tgt) continue;
+      const dx = tgt.cx - lz.cx, dy = tgt.cy - lz.cy, dist = Math.hypot(dx, dy);
+      if (dist > 0.4) {
+        const nx = lz.cx + (dx/dist)*LAVA_SPEED_S, ny = lz.cy + (dy/dist)*LAVA_SPEED_S;
+        if (!isBlockedS(this.map, nx, lz.cy)) lz.cx = nx;
+        if (!isBlockedS(this.map, lz.cx, ny)) lz.cy = ny;
+        lz.facing = dir8S(dx, dy);
+      }
+      lz.ft += 1/30; if (lz.ft >= 0.33) { lz.frame = (lz.frame + 1) % 8; lz.ft = 0; }
+      if (lz.hitFlash > 0) lz.hitFlash--;
+      if (dist < 0.7 && !lz.invTimer && tgt.hurtTimer <= 0 && g.state === 'playing') {
+        const dmg = 15 + Math.floor(g.round / 4) * 3;
+        this._damagePlayer(tgt, dmg, tgt.slot);
+      }
+      // Eruption ability
+      if (--lz.abilityCooldown <= 0) {
+        lz.abilityCooldown = 90; lz.invTimer = 120;
+        const sx = lz.cx * TW_S, sy = lz.cy * TH_S;
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2;
+          this.lavaShards.push({ x: sx, y: sy, vx: Math.cos(a)*8.4, vy: Math.sin(a)*8.4, life: 55 });
+        }
+      }
+      // Death pool
+      if (lz.hp <= 0) {
+        lz.dead = true; lz.deathTimer = 8; this.game.kills++; this.game.score += 20;
+        this._spawnCoin(lz.cx, lz.cy, 30 + g.round * 6);
+        this.lavaPools.push({ cx: lz.cx, cy: lz.cy, life: 210, dmgTimer: 0 });
+      }
+    }
+  }
+
+  _updateLavaShards() {
+    for (let i = this.lavaShards.length - 1; i >= 0; i--) {
+      const s = this.lavaShards[i];
+      s.x += s.vx; s.y += s.vy; s.life--;
+      const tr = s.y/TH_S|0, tc = s.x/TW_S|0;
+      const wallHit = s.life <= 0 || tr < 0 || tr >= MAP_H_S || tc < 0 || tc >= MAP_W_S
+        || this.map[tr]?.[tc] === 0 || this.map[tr]?.[tc] === 2;
+      if (wallHit) { this.lavaShards.splice(i, 1); continue; }
+      const tgt = this._nearestPlayerTo(s.x/TW_S, s.y/TH_S);
+      if (tgt && !tgt.dead && !tgt.downed && tgt.hurtTimer <= 0
+          && Math.hypot(s.x - tgt.cx*TW_S, s.y - tgt.cy*TH_S) < TW_S*0.5) {
+        this._damagePlayer(tgt, 20, tgt.slot);
+        this.lavaShards.splice(i, 1);
+      }
+    }
+  }
+
+  _updateLavaPools() {
+    for (let i = this.lavaPools.length - 1; i >= 0; i--) {
+      const p = this.lavaPools[i];
+      if (--p.life <= 0) { this.lavaPools.splice(i, 1); continue; }
+      if (++p.dmgTimer >= 15) {
+        p.dmgTimer = 0;
+        for (const ps of this.players.values()) {
+          if (ps.dead || ps.downed || ps.hurtTimer > 0) continue;
+          if (Math.hypot(ps.cx - p.cx, ps.cy - p.cy) < 1.5) this._damagePlayer(ps, 6, ps.slot);
+        }
+      }
+    }
+  }
+
+  // ── Exploders ─────────────────────────────────────────────────────────────
+  _spawnExploder() {
+    const pts = getSpawnTilesS(this.map);
+    const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round((30 + this.game.round * 8) * this._hpScale(this.game.round));
+    return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
+             frame: 0, ft: 0, hp, maxHp: hp,
+             dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south' };
+  }
+
+  _updateExploders() {
+    const g = this.game;
+    for (let i = this.exploders.length - 1; i >= 0; i--) {
+      const ex = this.exploders[i];
+      if (ex.dead) { if (--ex.deathTimer <= 0) this.exploders.splice(i, 1); continue; }
+      if (ex.vx || ex.vy) {
+        const nx = ex.cx + ex.vx, ny = ex.cy + ex.vy;
+        if (!isBlockedS(this.map, nx, ex.cy)) ex.cx = nx; else ex.vx = 0;
+        if (!isBlockedS(this.map, ex.cx, ny)) ex.cy = ny; else ex.vy = 0;
+        ex.vx *= 0.78; ex.vy *= 0.78;
+        if (Math.abs(ex.vx) < 0.005) ex.vx = 0;
+        if (Math.abs(ex.vy) < 0.005) ex.vy = 0;
+      }
+      const tgt = this._nearestPlayerTo(ex.cx, ex.cy); if (!tgt) continue;
+      const dx = tgt.cx - ex.cx, dy = tgt.cy - ex.cy, dist = Math.hypot(dx, dy);
+      if (dist > 0.4) {
+        const nx = ex.cx + (dx/dist)*EXPLODER_SPEED_S, ny = ex.cy + (dy/dist)*EXPLODER_SPEED_S;
+        if (!isBlockedS(this.map, nx, ex.cy)) ex.cx = nx;
+        if (!isBlockedS(this.map, ex.cx, ny)) ex.cy = ny;
+        ex.facing = dir8S(dx, dy);
+      }
+      ex.ft += 1/30; if (ex.ft >= 0.27) { ex.frame = (ex.frame + 1) % 6; ex.ft = 0; }
+      if (ex.hitFlash > 0) ex.hitFlash--;
+      // Explode on proximity
+      if (dist < 0.85 && g.state === 'playing') {
+        ex.dead = true; ex.deathTimer = 5; this.game.kills++; this.game.score += 25;
+        this._spawnCoin(ex.cx, ex.cy, 20 + g.round * 4);
+        for (const ps of this.players.values()) {
+          if (ps.dead || ps.downed) continue;
+          const pd = Math.hypot(ps.cx - ex.cx, ps.cy - ex.cy);
+          if (pd < 2.6) {
+            const dmg = Math.round(50 * (1 - pd / 2.6 * 0.7));
+            this._damagePlayer(ps, dmg, ps.slot);
+          }
+        }
+      }
+      if (ex.hp <= 0 && !ex.dead) {
+        ex.dead = true; ex.deathTimer = 5; this.game.kills++; this.game.score += 25;
+        this._spawnCoin(ex.cx, ex.cy, 20 + g.round * 4);
+      }
+    }
+  }
+
+  // ── Phantoms ──────────────────────────────────────────────────────────────
+  _spawnPhantom() {
+    const pts = getSpawnTilesS(this.map);
+    const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round((70 + this.game.round * 15) * this._hpScale(this.game.round));
+    return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
+             frame: 0, ft: 0, hp, maxHp: hp,
+             dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south',
+             phaseTimer: 0, phaseInterval: 110 + Math.random()*40|0 };
+  }
+
+  _updatePhantoms() {
+    const g = this.game;
+    for (let i = this.phantoms.length - 1; i >= 0; i--) {
+      const ph = this.phantoms[i];
+      if (ph.dead) { if (--ph.deathTimer <= 0) this.phantoms.splice(i, 1); continue; }
+      if (ph.phaseTimer > 0) { ph.phaseTimer--; }
+      if (ph.hitFlash > 0) ph.hitFlash--;
+      if (ph.vx || ph.vy) {
+        if (!ph.phaseTimer) { // only wall-collide when not phasing
+          const nx = ph.cx + ph.vx, ny = ph.cy + ph.vy;
+          if (!isBlockedS(this.map, nx, ph.cy)) ph.cx = nx; else ph.vx = 0;
+          if (!isBlockedS(this.map, ph.cx, ny)) ph.cy = ny; else ph.vy = 0;
+        } else { ph.cx += ph.vx; ph.cy += ph.vy; }
+        ph.vx *= 0.78; ph.vy *= 0.78;
+        if (Math.abs(ph.vx) < 0.005) ph.vx = 0;
+        if (Math.abs(ph.vy) < 0.005) ph.vy = 0;
+      }
+      const tgt = this._nearestPlayerTo(ph.cx, ph.cy); if (!tgt) continue;
+      const dx = tgt.cx - ph.cx, dy = tgt.cy - ph.cy, dist = Math.hypot(dx, dy);
+      if (dist > 0.4) {
+        const nx = ph.cx + (dx/dist)*PHANTOM_SPEED_S, ny = ph.cy + (dy/dist)*PHANTOM_SPEED_S;
+        if (!ph.phaseTimer) {
+          if (!isBlockedS(this.map, nx, ph.cy)) ph.cx = nx;
+          if (!isBlockedS(this.map, ph.cx, ny)) ph.cy = ny;
+        } else { ph.cx = nx; ph.cy = ny; } // pass through walls when phasing
+        ph.facing = dir8S(dx, dy);
+      }
+      ph.ft += 1/30; if (ph.ft >= 0.28) { ph.frame = (ph.frame + 1) % 8; ph.ft = 0; }
+      // Phase shift trigger
+      if (--ph.phaseInterval <= 0) { ph.phaseTimer = 45; ph.phaseInterval = 110 + Math.random()*40|0; }
+      if (dist < 0.68 && !ph.phaseTimer && tgt.hurtTimer <= 0 && g.state === 'playing') {
+        const dmg = 15 + Math.floor(g.round / 3) * 3;
+        this._damagePlayer(tgt, dmg, tgt.slot);
+      }
+      if (ph.hp <= 0 && !ph.dead) {
+        ph.dead = true; ph.deathTimer = 8; this.game.kills++; this.game.score += 30;
+        this._spawnCoin(ph.cx, ph.cy, 25 + g.round * 6);
+        this._spawnPerk(ph.cx, ph.cy);
+      }
+    }
+  }
+
+  // ── Boss Demons ───────────────────────────────────────────────────────────
+  _spawnBossDemo() {
+    const pts = getSpawnTilesS(this.map);
+    const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round((7000 + this.game.round * 300) * this._hpScale(this.game.round));
+    return { cx: sp.cx, cy: sp.cy, frame: 0, ft: 0, hp, maxHp: hp,
+             dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south',
+             shootTimer: 0 };
+  }
+
+  _updateBossDemos() {
+    const g = this.game;
+    for (let i = this.bossDemos.length - 1; i >= 0; i--) {
+      const b = this.bossDemos[i];
+      if (b.dead) { if (--b.deathTimer <= 0) this.bossDemos.splice(i, 1); continue; }
+      if (b.vx || b.vy) {
+        const nx = b.cx + b.vx, ny = b.cy + b.vy;
+        if (!isBlockedS(this.map, nx, b.cy)) b.cx = nx; else b.vx = 0;
+        if (!isBlockedS(this.map, b.cx, ny)) b.cy = ny; else b.vy = 0;
+        b.vx *= 0.8; b.vy *= 0.8;
+        if (Math.abs(b.vx) < 0.005) b.vx = 0;
+        if (Math.abs(b.vy) < 0.005) b.vy = 0;
+      }
+      const tgt = this._nearestPlayerTo(b.cx, b.cy); if (!tgt) continue;
+      const dx = tgt.cx - b.cx, dy = tgt.cy - b.cy, dist = Math.hypot(dx, dy);
+      if (dist > 1.2) {
+        const nx = b.cx + (dx/dist)*BOSS_SPEED_S, ny = b.cy + (dy/dist)*BOSS_SPEED_S;
+        if (!isBlockedS(this.map, nx, b.cy)) b.cx = nx;
+        if (!isBlockedS(this.map, b.cx, ny)) b.cy = ny;
+        b.facing = dir8S(dx, dy);
+      }
+      b.ft += 1/30; if (b.ft >= 0.25) { b.frame = (b.frame + 1) % 8; b.ft = 0; }
+      if (b.hitFlash > 0) b.hitFlash--;
+      if (dist < 1.0 && tgt.hurtTimer <= 0 && g.state === 'playing') this._damagePlayer(tgt, 20, tgt.slot);
+      // Shoot 8 rays in burst every 35 ticks
+      if (++b.shootTimer >= 35) {
+        b.shootTimer = 0;
+        const sx = b.cx*TW_S, sy = b.cy*TH_S;
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          this.bossShots.push({ x: sx, y: sy, vx: Math.cos(a)*9.6, vy: Math.sin(a)*9.6, life: 90, dmg: 35 });
+        }
+      }
+      if (b.hp <= 0 && !b.dead) {
+        b.dead = true; b.deathTimer = 20; this.game.kills += 10; this.game.score += 500;
+        for (let k = 0; k < 12; k++) this._spawnCoin(b.cx + (Math.random()-.5)*2, b.cy + (Math.random()-.5)*2, 180 + g.round*30);
+      }
+    }
+  }
+
+  _updateBossShots() {
+    for (let i = this.bossShots.length - 1; i >= 0; i--) {
+      const s = this.bossShots[i];
+      s.x += s.vx; s.y += s.vy; s.life--;
+      const tr = s.y/TH_S|0, tc = s.x/TW_S|0;
+      const wallHit = s.life <= 0 || tr < 0 || tr >= MAP_H_S || tc < 0 || tc >= MAP_W_S
+        || this.map[tr]?.[tc] === 0 || this.map[tr]?.[tc] === 2;
+      if (wallHit) { this.bossShots.splice(i, 1); continue; }
+      const tgt = this._nearestPlayerTo(s.x/TW_S, s.y/TH_S);
+      if (tgt && !tgt.dead && !tgt.downed && tgt.hurtTimer <= 0
+          && Math.hypot(s.x - tgt.cx*TW_S, s.y - tgt.cy*TH_S) < TW_S*0.5) {
+        this._damagePlayer(tgt, s.dmg, tgt.slot);
+        this.bossShots.splice(i, 1);
+      }
+    }
+  }
+
   _startWave(round) {
     this.zombies.length = 0; this.dragons.length = 0;
     this.skeletons.length = 0; this.flames.length = 0;
+    this.lavaZombies.length = 0; this.lavaShards.length = 0; this.lavaPools.length = 0;
+    this.exploders.length = 0; this.phantoms.length = 0;
+    this.bossDemos.length = 0; this.bossShots.length = 0;
     this.projectiles.length = 0;
     this.spawnRemaining = 5 + round * 2; this.spawnTimer = 0;
     // Dragons
@@ -983,12 +1378,25 @@ class GameRoom {
     // Skeletons
     const ns = round < 7 ? 0 : Math.floor((round - 7) / 3) + 1;
     for (let i = 0; i < ns; i++) this.skeletons.push(this._spawnSkeleton());
+    // Exploders
+    const nex = round < 8 ? 0 : Math.floor((round - 8) / 5) + 1;
+    for (let i = 0; i < nex; i++) this.exploders.push(this._spawnExploder());
+    // Lava Zombies
+    const nlz = round < 12 ? 0 : Math.floor((round - 12) / 4) + 1;
+    for (let i = 0; i < nlz; i++) this.lavaZombies.push(this._spawnLavaZombie());
+    // Phantoms
+    const nph = round < 13 ? 0 : Math.floor((round - 13) / 5) + 1;
+    for (let i = 0; i < nph; i++) this.phantoms.push(this._spawnPhantom());
+    // Boss Demons (round 15, then every 5)
+    if (round >= 15 && (round === 15 || (round - 15) % 5 === 0)) {
+      this.bossDemos.push(this._spawnBossDemo());
+    }
   }
 
   _spawnZombie() {
     const pts = getSpawnTilesS(this.map);
     const sp = pts[Math.random() * pts.length | 0];
-    const hp = 20 + this.game.round * 20;
+    const hp = Math.round((20 + this.game.round * 22) * this._hpScale(this.game.round));
     return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
              frame: Math.random()*8|0, ft: 0, hp, maxHp: hp,
              dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south' };
@@ -997,16 +1405,18 @@ class GameRoom {
   _spawnSkeleton() {
     const pts = getSpawnTilesS(this.map);
     const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round(SKEL_HP_S * this._hpScale(this.game.round));
     return { cx: sp.cx + (Math.random()-.5)*.4, cy: sp.cy + (Math.random()-.5)*.4,
-             frame: Math.random()*4|0, ft: 0, hp: SKEL_HP_S, maxHp: SKEL_HP_S,
+             frame: Math.random()*4|0, ft: 0, hp, maxHp: hp,
              dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south' };
   }
 
   _spawnDragon() {
     const pts = getSpawnTilesS(this.map);
     const sp = pts[Math.random() * pts.length | 0];
+    const hp = Math.round(DRAGON_HP_S * this._hpScale(this.game.round));
     return { cx: sp.cx + (Math.random()-.5)*.5, cy: sp.cy + (Math.random()-.5)*.5,
-             frame: Math.random()*8|0, ft: 0, hp: DRAGON_HP_S, maxHp: DRAGON_HP_S,
+             frame: Math.random()*8|0, ft: 0, hp, maxHp: hp,
              dead: false, deathTimer: 0, hitFlash: 0, vx: 0, vy: 0, facing: 'south',
              fireTimer: Math.random() * DRAGON_FIRE_INTERVAL_S | 0 };
   }
@@ -1039,6 +1449,9 @@ class GameRoom {
         mo: ps.money | 0, sc: ps.goldEarned | 0,
         upg: ps.upgrades, sk: ps.secondaryKey, sa: ps.secondaryAmmo === Infinity ? -1 : ps.secondaryAmmo | 0,
         ht: ps.heat | 0, oh: ps.overheated ? 1 : 0,
+        fc: ps.fireCooldown|0, frt: ps.fireRingTimer|0,
+        bc: ps.barrierCooldown|0, bt: ps.barrierTimer|0,
+        sc2: ps.speedBoostCooldown|0, sbt: ps.speedBoostTimer|0,
       });
     }
     return {
@@ -1050,6 +1463,13 @@ class GameRoom {
       pr: this.projectiles.map(p=>[p.x|0,p.y|0,+p.vx.toFixed(1),+p.vy.toFixed(1),p.wkey,p.life|0,p.slot]),
       co: this.coins.map(c=>[+c.cx.toFixed(1),+c.cy.toFixed(1),c.amount]),
       pk: this.perks.map(pk=>[+pk.cx.toFixed(1),+pk.cy.toFixed(1),pk.type,pk.life|0]),
+      lz: this.lavaZombies.filter(lz=>!lz.dead||lz.deathTimer>0).map(lz=>[+lz.cx.toFixed(1),+lz.cy.toFixed(1),lz.hp,lz.maxHp,lz.facing,lz.frame,lz.dead?1:0,lz.invTimer>0?1:0]),
+      ls: this.lavaShards.map(s=>[s.x|0,s.y|0,+s.vx.toFixed(1),+s.vy.toFixed(1),s.life|0]),
+      lp: this.lavaPools.map(p=>[+p.cx.toFixed(1),+p.cy.toFixed(1),p.life|0]),
+      ex: this.exploders.filter(ex=>!ex.dead||ex.deathTimer>0).map(ex=>[+ex.cx.toFixed(1),+ex.cy.toFixed(1),ex.hp,ex.maxHp,ex.facing,ex.frame,ex.dead?1:0]),
+      ph: this.phantoms.filter(ph=>!ph.dead||ph.deathTimer>0).map(ph=>[+ph.cx.toFixed(1),+ph.cy.toFixed(1),ph.hp,ph.maxHp,ph.facing,ph.frame,ph.dead?1:0,ph.phaseTimer>0?1:0]),
+      bd: this.bossDemos.filter(b=>!b.dead||b.deathTimer>0).map(b=>[+b.cx.toFixed(1),+b.cy.toFixed(1),b.hp,b.maxHp,b.facing,b.frame,b.dead?1:0]),
+      bs: this.bossShots.map(s=>[s.x|0,s.y|0,+s.vx.toFixed(1),+s.vy.toFixed(1),s.life|0]),
       g: { r: this.game.round, k: this.game.kills, sc: this.game.score,
            st: this.game.state, wt: this.game.waveTimer | 0, sp: this.spawnRemaining | 0 },
       drs: this.doors.map(d => d.unlocked ? 1 : 0),
@@ -1089,6 +1509,9 @@ class GameRoom {
     }
     this.zombies.length = 0; this.skeletons.length = 0;
     this.dragons.length = 0; this.flames.length = 0;
+    this.lavaZombies.length = 0; this.lavaShards.length = 0; this.lavaPools.length = 0;
+    this.exploders.length = 0; this.phantoms.length = 0;
+    this.bossDemos.length = 0; this.bossShots.length = 0;
     this.projectiles.length = 0; this.coins.length = 0; this.perks.length = 0;
     this.doors.forEach((d, i) => { d.unlocked = false; DOORS_S[i].tiles.forEach(({r,c}) => { this.map[r][c] = 4; }); });
     this.boxState = 'idle'; this.boxSpinTimer = 0; this.boxResult = null; this.devChestUsed = false;
