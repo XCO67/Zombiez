@@ -6,7 +6,7 @@ const WEAPONS = {
   smg:        { name:'SMG',        fireRate:6,  baseDmg:8,     ammoMax:120,      pellets:1,  spread:0.12, speed:22, hitR:.45, pierce:false, color:'#ff8844', trail:'#ff5500', ammoCost:30  },
   shotgun:    { name:'Shotgun',    fireRate:38, baseDmg:18,    ammoMax:64,       pellets:7,  spread:0.36, speed:18, hitR:.45, pierce:false, color:'#ffcc44', trail:'#ff8800', ammoCost:75  },
   thundergun: { name:'Thundergun', fireRate:75, baseDmg:90,    ammoMax:16,       pellets:1,  spread:0,    speed:0,  hitR:0,   pierce:false, color:'#ffe044', trail:'#ffa500', wave:true,    ammoCost:200 },
-  lasergun:     { name:'Lasergun',     fireRate:1,  baseDmg:80,    ammoMax:8,        pellets:1,  spread:0,    speed:0,  hitR:0,   pierce:true,  color:'#ff00cc', trail:'#ff00ff', laser:true, ammoCost:200 },
+  lasergun:     { name:'Lasergun',     fireRate:4,  baseDmg:80,    ammoMax:8,        pellets:1,  spread:0,    speed:0,  hitR:0,   pierce:true,  color:'#ff00cc', trail:'#ff00ff', laser:true, ammoCost:200 },
   xenoblaster:  { name:'Xenoblaster',  fireRate:24, baseDmg:68,    ammoMax:12,       pellets:1,  spread:0,    speed:8,  hitR:0.55,pierce:true,  color:'#00ffcc', trail:'#44ffaa', alien:true, ammoCost:175 },
   devgun:       { name:'DEV GUN',      fireRate:2,  baseDmg:99999, ammoMax:Infinity, pellets:3,  spread:0.08, speed:28, hitR:1.8, pierce:true,  color:'#ff00ff', trail:'#cc00ff', dev:true },
 };

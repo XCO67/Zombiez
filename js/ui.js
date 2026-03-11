@@ -213,7 +213,7 @@ function drawWeaponInfo() {
   const isPapped = player.packedWeapons && player.packedWeapons.has(wkey);
 
   // Computed stats
-  const dmgMult  = Math.pow(1.5, player.upgrades.damage);
+  const dmgMult  = Math.pow(1.3, player.upgrades.damage);
   const papMult  = isPapped ? 3 : 1;
   const baseDmg  = Math.round(w.baseDmg * dmgMult * papMult);
   const critDmg  = baseDmg * 2;
@@ -611,7 +611,7 @@ function drawHUD() {
 
     // ── 3. Stat tiles (weapon shop upgrades only) ──────────
     const stats = [
-      { icon:'⚔', label:'DMG',    val:`×${Math.pow(1.5,player.upgrades.damage).toFixed(2)}`,                 col:'#ff7744', lvl:player.upgrades.damage   },
+      { icon:'⚔', label:'DMG',    val:`×${Math.pow(1.3,player.upgrades.damage).toFixed(2)}`,                 col:'#ff7744', lvl:player.upgrades.damage   },
       { icon:'⚡', label:'ATKSPD', val:`+${Math.round((1-Math.pow(0.85,player.upgrades.atkSpeed))*100)}%`,    col:'#ffdd44', lvl:player.upgrades.atkSpeed },
       { icon:'★',  label:'CRIT',   val:`${player.upgrades.crit*10}%`,                                          col:'#bb44ff', lvl:player.upgrades.crit     },
     ];
@@ -788,7 +788,7 @@ function drawHUD() {
         { key:'magnet',    icon:'🧲', label:'MAGNET',  col:'#60ccff', val: l => `R${MAGNET_RADII[l]}` },
         { key:'shield',    icon:'🛡', label:'SHIELD',  col:'#4499ff', val: l => `${SHIELD_MAXHP[l]}HP`  },
         { key:'lifesteal', icon:'🩸', label:'STEAL',   col:'#ff4466', val: l => `${LIFESTEAL_HP[l]}HP`  },
-        { key:'moveSpeed', icon:'👟', label:'SPEED',   col:'#44ffaa', val: l => `+${l*15}%`           },
+        { key:'moveSpeed', icon:'👟', label:'SPEED',   col:'#44ffaa', val: l => `+${l*12}%`           },
         { key:'hpRegen',   icon:'❤', label:'REGEN',   col:'#ff4d6d', val: l => `${[0,2,5,8,11,15][l]}/s` },
       ];
       PERM_DEFS.forEach(pd => {

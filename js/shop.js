@@ -4,7 +4,7 @@ const SHOP_POS = { cx:12.5, cy:13.5 };
 const SHOP_RADIUS = 2.0;
 const SHOP_ITEMS = [
   { key:'damage',   name:'DAMAGE',     icon:'⚔', color:'#ff8844',
-    desc: l => `×${Math.pow(1.5,l).toFixed(2)} dmg  →  ×${Math.pow(1.5,l+1).toFixed(2)} dmg  (all weapons)`,
+    desc: l => `×${Math.pow(1.3,l).toFixed(2)} dmg  →  ×${Math.pow(1.3,l+1).toFixed(2)} dmg  (all weapons)`,
     price: l => (l+1)*100, maxLevel:5 },
   { key:'atkSpeed', name:'ATK SPEED',  icon:'⚡', color:'#ffdd44',
     desc: l => `+${Math.round((1-Math.pow(0.85,l))*100)}% speed  →  +${Math.round((1-Math.pow(0.85,l+1))*100)}% speed`,
@@ -23,7 +23,7 @@ const PERK_VENDOR_RADIUS = 2.0;
 const SHIELD_MAXHP = [0, 15,  25,  40,  55,  70 ];
 const SHIELD_DELAY = [0, 420, 390, 360, 330, 300]; // frames before recharge
 const SHIELD_RATE  = [0, 4,   6,   8,   10,  13 ]; // HP regen per second
-const LIFESTEAL_HP = [0, 1,   2,   4,   6,   8  ];
+const LIFESTEAL_HP = [0, 1,   2,   3,   4,   5  ];
 const MAGNET_RADII = [8, 10,  12,  14,  16,  18 ]; // index 0 = base (temp perk), 1-5 = bought levels
 const PERK_SHOP_ITEMS = [
   { key:'magnet',    name:'MAGNET',    icon:'🧲', color:'#60ccff',
@@ -36,7 +36,7 @@ const PERK_SHOP_ITEMS = [
     desc: l => `${LIFESTEAL_HP[l]}→${LIFESTEAL_HP[l+1]} HP healed per kill`,
     price: l => (l+1)*250, maxLevel:5 },
   { key:'moveSpeed', name:'MOVE SPEED', icon:'👟', color:'#44ffaa',
-    desc: l => `+${l*15}% speed  →  +${(l+1)*15}% speed  (max +75%)`,
+    desc: l => `+${l*12}% speed  →  +${(l+1)*12}% speed  (max +60%)`,
     price: l => (l+1)*200, maxLevel:5 },
   { key:'hpRegen',   name:'HP REGEN',   icon:'❤', color:'#ff4d6d',
     desc: l => `${[0,2,5,8,11,15][l]} hp/s  →  ${[0,2,5,8,11,15][l+1]} hp/s  (after 5s no dmg)`,

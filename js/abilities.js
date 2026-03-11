@@ -2,10 +2,10 @@
 // ─── ABILITIES ────────────────────────────────────────────────────────────────
 
 // ── Fire Ring ─────────────────────────────────────────────────────────────────
-const FIRE_RING_COOLDOWN = 1200; // 20 s at 60 fps
-const FIRE_RING_DURATION = 180;  // 3 s active
-const FIRE_RING_RADIUS   = 2.6;  // tiles — damage / visual radius
-const FIRE_RING_TICK     = 20;   // frames between damage ticks
+const FIRE_RING_COOLDOWN = 1800; // 30 s at 60 fps
+const FIRE_RING_DURATION = 120;  // 2 s active
+const FIRE_RING_RADIUS   = 1.8;  // tiles — damage / visual radius
+const FIRE_RING_TICK     = 30;   // frames between damage ticks
 const FIRE_RING_ORBS     = 8;
 
 let fireRingDmgTimer = 0;
@@ -192,7 +192,7 @@ function drawBarrier() {
 // ── Speed Boost ───────────────────────────────────────────────────────────────
 const SPEED_BOOST_COOLDOWN = 900; // 15 s at 60 fps
 const SPEED_BOOST_DURATION = 360; // 6 s active
-const SPEED_BOOST_MULT     = 2.2; // movement speed multiplier
+const SPEED_BOOST_MULT     = 1.65; // movement speed multiplier
 
 // Persistent offscreen canvas so source-atop tinting stays isolated from the main canvas
 const _spdOff = document.createElement('canvas');

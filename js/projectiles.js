@@ -13,8 +13,8 @@ function getFireRate() {
   return Math.max(Math.round(base * 0.4), Math.round(base * Math.pow(0.85, player.upgrades.atkSpeed)));
 }
 function rollDamage(baseDmg) {
-  // Exponential damage scaling: each level ×1.5 (L1=×1.5, L5=×7.6)
-  const total = Math.round(baseDmg * Math.pow(1.5, player.upgrades.damage));
+  // Exponential damage scaling: each level ×1.3 (L1=×1.3, L5=×3.71)
+  const total = Math.round(baseDmg * Math.pow(1.3, player.upgrades.damage));
   const crit = Math.random() < player.upgrades.crit * 0.1;
   return { dmg: crit ? total*2 : total, crit };
 }

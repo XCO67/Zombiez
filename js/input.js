@@ -266,10 +266,10 @@ function updatePlayer() {
   player.moving = dx!==0||dy!==0;
   // Web slow (Venom Queen)
   if (player.webSlowTimer > 0) player.webSlowTimer--;
-  // Apply move speed perk (capped at +75% = level 5), reduced by web slow
+  // Apply move speed perk (capped at +60% = level 5), reduced by web slow
   const webMult   = player.webSlowTimer > 0 ? 0.38 : 1;
   const boostMult = player.speedBoostTimer > 0 ? SPEED_BOOST_MULT : 1;
-  player.speed = PLAYER_SPEED * (1 + Math.min(player.perks.moveSpeed, 5) * 0.15) * webMult * boostMult;
+  player.speed = PLAYER_SPEED * (1 + Math.min(player.perks.moveSpeed, 5) * 0.12) * webMult * boostMult;
   if (player.moving) {
     const nx=player.cx+dx*player.speed, ny=player.cy+dy*player.speed;
     if (!isBlocked(nx,player.cy)) player.cx=nx;

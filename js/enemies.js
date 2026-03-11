@@ -24,9 +24,9 @@ function spawnZombie() {
            spreadAngle: (Math.random() - 0.5) * 1.8 };
 }
 
-// Exponential HP multiplier — kicks in after round 1, grows 8% per round
+// Exponential HP multiplier — kicks in after round 1, grows 10% per round
 function enemyHpScale(round) {
-  return Math.pow(1.08, Math.max(0, round - 1));
+  return Math.pow(1.10, Math.max(0, round - 1));
 }
 
 const ZOMBIES = [];
@@ -108,7 +108,7 @@ function drawZombie(z) {
 
 // ─── SKELETONS ────────────────────────────────────────────────────────────────
 const SKELETONS = [];
-const SKEL_HP    = 110;
+const SKEL_HP    = 180;
 const SKEL_SPEED = 0.032;   // noticeably faster than zombies (0.018)
 const SKEL_STEAL = 20;      // gold stolen per hit
 
