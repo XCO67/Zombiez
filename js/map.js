@@ -57,6 +57,7 @@ const DOORS = [
 function unlockDoor(door) {
   door.unlocked = true;
   door.tiles.forEach(({r,c}) => { MAP[r][c] = T.FLOOR; });
+  tileCacheDirty = true; // invalidate tile cache
 }
 
 // ─── MAP STORAGE ──────────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ async function fetchMapFromServer(id) {
 }
 
 function applyMapData(data) {
+  tileCacheDirty = true; // invalidate tile cache on map load
   MAP_W = data.mapW; MAP_H = data.mapH;
   MAP.length = 0;
   for (let r=0;r<MAP_H;r++) {

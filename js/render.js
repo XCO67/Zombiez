@@ -1,13 +1,58 @@
 
 // ─── RENDER LOOP ──────────────────────────────────────────────────────────────
 let t = 0;
-let gameStarted = false; // true once player clicks PLAY
-const FRAME_MS = 1000 / 60; // fixed physics step (60 Hz)
+let gameStarted = false;
+const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
-let accumulated   = 0;    // ms of unprocessed time
+let accumulated   = 0;
 
+// ── Offscreen tile cache ──────────────────────────────────────────────────────
+// Tiles are static (walls, floors) — draw them once to an offscreen canvas
+// and blit it each frame instead of redrawing 1120+ tiles individually.
+var tileCacheDirty = true; // var so map.js can set it before render.js loads
+let _tileCanvas = null;
+let _tileCtx    = null;
+
+function _buildTileCache() {
+  const W = MAP_W * TW, H = MAP_H * TH;
+  if (!_tileCanvas || _tileCanvas.width !== W || _tileCanvas.height !== H) {
+    _tileCanvas = document.createElement('canvas');
+    _tileCanvas.width  = W;
+    _tileCanvas.height = H;
+    _tileCtx = _tileCanvas.getContext('2d');
+  }
+  // Temporarily swap the global ctx so tile draw functions render to our cache
+  const mainCtx = ctx;
+  ctx = _tileCtx;
+  _tileCtx.clearRect(0, 0, W, H);
+
+  for (let r = 0; r < MAP_H; r++) {
+    for (let c = 0; c < MAP_W; c++) {
+      const type = MAP[r][c];
+      if      (type === T.WALL)          drawWall(r, c);
+      else if (type === T.PILLAR)        drawPillar(r, c);
+      else if (type === T.DOOR)          drawDoor(r, c);
+      else if (type === T.BOSS_SPAWN)    drawBossSpawnTile(r, c);
+      else if (type === T.SPIDER_SPAWN)  drawSpiderSpawnTile(r, c);
+      else if (type === T.FLOOR2)        drawFloor(r, c, T.FLOOR2);
+      else if (type === T.COLOR_FLOOR)   drawColorFloor(r, c);
+      else if (type === T.ANCIENT_STONE) drawAncientStone(r, c);
+      else if (type === T.WOOD_FLOOR)    drawWoodFloor(r, c);
+      else if (type === T.MOSSY_FLOOR)   drawMossyFloor(r, c);
+      else if (type === T.LAVA_FLOOR)    drawFloor(r, c, T.FLOOR); // placeholder; drawn live
+      else if (type === T.ICE_FLOOR)     drawFloor(r, c, T.FLOOR); // placeholder; drawn live
+      else                               drawFloor(r, c, type);
+    }
+  }
+  // Wall shadows baked into cache too
+  drawWallShadows();
+
+  ctx = mainCtx;
+  tileCacheDirty = false;
+}
+
+// ── Physics step ─────────────────────────────────────────────────────────────
 function _runGameLogic() {
-  // All physics/game-state updates — runs at fixed 60fps step
   if (mp.active) {
     sendMpInput();
     updateCamera();
@@ -45,93 +90,94 @@ function _runGameLogic() {
   }
 }
 
+// ── Reusable entities array (avoid GC pressure from spread operators) ─────────
+const _entities = [];
+
 function render(now) {
   requestAnimationFrame(render);
 
-  _tt = now / 1000; // wall-clock seconds for visuals
+  _tt = now / 1000;
 
   if (!gameStarted) return;
 
-  const dt = Math.min(now - lastFrameTime, 100); // cap: ignore >100ms gaps (tab hidden)
+  // Fixed-timestep physics — max 2 catch-up steps to avoid spiral of death
+  const dt = Math.min(now - lastFrameTime, 100);
   lastFrameTime = now;
   accumulated += dt;
-
-  // Run physics in fixed steps — up to 3 catch-up steps to avoid spiral of death
   let steps = 0;
-  while (accumulated >= FRAME_MS && steps < 3) {
+  while (accumulated >= FRAME_MS && steps < 2) {
     accumulated -= FRAME_MS;
     t += 0.04;
     _runGameLogic();
     steps++;
   }
 
-  // ── Multiplayer waiting screen ────────────────────────────────────────────────
+  // ── Multiplayer waiting screen ────────────────────────────────────────────
   if (mp.active && !mp.firstState) {
-    ctx.fillStyle='#060410'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='#00ffaa'; ctx.font=`bold ${Math.round(canvas.width*.026)}px Segoe UI`;
-    ctx.fillText('Waiting for server...', canvas.width/2, canvas.height/2);
-    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font=`${Math.round(canvas.width*.014)}px Segoe UI`;
-    ctx.fillText('Room: '+mp.room, canvas.width/2, canvas.height/2+44);
+    ctx.fillStyle = '#060410'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#00ffaa';
+    ctx.font = `bold ${Math.round(canvas.width * .026)}px Segoe UI`;
+    ctx.fillText('Waiting for server...', canvas.width / 2, canvas.height / 2);
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.font = `${Math.round(canvas.width * .014)}px Segoe UI`;
+    ctx.fillText('Room: ' + mp.room, canvas.width / 2, canvas.height / 2 + 44);
     return;
   }
   if (mp.active) mpAnimate();
 
-  // ── Fill background ───────────────────────────────────────────────────────────
+  // ── Background ───────────────────────────────────────────────────────────
   ctx.fillStyle = '#0c0b12';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // ── World rendering (camera transform) ───────────────────────────────────────
+  // ── World (camera transform) ─────────────────────────────────────────────
   ctx.save();
   ctx.translate(-camX, -camY);
 
-  for (let r=0;r<MAP_H;r++) for (let c=0;c<MAP_W;c++) {
-    const type=MAP[r][c];
-    if      (type===T.WALL)         drawWall(r,c);
-    else if (type===T.PILLAR)       drawPillar(r,c);
-    else if (type===T.DOOR)         drawDoor(r,c);
-    else if (type===T.BOSS_SPAWN)   drawBossSpawnTile(r,c);
-    else if (type===T.SPIDER_SPAWN) drawSpiderSpawnTile(r,c);
-    else if (type===T.FLOOR2)        drawFloor(r,c,T.FLOOR2);
-    else if (type===T.COLOR_FLOOR)   drawColorFloor(r,c);
-    else if (type===T.LAVA_FLOOR)    drawLavaFloor(r,c);
-    else if (type===T.ICE_FLOOR)     drawIceFloor(r,c);
-    else if (type===T.ANCIENT_STONE) drawAncientStone(r,c);
-    else if (type===T.WOOD_FLOOR)    drawWoodFloor(r,c);
-    else if (type===T.MOSSY_FLOOR)   drawMossyFloor(r,c);
-    else                             drawFloor(r,c,type);
+  // Blit cached tile layer (single drawImage = one GPU operation)
+  if (tileCacheDirty) _buildTileCache();
+  ctx.drawImage(_tileCanvas, 0, 0);
+
+  // Animated tiles drawn per-frame on top of cache
+  for (let r = 0; r < MAP_H; r++) {
+    for (let c = 0; c < MAP_W; c++) {
+      const type = MAP[r][c];
+      if      (type === T.LAVA_FLOOR) drawLavaFloor(r, c);
+      else if (type === T.ICE_FLOOR)  drawIceFloor(r, c);
+    }
   }
-  drawWallShadows();
+
   drawDoorPrompts();
 
   // Torches
-  const flickers=TORCHES.map((_,i)=>Math.sin(t*2.8+i*1.87)*.5+.5);
-  TORCHES.forEach(([r,c,color,opacity],i)=>drawTorch(r,c,flickers[i],color,opacity));
+  const flickers = TORCHES.map((_, i) => Math.sin(t * 2.8 + i * 1.87) * .5 + .5);
+  TORCHES.forEach(([r, c, color, opacity], i) => drawTorch(r, c, flickers[i], color, opacity));
 
-  // Decorations — drawn on the ground before entities
+  // Decorations
   drawDecorations();
 
-  // Entities — Y-sorted
+  // Entities — Y-sorted (reuse array to avoid GC)
+  _entities.length = 0;
+  _entities.push({ y: player.cy * TH, draw: drawPlayer });
+  for (let i = 0; i < ZOMBIES.length;       i++) { const z = ZOMBIES[i];       _entities.push({ y: z.cy * TH,  draw: () => drawZombie(z) }); }
+  for (let i = 0; i < SKELETONS.length;     i++) { const s = SKELETONS[i];     _entities.push({ y: s.cy * TH,  draw: () => drawSkeleton(s) }); }
+  for (let i = 0; i < DRAGONS.length;       i++) { const d = DRAGONS[i];       _entities.push({ y: d.cy * TH,  draw: () => drawDragon(d) }); }
+  for (let i = 0; i < BOSS_DEMONS.length;   i++) { const b = BOSS_DEMONS[i];   _entities.push({ y: b.cy * TH,  draw: () => drawBossDemon(b) }); }
+  for (let i = 0; i < SPIDER_BOSSES.length; i++) { const b = SPIDER_BOSSES[i]; _entities.push({ y: b.cy * TH,  draw: () => drawSpiderBoss(b) }); }
+  for (let i = 0; i < SPIDER_MINIONS.length;i++) { const m = SPIDER_MINIONS[i];_entities.push({ y: m.cy * TH,  draw: () => drawSpiderMinion(m) }); }
+  for (let i = 0; i < LAVA_ZOMBIES.length;  i++) { const z = LAVA_ZOMBIES[i];  _entities.push({ y: z.cy * TH,  draw: () => drawLavaZombie(z) }); }
+  for (let i = 0; i < EXPLODERS.length;     i++) { const e = EXPLODERS[i];     _entities.push({ y: e.cy * TH,  draw: () => drawExploder(e) }); }
+  for (let i = 0; i < PHANTOMS.length;      i++) { const ph = PHANTOMS[i];     _entities.push({ y: ph.cy * TH, draw: () => drawPhantom(ph) }); }
+  _entities.sort((a, b) => a.y - b.y);
+  for (let i = 0; i < _entities.length; i++) _entities[i].draw();
+
+  drawRemotePlayers();
+
+  // World-space interactables & effects
   drawFlames();
   drawLavaPools();
   drawFireRing();
   drawBarrier();
-  const entities=[
-    {y:player.cy*TH, draw:drawPlayer},
-    ...ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawZombie(z)})),
-    ...SKELETONS.map(s=>({y:s.cy*TH, draw:()=>drawSkeleton(s)})),
-    ...DRAGONS.map(d=>({y:d.cy*TH, draw:()=>drawDragon(d)})),
-    ...BOSS_DEMONS.map(b=>({y:b.cy*TH, draw:()=>drawBossDemon(b)})),
-    ...SPIDER_BOSSES.map(b=>({y:b.cy*TH, draw:()=>drawSpiderBoss(b)})),
-    ...SPIDER_MINIONS.map(m=>({y:m.cy*TH, draw:()=>drawSpiderMinion(m)})),
-    ...LAVA_ZOMBIES.map(z=>({y:z.cy*TH, draw:()=>drawLavaZombie(z)})),
-    ...EXPLODERS.map(e=>({y:e.cy*TH, draw:()=>drawExploder(e)})),
-    ...PHANTOMS.map(ph=>({y:ph.cy*TH, draw:()=>drawPhantom(ph)}))
-  ];
-  entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
-  drawRemotePlayers();
-
-  // World-space interactables
   drawClickIndicator();
   drawShopMarker();
   drawAmmoStation();
@@ -151,9 +197,9 @@ function render(now) {
   drawSpreadDrops();
   drawLavaShards();
 
-  ctx.restore(); // end camera transform
+  ctx.restore();
 
-  // ── Screen-space overlays ─────────────────────────────────────────────────────
+  // ── Screen-space overlays ────────────────────────────────────────────────
   applyLighting(flickers);
   if (player.webSlowTimer > 0) {
     const wAlpha = Math.min(1, player.webSlowTimer / 60) * 0.38;
