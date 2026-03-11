@@ -16,6 +16,7 @@ function resize() {
   TW = canvas.width / VIEW_W;
   TH = TW; // square tiles
   lightCanvas.width = canvas.width; lightCanvas.height = canvas.height;
+  tileCacheDirty = true; // TW/TH changed — rebuild tile cache at new size
 }
 resize();
 window.addEventListener('resize', resize);
