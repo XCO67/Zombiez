@@ -674,11 +674,11 @@ function drawGoldButtons() {
 }
 
 // ─── MERCENARY VENDOR ─────────────────────────────────────────────────────────
-const MERC_VENDOR_POS    = { cx: 11, cy: 18 };
-const MERC_VENDOR_RADIUS = 2.0;
+const MERC_CHEST_POS    = { cx: 13, cy: 18 }; // overridden by editor placement
+const MERC_CHEST_RADIUS = 2.0;
 
 function drawMercenaryVendor() {
-  const px = MERC_VENDOR_POS.cx * TW, py = MERC_VENDOR_POS.cy * TH;
+  const px = MERC_CHEST_POS.cx * TW, py = MERC_CHEST_POS.cy * TH;
   const sz = Math.min(TW, TH) * 0.58, tt = _tt;
   const pulse = Math.sin(tt * 2.2) * 0.5 + 0.5;
 
@@ -712,8 +712,8 @@ function drawMercenaryVendor() {
   ctx.restore();
 
   // [E] prompt when near
-  const dist = Math.hypot(player.cx - MERC_VENDOR_POS.cx, player.cy - MERC_VENDOR_POS.cy);
-  if (dist < MERC_VENDOR_RADIUS) {
+  const dist = Math.hypot(player.cx - MERC_CHEST_POS.cx, player.cy - MERC_CHEST_POS.cy);
+  if (dist < MERC_CHEST_RADIUS) {
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
     let label, col;

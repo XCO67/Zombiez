@@ -12,9 +12,6 @@ const SHOP_ITEMS = [
   { key:'crit',      name:'CRIT STRIKE', icon:'★', color:'#aa44ff',
     desc: l => `${l*10}% crit  →  ${(l+1)*10}% crit (×2 dmg)`,
     price: l => (l+1)*200, maxLevel:5 },
-  { key:'mercenary', name:'MERCENARY',   icon:'⚔', color:'#88ccff',
-    desc: l => l === 0 ? 'Hire a knight companion  •  Follows you  •  Auto-attacks all enemies' : 'Active — your mercenary fights by your side!',
-    price: () => 5000, maxLevel:1 },
 ];
 let shopOpen = false;
 let perkShopOpen = false;

@@ -132,6 +132,7 @@ function applyMapData(data) {
     if (o.goldbuttons)  GOLD_BUTTONS = o.goldbuttons.map(g=>({cx:g.cx,cy:g.cy}));
     if (o.decorations)  DECORATIONS  = o.decorations.map(d=>({...d}));
     if (o.ricochet)   { RICOCHET_POS.cx=o.ricochet.cx;    RICOCHET_POS.cy=o.ricochet.cy; }
+    if (o.merc_chest) { MERC_CHEST_POS.cx=o.merc_chest.cx; MERC_CHEST_POS.cy=o.merc_chest.cy; }
   }
 }
 

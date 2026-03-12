@@ -169,6 +169,13 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
+      // Mercenary chest
+      const distMerc = Math.hypot(player.cx - MERC_CHEST_POS.cx, player.cy - MERC_CHEST_POS.cy);
+      if (distMerc < MERC_CHEST_RADIUS && !mercenary.active && player.money >= MERC_COST) {
+        player.money -= MERC_COST;
+        player.upgrades.mercenary = 1;
+        return;
+      }
       // Check doors
       for (const door of DOORS) {
         if (door.unlocked) continue;
