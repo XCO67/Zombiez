@@ -40,7 +40,7 @@ let clickIndicator = null; // {x, y, life} screen pixel coords for visual feedba
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   // ESC: pause + open pause menu (single-player only)
-  if (e.key === 'Escape' && !mp.active && gameStarted) {
+  if (e.key === 'Escape' && gameStarted) {
     if (game.state === 'playing' || game.state === 'wave_clear') {
       game._prevState = game.state;
       game.state = 'paused';
@@ -52,7 +52,7 @@ document.addEventListener('keydown', e => {
   }
   if (game.state === 'paused') return; // block all other keys while paused
   if (e.key.toLowerCase() === 'r' && game.state === 'game_over') {
-    if (mp.active) { mp.socket.emit('restart_game'); } else { restartGame(); }
+    restartGame();
   }
   if (e.key.toLowerCase() === 'm' && game.state === 'game_over') goToMenu();
   if (e.key.toLowerCase() === KEYBINDS.swapWeapon && game.state === 'playing' && !shopOpen) swapWeapon();
@@ -66,28 +66,23 @@ document.addEventListener('keydown', e => {
     player.dashTrail    = [];
   }
   // Fire Ring ability
-  // In multiplayer abilities are server-authoritative — the keys[] state is sent
-  // to the server each tick and the server activates them. Local activation here
-  // would be overwritten by the server snapshot (arrives every 33ms).
-  if (!mp.active) {
-    if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
-        && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
-      player.fireRingTimer = FIRE_RING_DURATION;
-      player.fireCooldown  = FIRE_RING_COOLDOWN;
-      player.fireRingAngle = 0;
-    }
-    // Barrier ability
-    if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
-        && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
-      player.barrierTimer    = BARRIER_DURATION;
-      player.barrierCooldown = BARRIER_COOLDOWN;
-    }
-    // Speed Boost ability
-    if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
-        && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
-      player.speedBoostTimer    = SPEED_BOOST_DURATION;
-      player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
-    }
+  if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
+      && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
+    player.fireRingTimer = FIRE_RING_DURATION;
+    player.fireCooldown  = FIRE_RING_COOLDOWN;
+    player.fireRingAngle = 0;
+  }
+  // Barrier ability
+  if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
+      && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
+    player.barrierTimer    = BARRIER_DURATION;
+    player.barrierCooldown = BARRIER_COOLDOWN;
+  }
+  // Speed Boost ability
+  if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
+      && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
+    player.speedBoostTimer    = SPEED_BOOST_DURATION;
+    player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
   }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
@@ -190,14 +185,10 @@ document.addEventListener('keydown', e => {
     const idx=parseInt(e.key)-1;
     if (idx>=0&&idx<SHOP_ITEMS.length) {
       const item=SHOP_ITEMS[idx];
-      if (mp.active) {
-        mp.socket.emit('buy_upgrade', { key: item.key }); // server applies & sends back in snapshot
-      } else {
-        const lvl=player.upgrades[item.key];
-        if (lvl<item.maxLevel) {
-          const cost=item.price(lvl);
-          if (player.money>=cost) { player.money-=cost; player.upgrades[item.key]++; }
-        }
+      const lvl=player.upgrades[item.key];
+      if (lvl<item.maxLevel) {
+        const cost=item.price(lvl);
+        if (player.money>=cost) { player.money-=cost; player.upgrades[item.key]++; }
       }
     }
   }

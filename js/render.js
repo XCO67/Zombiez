@@ -53,10 +53,7 @@ function _buildTileCache() {
 
 // ── Physics step ─────────────────────────────────────────────────────────────
 function _runGameLogic() {
-  if (mp.active) {
-    sendMpInput();
-    updateCamera();
-  } else if (game.state !== 'paused') {
+  if (game.state !== 'paused') {
     updateCamera();
     updatePlayer();
     tryShoot();
@@ -124,20 +121,6 @@ function render(now) {
     steps++;
   }
 
-  // ── Multiplayer waiting screen ────────────────────────────────────────────
-  if (mp.active && !mp.firstState) {
-    ctx.fillStyle = '#060410'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#00ffaa';
-    ctx.font = `bold ${Math.round(canvas.width * .026)}px Segoe UI`;
-    ctx.fillText('Waiting for server...', canvas.width / 2, canvas.height / 2);
-    ctx.fillStyle = 'rgba(255,255,255,.3)';
-    ctx.font = `${Math.round(canvas.width * .014)}px Segoe UI`;
-    ctx.fillText('Room: ' + mp.room, canvas.width / 2, canvas.height / 2 + 44);
-    return;
-  }
-  if (mp.active) mpAnimate();
-
   // ── Background ───────────────────────────────────────────────────────────
   ctx.fillStyle = '#0c0b12';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -182,8 +165,6 @@ function render(now) {
   for (let i = 0; i < PHANTOMS.length;      i++) { const ph = PHANTOMS[i];     _entities.push({ y: ph.cy * TH, draw: () => drawPhantom(ph) }); }
   _entities.sort((a, b) => a.y - b.y);
   for (let i = 0; i < _entities.length; i++) _entities[i].draw();
-
-  drawRemotePlayers();
 
   // World-space interactables & effects
   drawFlames();
@@ -235,7 +216,6 @@ function render(now) {
   drawPerkShopUI();
   drawPistolUpgradePanel();
   drawDownedHUD();
-  drawPingHUD();
   drawCursor();
 }
 

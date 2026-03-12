@@ -40,16 +40,12 @@ function startGame() {
   document.body.style.cursor = 'none';
   if (!gameStarted) {
     gameStarted = true;
-    if (!mp.active) startWave(1); // server handles wave spawning in multiplayer
+    startWave(1);
   }
 }
 
 function goToMenu() {
   closePauseMenu();
-  if (typeof mp !== 'undefined' && mp.active) {
-    mp.socket.disconnect();
-    mp.active = false;
-  }
   if (typeof restartGame !== 'undefined') restartGame();
   gameStarted = false; // stop render loop game logic while on menu
   document.getElementById('menu').style.display = 'flex';

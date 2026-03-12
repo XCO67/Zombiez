@@ -388,7 +388,7 @@ function drawHUD() {
 
   // ── Game over overlay
   if (game.state==='game_over') {
-    if (!game.scoreSaved && !mp.active) { game.scoreSaved=true; saveScore(); }
+    if (!game.scoreSaved) { game.scoreSaved=true; saveScore(); }
     ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,0,W,H);
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillStyle='#cc2222';
@@ -909,18 +909,11 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke) {
   if(stroke)ctx.stroke();
 }
 
-// ── Downed / revive helpers (single-player; MP uses server-side logic) ────────
+// ── Downed / death helpers ────────────────────────────────────────────────────
 function playerGoDown() {
   if (player.downed || player.dead) return;
-  if (!mp.active) { player.dead=true; game.state='game_over'; shopOpen=false; perkShopOpen=false; return; }
-  // In MP mode the server drives downed state; client just reflects snapshot
-}
-function remoteGoDown(rp) {
-  if (!mp.active) return; // single-player has no remote players
-  if (rp.downed || rp.dead) return;
-  rp.downed=true; rp.hp=1; rp.downedTimer=1800;
+  player.dead=true; game.state='game_over'; shopOpen=false; perkShopOpen=false;
 }
 function checkAllDead() {
-  if (mp.active) return; // server handles in MP
   if (player.dead) { game.state='game_over'; shopOpen=false; perkShopOpen=false; }
 }

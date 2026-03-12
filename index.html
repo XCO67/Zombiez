@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/menu.css">
   <link rel="stylesheet" href="css/modals.css">
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
 <div id="menu">
@@ -18,14 +17,16 @@
   <button class="login-corner" id="loginCornerBtn" onclick="openModal('loginModal')">👤 <span id="loginLabel">Login</span></button>
   <div class="menu-inner">
     <div class="menu-logo">
-      <h1>DEAD SURGE</h1>
+      <div class="logo-title-wrap">
+        <h1>DEAD SURGE</h1>
+        <span class="beta-badge">BETA</span>
+      </div>
       <p>Survive the Horde</p>
     </div>
     <div class="menu-divider"><span>&#9670;</span></div>
     <div class="menu-select-label">- SELECT -</div>
     <div class="menu-btns">
       <button class="mbtn play" onclick="openMapSelect()">&#9658;&nbsp; PLAY</button>
-      <button class="mbtn mp" onclick="openModal('mpModal')">&#127760;&nbsp; MULTIPLAYER</button>
       <button class="mbtn lb"   onclick="openModal('lbModal')">&#9733;&nbsp; LEADERBOARD</button>
       <button class="mbtn cfg"  onclick="openModal('settingsModal')">&#9881;&nbsp; SETTINGS</button>
     </div>
@@ -44,34 +45,6 @@
       <button class="modal-x" onclick="closeMapSelect()">✕</button>
       <div class="modal-title">🗺 Select Map</div>
       <div id="mapSelectList" style="max-height:320px;overflow-y:auto;margin-top:8px"></div>
-    </div>
-  </div>
-
-  <!-- Multiplayer Lobby -->
-  <div id="mpModal" class="modal-ov" style="display:none">
-    <div class="modal-box" style="max-width:440px">
-      <button class="modal-x" onclick="mpClose()">✕</button>
-      <div class="modal-title">👥 Multiplayer</div>
-      <div class="mp-msg" id="mpMsg"></div>
-
-      <!-- Join/Create view -->
-      <div id="mpLobbySetup">
-        <button class="lsave" style="margin-bottom:12px" onclick="mpCreate()">Create Room</button>
-        <div class="mp-input-row">
-          <input class="linput" id="mpJoinCode" placeholder="Room code" maxlength="6" style="text-transform:uppercase;letter-spacing:.15em">
-          <button class="lsave" onclick="mpJoin()">Join</button>
-        </div>
-      </div>
-
-      <!-- Lobby view (after create/join) -->
-      <div id="mpLobbyRoom" style="display:none">
-        <div style="text-align:center;color:rgba(255,255,255,.45);font-size:12px;letter-spacing:.1em;margin-bottom:4px">ROOM CODE</div>
-        <div class="mp-code" id="mpRoomCode">——</div>
-        <div style="color:rgba(255,255,255,.35);font-size:12px;text-align:center;margin-bottom:14px">Share this code with your friends</div>
-        <div class="mp-players" id="mpPlayerList"></div>
-        <button class="lsave" id="mpStartBtn" style="display:none" onclick="mpStartGame()">Start Game</button>
-        <div style="text-align:center;color:rgba(255,255,255,.28);font-size:12px;margin-top:10px" id="mpWaitMsg">Waiting for host to start...</div>
-      </div>
     </div>
   </div>
 
@@ -281,7 +254,6 @@
 <script src="js/shop-visuals.js"></script>
 <script src="js/lighting.js"></script>
 <script src="js/ui.js"></script>
-<script src="js/multiplayer.js"></script>
 <script src="js/render.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/music.js"></script>
