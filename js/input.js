@@ -169,16 +169,6 @@ document.addEventListener('keydown', e => {
         }
         return;
       }
-      // Mercenary vendor
-      const distMerc = Math.hypot(player.cx - MERC_VENDOR_POS.cx, player.cy - MERC_VENDOR_POS.cy);
-      if (distMerc < MERC_VENDOR_RADIUS && !mercenary.active && player.money >= MERC_COST) {
-        player.money -= MERC_COST;
-        mercenary.active = true;
-        mercenary.cx = player.cx;
-        mercenary.cy = player.cy;
-        mercenary.hp = MERC_HP;
-        return;
-      }
       // Check doors
       for (const door of DOORS) {
         if (door.unlocked) continue;

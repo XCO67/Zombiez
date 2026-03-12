@@ -173,9 +173,6 @@ function drawMinimap() {
   ctx.fillStyle = '#60aaff';
   ctx.fillRect(mmX + PISTOL_VENDOR_POS.cx * cW - 1, mapOffY + PISTOL_VENDOR_POS.cy * cH - 1, 2, 2);
 
-  // Mercenary vendor marker: 2x2 gold (blinking when merc is active)
-  ctx.fillStyle = mercenary.active ? (Math.floor(performance.now()/400)%2===0 ? '#88ccff' : '#3366cc') : '#ffaa22';
-  ctx.fillRect(mmX + MERC_VENDOR_POS.cx * cW - 1, mapOffY + MERC_VENDOR_POS.cy * cH - 1, 2, 2);
 
   // Player: blinking white 3x3
   const playerBlink = Math.floor(performance.now() / 300) % 2 === 0;

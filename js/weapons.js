@@ -19,7 +19,7 @@ const player = {
   frame:0, ft:0, moving:false, speed:PLAYER_SPEED,
   hp:100, maxHp:100, hurtTimer:0, dead:false, downed:false, downedTimer:0, reviveProgress:0,
   money:0, goldEarned:0,
-  upgrades:{ damage:0, atkSpeed:0, crit:0, moveSpeed:0, hpRegen:0 },
+  upgrades:{ damage:0, atkSpeed:0, crit:0, moveSpeed:0, hpRegen:0, mercenary:0 },
   weaponKey:'pistol', ammo:Infinity,
   secondaryKey:null, secondaryAmmo:0,
   regenTimer:0, regenAccum:0,

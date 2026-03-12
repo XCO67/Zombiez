@@ -1031,7 +1031,14 @@ function resetMercenary() {
 }
 
 function updateMercenary() {
-  if (!mercenary.active) return;
+  if (!player.upgrades || !player.upgrades.mercenary) return;
+  // Spawn at player position the first frame after being hired
+  if (!mercenary.active) {
+    mercenary.active = true;
+    mercenary.cx = player.cx;
+    mercenary.cy = player.cy;
+    mercenary.hp = MERC_HP;
+  }
 
   const dx = player.cx - mercenary.cx;
   const dy = player.cy - mercenary.cy;
