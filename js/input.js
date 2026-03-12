@@ -102,7 +102,7 @@ document.addEventListener('keydown', e => {
       pistolUpgradeOpen = false;
       return;
     }
-    if (!player.dead && game.state==='playing') {
+    if (!player.dead && (game.state==='playing' || game.state==='wave_clear')) {
       const distShop=Math.hypot(player.cx-SHOP_POS.cx,player.cy-SHOP_POS.cy);
       const distBox =Math.hypot(player.cx-BOX_POS.cx, player.cy-BOX_POS.cy);
       if (distShop<SHOP_RADIUS) { shopOpen=true; return; }
@@ -171,7 +171,7 @@ document.addEventListener('keydown', e => {
       }
       // Mercenary chest
       const distMerc = Math.hypot(player.cx - MERC_CHEST_POS.cx, player.cy - MERC_CHEST_POS.cy);
-      if (distMerc < MERC_CHEST_RADIUS && !mercenary.active && player.money >= MERC_COST) {
+      if (distMerc < MERC_CHEST_RADIUS && !player.upgrades.mercenary && player.money >= MERC_COST) {
         player.money -= MERC_COST;
         player.upgrades.mercenary = 1;
         return;
