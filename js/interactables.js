@@ -672,3 +672,60 @@ function drawGoldButtons() {
     }
   });
 }
+
+// ─── MERCENARY VENDOR ─────────────────────────────────────────────────────────
+const MERC_VENDOR_POS    = { cx: 11, cy: 18 };
+const MERC_VENDOR_RADIUS = 2.0;
+
+function drawMercenaryVendor() {
+  const px = MERC_VENDOR_POS.cx * TW, py = MERC_VENDOR_POS.cy * TH;
+  const sz = Math.min(TW, TH) * 0.58, tt = _tt;
+  const pulse = Math.sin(tt * 2.2) * 0.5 + 0.5;
+
+  // Outer glow — golden military theme
+  const gg = ctx.createRadialGradient(px, py, sz * 0.2, px, py, sz * 2.8);
+  gg.addColorStop(0, `rgba(255,160,40,${0.20 + pulse * 0.12})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, sz * 2.8, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  ctx.shadowColor = '#cc8820'; ctx.shadowBlur = 12 + pulse * 8;
+
+  // Body
+  ctx.fillStyle = '#1a1000';
+  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, true, false);
+  ctx.strokeStyle = `rgba(220,150,40,${0.55 + pulse * 0.35})`; ctx.lineWidth = 2;
+  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, false, true);
+
+  // Knight icon
+  ctx.shadowBlur = 0;
+  ctx.font = `${Math.round(sz * 0.9)}px Segoe UI`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⚔', px, py - sz * 0.06);
+
+  // Label
+  ctx.font = `bold ${Math.round(sz * 0.22)}px Segoe UI`;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = `rgba(255,180,60,${0.75 + pulse * 0.2})`;
+  ctx.fillText('MERCENARY', px, py + sz * 0.72);
+
+  ctx.restore();
+
+  // [E] prompt when near
+  const dist = Math.hypot(player.cx - MERC_VENDOR_POS.cx, player.cy - MERC_VENDOR_POS.cy);
+  if (dist < MERC_VENDOR_RADIUS) {
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
+    let label, col;
+    if (mercenary.active) {
+      label = 'Mercenary active!'; col = '#88ccff';
+    } else if (player.money >= MERC_COST) {
+      label = `[E] Hire Mercenary  $${MERC_COST}`; col = '#ffcc44';
+    } else {
+      label = `[E] Hire Mercenary  $${MERC_COST}  — need more gold`; col = '#ff5555';
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px + 1, py - sz * 1.35 + 1);
+    ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.35);
+    ctx.restore();
+  }
+}

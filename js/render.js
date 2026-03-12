@@ -75,6 +75,7 @@ function _runGameLogic() {
     updateLavaPools();
     updateExploders();
     updatePhantoms();
+    updateMercenary();
     updateProjectiles();
     updateDmgNums();
     updateCoins();
@@ -163,6 +164,7 @@ function render(now) {
   for (let i = 0; i < LAVA_ZOMBIES.length;  i++) { const z = LAVA_ZOMBIES[i];  _entities.push({ y: z.cy * TH,  draw: () => drawLavaZombie(z) }); }
   for (let i = 0; i < EXPLODERS.length;     i++) { const e = EXPLODERS[i];     _entities.push({ y: e.cy * TH,  draw: () => drawExploder(e) }); }
   for (let i = 0; i < PHANTOMS.length;      i++) { const ph = PHANTOMS[i];     _entities.push({ y: ph.cy * TH, draw: () => drawPhantom(ph) }); }
+  if (mercenary.active) _entities.push({ y: mercenary.cy * TH, draw: drawMercenary });
   _entities.sort((a, b) => a.y - b.y);
   for (let i = 0; i < _entities.length; i++) _entities[i].draw();
 
@@ -179,6 +181,7 @@ function render(now) {
   drawPerkVendor();
   drawPistolVendor();
   drawRicochetVendor();
+  drawMercenaryVendor();
   drawGoldButtons();
   drawMysteryBox();
   drawCoins();

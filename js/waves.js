@@ -94,5 +94,6 @@ function restartGame() {
   SPIDER_BOSSES.length=0; SPIDER_WEB_SHOTS.length=0; SPIDER_MINIONS.length=0; secondSpiderDropped=false;
   EXPLODERS.length=0; PHANTOMS.length=0;
   activePerkTimers.doublePoints=0; activePerkTimers.magnet=0;
+  resetMercenary();
   startWave(1);
 }

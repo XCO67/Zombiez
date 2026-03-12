@@ -1004,3 +1004,109 @@ function drawPhantom(ph) {
 
   ctx.restore();
 }
+
+// ─── MERCENARY ────────────────────────────────────────────────────────────────
+const MERC_COST      = 5000;
+const MERC_SPEED     = 0.030;
+const MERC_RANGE     = 9;
+const MERC_HP        = 300;
+const MERC_FIRE_RATE = 25;
+
+const mercenary = {
+  active: false,
+  cx: PLAYER_START.cx, cy: PLAYER_START.cy,
+  hp: MERC_HP, maxHp: MERC_HP,
+  frame: 0, ft: 0,
+  hitFlash: 0,
+  shootTimer: 0,
+};
+
+function resetMercenary() {
+  mercenary.active = false;
+  mercenary.cx = PLAYER_START.cx;
+  mercenary.cy = PLAYER_START.cy;
+  mercenary.hp = MERC_HP;
+  mercenary.frame = 0; mercenary.ft = 0;
+  mercenary.hitFlash = 0; mercenary.shootTimer = 0;
+}
+
+function updateMercenary() {
+  if (!mercenary.active) return;
+
+  const dx = player.cx - mercenary.cx;
+  const dy = player.cy - mercenary.cy;
+  const dist = Math.hypot(dx, dy);
+  if (dist > 1.4) {
+    const spd = MERC_SPEED * Math.min(1 + (dist - 1.4) * 0.4, 2.8);
+    const nx = mercenary.cx + (dx / dist) * spd;
+    const ny = mercenary.cy + (dy / dist) * spd;
+    if (!isBlocked(nx, mercenary.cy)) mercenary.cx = nx;
+    if (!isBlocked(mercenary.cx, ny)) mercenary.cy = ny;
+  }
+
+  let nearestDist = MERC_RANGE;
+  let nearestTarget = null;
+  const allEnemies = [
+    ...ZOMBIES, ...SKELETONS, ...DRAGONS,
+    ...LAVA_ZOMBIES, ...EXPLODERS, ...PHANTOMS,
+    ...BOSS_DEMONS, ...SPIDER_BOSSES, ...SPIDER_MINIONS,
+  ];
+  for (const en of allEnemies) {
+    if (en.dead) continue;
+    const ed = Math.hypot(en.cx - mercenary.cx, en.cy - mercenary.cy);
+    if (ed < nearestDist) { nearestDist = ed; nearestTarget = en; }
+  }
+
+  if (mercenary.shootTimer > 0) mercenary.shootTimer--;
+  if (nearestTarget && mercenary.shootTimer <= 0) {
+    const angle = Math.atan2(
+      nearestTarget.cy - mercenary.cy,
+      nearestTarget.cx - mercenary.cx
+    );
+    spawnBullet(mercenary.cx * TW, mercenary.cy * TH, angle, 'pistol');
+    mercenary.shootTimer = MERC_FIRE_RATE;
+  }
+
+  mercenary.ft += 1 / 60;
+  if (mercenary.ft >= 0.13) { mercenary.frame = (mercenary.frame + 1) % 6; mercenary.ft = 0; }
+  if (mercenary.hitFlash > 0) mercenary.hitFlash--;
+}
+
+function drawMercenary() {
+  if (!mercenary.active) return;
+  const px = mercenary.cx * TW, py = mercenary.cy * TH;
+  const sz = TW * 1.4;
+
+  ctx.save(); ctx.globalAlpha = 0.32; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(px, py + sz * 0.44, sz * 0.28, sz * 0.10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  const aura = ctx.createRadialGradient(px, py, 0, px, py, sz * 0.9);
+  aura.addColorStop(0, 'rgba(60,130,255,0.22)');
+  aura.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(px, py, sz * 0.9, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  if (mercenary.hitFlash > 0) ctx.filter = 'brightness(4) saturate(0.2)';
+  if (knightImg.complete && knightImg.naturalWidth) {
+    ctx.drawImage(knightImg, px - sz / 2, py - sz / 2, sz, sz);
+  } else {
+    ctx.fillStyle = '#4488ff';
+    ctx.beginPath(); ctx.arc(px, py, sz * 0.38, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.filter = 'none';
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.font = `bold ${Math.round(TH * 0.22)}px Segoe UI`;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText('MERC', px + 1, py - sz * 0.62 + 1);
+  ctx.fillStyle = '#88ccff'; ctx.fillText('MERC', px, py - sz * 0.62);
+  ctx.restore();
+
+  const bw = sz * 0.85, bh = Math.max(3, TH * 0.09), bx = px - bw / 2, by = py - sz * 0.70;
+  ctx.fillStyle = '#0a1428'; ctx.fillRect(bx, by, bw, bh);
+  const f = mercenary.hp / mercenary.maxHp;
+  ctx.fillStyle = f > 0.5 ? '#3388ff' : f > 0.25 ? '#1155cc' : '#cc2244';
+  ctx.fillRect(bx, by, bw * f, bh);
+}

@@ -33,3 +33,6 @@ function dir8(dx, dy) {
   if (a < 0) a += 360;
   return DIRS[Math.round(a / 45) % 8];
 }
+
+const knightImg = new Image();
+knightImg.src = 'css/knight.png';
