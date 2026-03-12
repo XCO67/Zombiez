@@ -1081,39 +1081,79 @@ function updateMercenary() {
 
 function drawMercenary() {
   if (!mercenary.active) return;
-  const px = mercenary.cx * TW, py = mercenary.cy * TH;
-  const sz = TW * 1.4;
 
-  ctx.save(); ctx.globalAlpha = 0.32; ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.ellipse(px, py + sz * 0.44, sz * 0.28, sz * 0.10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
+  const bob = Math.sin(_tt * 3.8) * TH * 0.09;
+  const px  = mercenary.cx * TW;
+  const py  = mercenary.cy * TH + bob;
+  const ps  = Math.max(3, Math.round(TW * 0.088)); // one pixel-art "pixel"
 
-  const aura = ctx.createRadialGradient(px, py, 0, px, py, sz * 0.9);
-  aura.addColorStop(0, 'rgba(60,130,255,0.22)');
-  aura.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(px, py, sz * 0.9, 0, Math.PI * 2); ctx.fill();
-
-  ctx.save();
-  if (mercenary.hitFlash > 0) ctx.filter = 'brightness(4) saturate(0.2)';
-  if (knightImg.complete && knightImg.naturalWidth) {
-    ctx.drawImage(knightImg, px - sz / 2, py - sz / 2, sz, sz);
-  } else {
-    ctx.fillStyle = '#4488ff';
-    ctx.beginPath(); ctx.arc(px, py, sz * 0.38, 0, Math.PI * 2); ctx.fill();
+  function P(gx, gy, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(Math.round(px + gx * ps), Math.round(py + gy * ps), ps, ps);
   }
-  ctx.filter = 'none';
-  ctx.restore();
 
-  ctx.save();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.font = `bold ${Math.round(TH * 0.22)}px Segoe UI`;
-  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText('MERC', px + 1, py - sz * 0.62 + 1);
-  ctx.fillStyle = '#88ccff'; ctx.fillText('MERC', px, py - sz * 0.62);
-  ctx.restore();
+  // Drop shadow (anchored at actual cy, not bob position)
+  ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(mercenary.cx * TW, mercenary.cy * TH + TH * 0.38, ps * 2.4, ps * 0.75, 0, 0, Math.PI * 2);
+  ctx.fill(); ctx.restore();
 
-  const bw = sz * 0.85, bh = Math.max(3, TH * 0.09), bx = px - bw / 2, by = py - sz * 0.70;
-  ctx.fillStyle = '#0a1428'; ctx.fillRect(bx, by, bw, bh);
+  // Magical aura glow
+  const g = ctx.createRadialGradient(px, py - ps, 0, px, py - ps, ps * 8.5);
+  g.addColorStop(0,   'rgba(200,80,255,0.28)');
+  g.addColorStop(0.5, 'rgba(120,30,220,0.10)');
+  g.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py - ps, ps * 8.5, 0, Math.PI * 2); ctx.fill();
+
+  // Animated wings — fast flap driven by _tt
+  const wf = Math.sin(_tt * 15);
+  const wA = '#dd88ff', wB = '#9940cc', wC = 'rgba(200,120,255,0.55)';
+  if (wf > 0) { // wings up
+    P(-5,-4,wB); P(-4,-4,wA); P(-3,-3,wA); P(-4,-3,wC);
+    P( 5,-4,wB); P( 4,-4,wA); P( 3,-3,wA); P( 4,-3,wC);
+  } else {      // wings down
+    P(-5,-1,wB); P(-4,-1,wA); P(-3,-2,wA); P(-4,-2,wC);
+    P( 5,-1,wB); P( 4,-1,wA); P( 3,-2,wA); P( 4,-2,wC);
+  }
+
+  // Body — pink-purple pixel cat-dragon familiar
+  // Horns / ears
+  P(-2,-5,'#aa30cc'); P(-1,-4,'#cc55ee');
+  P( 2,-5,'#aa30cc'); P( 1,-4,'#cc55ee');
+
+  // Head row
+  P(-1,-3,'#eda0ff'); P(0,-3,'#f0b0ff'); P(1,-3,'#eda0ff');
+  // Face row
+  P(-2,-2,'#c060ee'); P(-1,-2,'#f0b0ff'); P(0,-2,'#f0b0ff'); P(1,-2,'#f0b0ff'); P(2,-2,'#c060ee');
+  // Torso
+  P(-1,-1,'#c060ee'); P(0,-1,'#ffc0ff'); P(1,-1,'#c060ee');
+  // Lower body
+  P(-1, 0,'#9030cc'); P(0, 0,'#9030cc'); P(1, 0,'#9030cc');
+  // Tail
+  P(2, 0,'#7020aa'); P(3, 0,'#9030cc'); P(3, 1,'#7020aa');
+
+  // Eyes — dark pupils over the face pixels
+  P(-1,-2,'#1a001a'); P(1,-2,'#1a001a');
+  // Eye glint
+  const gs = Math.ceil(ps * 0.35);
+  ctx.fillStyle = 'rgba(255,200,255,0.95)';
+  ctx.fillRect(Math.round(px - ps + ps*0.55), Math.round(py - 2*ps + ps*0.1), gs, gs);
+  ctx.fillRect(Math.round(px + ps + ps*0.55), Math.round(py - 2*ps + ps*0.1), gs, gs);
+
+  // Hit flash white overlay
+  if (mercenary.hitFlash > 0) {
+    ctx.save(); ctx.globalAlpha = (mercenary.hitFlash / 8) * 0.85; ctx.fillStyle = '#ffffff';
+    for (let gx = -2; gx <= 3; gx++)
+      for (let gy = -5; gy <= 1; gy++)
+        ctx.fillRect(Math.round(px + gx*ps), Math.round(py + gy*ps), ps, ps);
+    ctx.restore();
+  }
+
+  // HP bar
+  const bw = ps * 9, bh = Math.max(2, Math.round(ps * 0.7));
+  const bx = px - bw / 2, by = py - ps * 8;
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(bx, by, bw, bh);
   const f = mercenary.hp / mercenary.maxHp;
-  ctx.fillStyle = f > 0.5 ? '#3388ff' : f > 0.25 ? '#1155cc' : '#cc2244';
+  ctx.fillStyle = f > 0.5 ? '#cc44ff' : f > 0.25 ? '#8833cc' : '#cc2244';
   ctx.fillRect(bx, by, bw * f, bh);
 }
