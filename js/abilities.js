@@ -3,7 +3,7 @@
 
 // ── Fire Ring ─────────────────────────────────────────────────────────────────
 const FIRE_RING_COOLDOWN = 1800; // 30 s at 60 fps
-const FIRE_RING_DURATION = 120;  // 2 s active
+const FIRE_RING_DURATION = 360;  // 6 s active
 const FIRE_RING_RADIUS   = 1.8;  // tiles — damage / visual radius
 const FIRE_RING_TICK     = 30;   // frames between damage ticks
 const FIRE_RING_ORBS     = 8;

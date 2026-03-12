@@ -708,161 +708,122 @@ function updateSpiderWebShots() {
   }
 }
 
-// ── Drawing ───────────────────────────────────────────────────────────────────
+// ── Drawing ─────────────────────────────────────────────────────────────────────────────
 function drawSpiderBoss(b) {
   if (b.dead && b.deathTimer <= 0) return;
-  const px = b.cx * TW, py = b.cy * TH;
-  const sz = TW * 4.4;
+  const px   = b.cx * TW, py = b.cy * TH;
+  const sz   = TW * 4.4;
   const alpha = b.dead ? (b.deathTimer / 80) : 1;
-  const tt = performance.now() / 1000;
-  const pulse = Math.sin(tt * 2.2) * 0.07 + 0.93;
+  const enraged = b.enraged;
 
-  // ── Render sprite to pixel-art offscreen canvas ───────────────────────────
-  const PRES = 64, PSZ = 32;            // offscreen res × inner scale
-  const CX = 32, CY = 33;              // sprite origin on offscreen
-  _spiderPC.clearRect(0, 0, PRES, PRES);
-  _spiderPC.save();
-  _spiderPC.translate(CX, CY);
+  // Pixel-art palette (flat colours only)
+  const bMain = enraged ? '#c83000' : '#178a0e';
+  const bHi   = enraged ? '#ff5c1a' : '#42cc16';
+  const bDark = enraged ? '#601000' : '#083606';
+  const lCol  = enraged ? '#780e00' : '#082602';
+  const lTip  = enraged ? '#380800' : '#041200';
+  const crCol = enraged ? '#ffaa00' : '#55ff0e';
+  const aCol  = enraged ? '#781000' : '#093804';
+  const aStr  = enraged ? '#ee3800' : '#1caa0a';
+  const eIri  = enraged ? '#ff8844' : '#ff44ee';
+
+  // Draw to 32x32 offscreen then blit with no smoothing
+  _spiderPix.width = _spiderPix.height = 32;
   const c = _spiderPC;
+  c.clearRect(0, 0, 32, 32);
 
-  // Ground shadow
-  c.save(); c.globalAlpha = 0.38;
-  c.fillStyle = '#000'; c.beginPath();
-  c.ellipse(0, PSZ*0.40, PSZ*0.54, PSZ*0.10, 0, 0, Math.PI*2); c.fill();
-  c.restore();
+  function P(x, y, col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+  function H(x, y, w, col) { c.fillStyle = col; c.fillRect(x, y, w, 1); }
 
-  // Aura glow
-  const auraC = b.enraged ? 'rgba(220,80,0,' : 'rgba(0,180,40,';
-  const aura = c.createRadialGradient(0, 0, PSZ*0.15, 0, 0, PSZ*0.92*pulse);
-  aura.addColorStop(0, auraC + '0.18)'); aura.addColorStop(0.55, auraC + '0.09)'); aura.addColorStop(1,'rgba(0,0,0,0)');
-  c.fillStyle = aura; c.beginPath(); c.arc(0, 0, PSZ*0.92, 0, Math.PI*2); c.fill();
+  // Crown spikes
+  P(16, 2, crCol);
+  H(15, 3, 3, crCol);
+  H(14, 4, 5, crCol);
+  P(11, 4, crCol); P(11, 5, crCol); H(11, 6, 3, crCol);
+  P(20, 4, crCol); P(21, 4, crCol); H(18, 6, 3, crCol);
+  H(12, 7, 9, crCol);
 
-  // 8 Legs
-  c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
-  const legDefs = [
-    [-1,-0.14,0.10],[-1,-0.04,0.22],[-1,0.06,0.22],[-1,0.16,0.10],
-    [ 1,-0.14,0.10],[ 1,-0.04,0.22],[ 1,0.06,0.22],[ 1,0.16,0.10],
-  ];
-  legDefs.forEach(([side, yOff, spread], i) => {
-    const legAnim = Math.sin(tt * 5.5 + i * 0.8) * 0.06;
-    const ox = side * PSZ * 0.29, oy = yOff * PSZ;
-    const mx = side * (PSZ * 0.52 + legAnim * PSZ * 0.08);
-    const my = oy - PSZ * (0.16 - spread) + legAnim * PSZ * 0.05;
-    const tx = side * (PSZ * 0.62 + spread * PSZ * 0.3);
-    const ty = my + PSZ * (0.28 + spread * 0.15);
-    c.lineWidth = Math.max(1, PSZ * 0.028); c.strokeStyle = '#0c3d07';
-    c.beginPath(); c.moveTo(ox, oy); c.lineTo(mx, my); c.stroke();
-    c.lineWidth = Math.max(1, PSZ * 0.022); c.strokeStyle = '#082802';
-    c.beginPath(); c.moveTo(mx, my); c.lineTo(tx, ty); c.stroke();
-    c.strokeStyle = 'rgba(40,200,60,0.18)'; c.lineWidth = Math.max(1, PSZ * 0.008);
-    c.beginPath(); c.moveTo(ox, oy-1); c.lineTo(mx, my-1); c.stroke();
-  });
-  c.restore();
+  // Legs - two frames of waggle
+  const wag = Math.floor(_tt * 8) % 2;
+  P(10,10+wag,lCol); P(9,9,lCol);  P(8,8,lCol);  P(7,7,lCol);  P(6,7,lTip);
+  P(10,12-wag,lCol); P(9,11,lCol); P(8,11,lCol); P(7,10,lCol); P(6,10,lTip);
+  P(10,15+wag,lCol); P(9,16,lCol); P(8,16,lCol); P(7,17,lCol); P(6,17,lTip);
+  P(10,18-wag,lCol); P(9,19,lCol); P(8,20,lCol); P(7,20,lTip);
+  P(21,10+wag,lCol); P(22,9,lCol);  P(23,8,lCol);  P(24,7,lCol);  P(25,7,lTip);
+  P(21,12-wag,lCol); P(22,11,lCol); P(23,11,lCol); P(24,10,lCol); P(25,10,lTip);
+  P(21,15+wag,lCol); P(22,16,lCol); P(23,16,lCol); P(24,17,lCol); P(25,17,lTip);
+  P(21,18-wag,lCol); P(22,19,lCol); P(23,20,lCol); P(24,20,lTip);
 
-  // Main body
-  const bodyG = c.createRadialGradient(-PSZ*0.07,-PSZ*0.08,0,0,PSZ*0.02,PSZ*0.36);
-  if (b.enraged) {
-    bodyG.addColorStop(0,'#99ff44'); bodyG.addColorStop(0.5,'#44aa10'); bodyG.addColorStop(1,'#1a5500');
-  } else {
-    bodyG.addColorStop(0,'#55cc28'); bodyG.addColorStop(0.5,'#228814'); bodyG.addColorStop(1,'#0c4c08');
-  }
-  c.fillStyle = bodyG; c.beginPath(); c.arc(0, PSZ*0.02, PSZ*0.335, 0, Math.PI*2); c.fill();
-  c.strokeStyle = b.enraged ? 'rgba(160,255,40,0.35)' : 'rgba(40,220,60,0.28)';
-  c.lineWidth = Math.max(1, PSZ*0.014);
-  c.beginPath(); c.arc(0, PSZ*0.02, PSZ*0.335, 0, Math.PI*2); c.stroke();
-
-  // Spike crown
-  const crownCx = 0, crownCy = -PSZ*0.13;
-  const crownG = c.createRadialGradient(crownCx,crownCy-PSZ*0.04,0,crownCx,crownCy,PSZ*0.23);
-  crownG.addColorStop(0,'#66ee44'); crownG.addColorStop(1,'#1a7010');
-  c.fillStyle = crownG; c.beginPath(); c.arc(crownCx, crownCy, PSZ*0.22, 0, Math.PI*2); c.fill();
-  const spikeCount = 8;
-  for (let i = 0; i < spikeCount; i++) {
-    const a = (i/spikeCount)*Math.PI*2;
-    const r1=PSZ*0.20, r2=PSZ*0.34, w=PSZ*0.032;
-    const bxs=crownCx+Math.cos(a)*r1, bys=crownCy+Math.sin(a)*r1;
-    const txs=crownCx+Math.cos(a)*r2, tys=crownCy+Math.sin(a)*r2;
-    const px2=Math.cos(a+Math.PI/2)*w, py2=Math.sin(a+Math.PI/2)*w;
-    c.fillStyle = '#165810';
-    c.beginPath(); c.moveTo(bxs-px2,bys-py2); c.lineTo(bxs+px2,bys+py2); c.lineTo(txs,tys); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(120,255,80,0.25)';
-    c.beginPath(); c.moveTo(bxs-px2*0.5,bys-py2*0.5); c.lineTo(bxs+px2*0.15,bys+py2*0.15); c.lineTo(txs,tys); c.closePath(); c.fill();
-  }
+  // Body
+  H(14, 8, 4, bDark);
+  H(13, 9, 6, bDark);
+  H(12,10, 8, bMain);
+  H(11,11,10, bMain);
+  c.fillStyle = bMain; c.fillRect(11,12,10,7);
+  H(11,19,10, bMain);
+  H(12,20, 8, bMain);
+  // Highlight top-left
+  H(13, 9, 4, bHi);
+  H(12,10, 5, bHi);
+  H(11,11, 4, bHi);
+  H(11,12, 3, bHi);
 
   // Abdomen
-  const abdG = c.createRadialGradient(0, PSZ*0.10, 0, 0, PSZ*0.18, PSZ*0.20);
-  abdG.addColorStop(0,'#1a9010'); abdG.addColorStop(1,'#0a4008');
-  c.fillStyle = abdG; c.beginPath(); c.ellipse(0, PSZ*0.20, PSZ*0.19, PSZ*0.17, 0, 0, Math.PI*2); c.fill();
-  c.strokeStyle = 'rgba(40,200,40,0.18)'; c.lineWidth = Math.max(1, PSZ*0.010);
-  c.beginPath(); c.ellipse(0, PSZ*0.20, PSZ*0.11, PSZ*0.10, 0, 0, Math.PI*2); c.stroke();
+  H(13,21, 6, aCol);
+  H(13,22, 6, aStr);
+  H(13,23, 6, aCol);
+  H(14,24, 4, aStr);
+  H(14,25, 4, aCol);
+  H(15,26, 2, aCol);
 
-  // Chelicera / fangs
-  [-1, 1].forEach(side => {
-    c.save(); c.strokeStyle = '#b8d060'; c.lineWidth = Math.max(1, PSZ*0.036); c.lineCap = 'round';
-    c.beginPath(); c.moveTo(side*PSZ*0.09, PSZ*0.13);
-    c.bezierCurveTo(side*PSZ*0.24,PSZ*0.15,side*PSZ*0.32,PSZ*0.24,side*PSZ*0.24,PSZ*0.36); c.stroke();
-    c.strokeStyle = '#70880a'; c.lineWidth = Math.max(1, PSZ*0.020);
-    c.beginPath(); c.moveTo(side*PSZ*0.24,PSZ*0.32); c.lineTo(side*PSZ*0.19,PSZ*0.40); c.stroke();
-    c.restore();
+  // 4 eyes (sclera / iris / pupil)
+  const eyeNow = Math.floor(_tt * 4) % 2 === 0 ? eIri : '#aa00aa';
+  [[12,13],[14,13],[17,13],[19,13]].forEach(([ex, ey]) => {
+    P(ex, ey,   '#ffe8ff');
+    P(ex, ey+1, eyeNow);
+    P(ex, ey+2, '#000010');
   });
 
-  // 4 pink eyes (2×2)
-  const eyePos = [[-PSZ*0.11,-PSZ*0.02],[PSZ*0.11,-PSZ*0.02],[-PSZ*0.11,PSZ*0.11],[PSZ*0.11,PSZ*0.11]];
-  eyePos.forEach(([ex, ey], i) => {
-    const ep = Math.sin(tt*4.2+i*0.9)*0.12+0.88;
-    const eg = c.createRadialGradient(ex,ey,0,ex,ey,PSZ*0.10);
-    eg.addColorStop(0,`rgba(255,80,230,${0.55*ep})`); eg.addColorStop(0.5,`rgba(200,0,190,${0.22*ep})`); eg.addColorStop(1,'rgba(140,0,140,0)');
-    c.fillStyle = eg; c.beginPath(); c.arc(ex,ey,PSZ*0.10,0,Math.PI*2); c.fill();
-    c.fillStyle = '#ffe8ff'; c.beginPath(); c.arc(ex,ey,PSZ*0.050,0,Math.PI*2); c.fill();
-    c.fillStyle = `hsl(310,100%,${48+ep*14}%)`; c.beginPath(); c.arc(ex,ey,PSZ*0.032,0,Math.PI*2); c.fill();
-    c.fillStyle = '#1a001f'; c.beginPath(); c.arc(ex,ey,PSZ*0.014,0,Math.PI*2); c.fill();
-    c.fillStyle = 'rgba(255,220,255,0.90)'; c.beginPath(); c.arc(ex-PSZ*0.013,ey-PSZ*0.015,PSZ*0.010,0,Math.PI*2); c.fill();
-  });
+  // Chelicerae / fangs
+  P(13,20, crCol); P(18,20, crCol);
 
-  // Charge flash
-  if (b.chargeActive) {
-    const cf = b.chargeDuration / SPIDER_CHARGE_DURATION;
-    c.globalAlpha = cf * 0.3;
-    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(0, PSZ*0.02, PSZ*0.36, 0, Math.PI*2); c.fill();
+  // Hit / charge flash
+  if (b.chargeActive || b.hitFlash > 0) {
+    const fa = b.chargeActive
+      ? (b.chargeDuration / SPIDER_CHARGE_DURATION) * 0.4
+      : (b.hitFlash / 9) * 0.7;
+    c.globalAlpha = fa;
+    c.fillStyle = '#fff'; c.fillRect(11, 9, 10, 12);
+    c.globalAlpha = 1;
   }
 
-  // Hit flash
-  if (b.hitFlash > 0) {
-    c.globalAlpha = (b.hitFlash / 9) * 0.58;
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(0, PSZ*0.02, PSZ*0.36, 0, Math.PI*2); c.fill();
-  }
-
-  _spiderPC.restore(); // end translate
-  _snapAlpha(_spiderPC, PRES, PRES);
-
-  // ── Blit pixelated sprite to main canvas ─────────────────────────────────
-  const scale = sz / PSZ;
+  // Blit to main canvas - no smoothing = chunky pixel art
+  const scale = sz / 32;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(_spiderPix, px - CX * scale, py - CY * scale, PRES * scale, PRES * scale);
+  ctx.drawImage(_spiderPix, px - 16 * scale, py - 14 * scale, 32 * scale, 32 * scale);
   ctx.restore();
 
-  // Health bar (smooth, on main canvas)
+  // Health bar
   if (!b.dead) {
     const bw = sz * 1.35, bh = Math.max(9, TH * 0.22);
     const bx = px - bw / 2, by = py - sz * 0.95;
     ctx.fillStyle = '#001800'; ctx.fillRect(bx, by, bw, bh);
-    const f = Math.max(0, b.hp / b.maxHp);
-    const hcol = b.enraged ? '#ff4400' : (f > 0.5 ? '#00cc22' : f > 0.25 ? '#77cc00' : '#bbff00');
+    const f    = Math.max(0, b.hp / b.maxHp);
+    const hcol = enraged ? '#ff4400' : (f > 0.5 ? '#00cc22' : f > 0.25 ? '#77cc00' : '#bbff00');
     ctx.fillStyle = hcol; ctx.fillRect(bx, by, bw * f, bh);
-    ctx.strokeStyle = b.enraged ? 'rgba(255,100,0,0.55)' : 'rgba(0,255,60,0.45)';
+    ctx.strokeStyle = enraged ? 'rgba(255,100,0,0.55)' : 'rgba(0,255,60,0.45)';
     ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, bw, bh);
     ctx.save();
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.fillStyle = b.enraged ? '#ff5500' : '#22ff55';
+    ctx.fillStyle = enraged ? '#ff5500' : '#22ff55';
     ctx.font = `bold ${Math.round(TH * 0.28)}px Segoe UI`;
-    ctx.shadowColor = b.enraged ? '#ff4400' : '#00ff44'; ctx.shadowBlur = 12;
-    ctx.fillText(b.enraged ? '🕷 VENOM QUEEN ⚡ ENRAGED!' : '🕷 VENOM QUEEN', px, by - 3);
+    ctx.shadowColor = enraged ? '#ff4400' : '#00ff44'; ctx.shadowBlur = 12;
+    ctx.fillText(enraged ? '🕷 VENOM QUEEN ⚡ ENRAGED!' : '🕷 VENOM QUEEN', px, by - 3);
     ctx.restore();
   }
 }
-
 function drawSpiderMinion(m) {
   const tt = performance.now() / 1000;
   {
