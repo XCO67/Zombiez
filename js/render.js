@@ -96,7 +96,7 @@ function render(now) {
 
   _tt = now / 1000;
 
-  if (!gameStarted) { drawCursor(); return; }
+  if (!gameStarted) return;
 
   // Smooth zoom — must run BEFORE physics so updateCamera() uses correct TW
   if (Math.abs(_targetViewW - VIEW_W) > 0.05) {

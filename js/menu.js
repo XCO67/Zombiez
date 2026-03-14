@@ -37,7 +37,6 @@ function startGame() {
   resumeAudio();
   document.getElementById('menu').style.display = 'none';
   document.getElementById('mapSelectModal').style.display = 'none';
-  document.body.style.cursor = 'none';
   if (!gameStarted) {
     gameStarted = true;
     startWave(1);
@@ -69,7 +68,7 @@ function closeModal(id) {
 
 // ── In-game Pause Menu ────────────────────────────────────────────────────────
 function openPauseMenu() {
-  document.body.style.cursor = 'default'; // show cursor over HTML overlay
+  document.body.style.cursor = 'default';
   // Sync volume sliders to current values
   const mv = Math.round(masterGain.gain.value * 100);
   const pmv = document.getElementById('pmVolSlider');
@@ -87,7 +86,7 @@ function openPauseMenu() {
 function closePauseMenu() {
   cancelRebind();
   document.getElementById('pauseMenu').style.display = 'none';
-  if (gameStarted) document.body.style.cursor = 'none'; // restore hidden cursor in-game
+  document.body.style.cursor = '';
 }
 function resumeFromPause() {
   closePauseMenu();
