@@ -358,21 +358,47 @@ function drawHUD() {
   ctx.fillStyle = 'rgba(68,200,255,0.55)';
   ctx.fillText('TIME  ' + _fmtTime(game.playTimeFrames), killsX + killsW/2, pad + 18);
 
-  // ── Wave-clear overlay
+  // ── Wave-clear banner (top of screen, non-blocking, full 10-second shopping window)
   if (game.state==='wave_clear') {
-    const prog=1-(game.waveTimer/180);
-    const fadeIn=Math.min(1,prog*4), fadeOut=Math.max(0,1-(prog-.75)*4);
-    ctx.globalAlpha=fadeIn*fadeOut;
-    const ovW = 380, ovH = 90;
-    pixelPanel(ctx, W/2 - ovW/2, H/2 - ovH/2 - 10, ovW, ovH, '#0a0a1e');
-    ctx.fillStyle='#a0e060';
-    ctx.font = "18px 'Press Start 2P'";
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('WAVE CLEAR!', W/2, H/2 - 14);
-    ctx.fillStyle='rgba(180,180,180,0.7)';
-    ctx.font = "7px 'Press Start 2P'";
-    ctx.fillText(`Round ${game.round+1} in ${Math.ceil(game.waveTimer/60)}s`, W/2, H/2 + 18);
-    ctx.globalAlpha=1;
+    const TOTAL = 600; // must match waves.js waveTimer start value
+    const frac  = game.waveTimer / TOTAL;          // 1→0 over 10 s
+    const secsLeft = Math.ceil(game.waveTimer / 60);
+
+    // Fade in quickly, stay solid, fade out last 0.5 s
+    const fadeIn  = Math.min(1, (1 - frac) * TOTAL / 30); // full in 0.5 s
+    const fadeOut = frac < 0.05 ? frac / 0.05 : 1;        // fade out last 0.5 s
+    const alpha   = fadeIn * fadeOut;
+
+    const bH = Math.round(H * 0.085);
+    const bY = HUD_H + 6;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Panel background
+    pixelPanel(ctx, W * 0.18, bY, W * 0.64, bH, '#080c18');
+
+    // "WAVE CLEAR!" title
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#a0e060';
+    ctx.font = `bold ${Math.round(bH * 0.36)}px 'Press Start 2P'`;
+    ctx.shadowColor = '#60ff20'; ctx.shadowBlur = 8;
+    ctx.fillText('WAVE CLEAR!  SHOP NOW', W / 2, bY + bH * 0.07);
+    ctx.shadowBlur = 0;
+
+    // Countdown text
+    ctx.fillStyle = secsLeft <= 3 ? '#ff6644' : 'rgba(200,220,180,0.85)';
+    ctx.font = `${Math.round(bH * 0.22)}px 'Press Start 2P'`;
+    ctx.fillText(`Next wave in ${secsLeft}s  —  press E near shop`, W / 2, bY + bH * 0.52);
+
+    // Countdown bar (fills from full to empty)
+    const barX = W * 0.22, barW = W * 0.56, barH = Math.max(4, Math.round(bH * 0.10));
+    const barY = bY + bH - barH - 5;
+    ctx.fillStyle = '#0a1808'; ctx.fillRect(barX, barY, barW, barH);
+    const barCol = secsLeft <= 3 ? '#ff4422' : (secsLeft <= 6 ? '#ffaa22' : '#44dd22');
+    ctx.fillStyle = barCol; ctx.fillRect(barX, barY, barW * frac, barH);
+
+    ctx.restore();
   }
 
   // ── Game over overlay
