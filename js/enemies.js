@@ -1026,6 +1026,7 @@ const mercenary = {
   hitFlash: 0,
   shootTimer: 0,
   upgrades: { dmg: 0, rate: 0, range: 0 },
+  trail: [], // player position history for path-following
 };
 
 function resetMercenary() {
@@ -1036,6 +1037,7 @@ function resetMercenary() {
   mercenary.frame = 0; mercenary.ft = 0;
   mercenary.hitFlash = 0; mercenary.shootTimer = 0;
   mercenary.upgrades = { dmg: 0, rate: 0, range: 0 };
+  mercenary.trail = [];
 }
 
 function updateMercenary() {
@@ -1048,15 +1050,46 @@ function updateMercenary() {
     mercenary.hp = 80; mercenary.maxHp = 80;
   }
 
-  const dx = player.cx - mercenary.cx;
-  const dy = player.cy - mercenary.cy;
+  // ── Trail-based path following ─────────────────────────────────────────────
+  // Record the player's position every frame into a breadcrumb trail.
+  // The merc follows the trail point that is ~ORBIT_DIST tiles back from the
+  // player along the actual path walked — so it navigates walls automatically.
+  const TRAIL_MAX  = 400;  // frames of history (~6.6s at 60fps)
+  const ORBIT_DIST = 1.6;  // tiles behind player the merc hovers at
+
+  // Push current player position to the front of the trail
+  mercenary.trail.unshift({ cx: player.cx, cy: player.cy });
+  if (mercenary.trail.length > TRAIL_MAX) mercenary.trail.length = TRAIL_MAX;
+
+  // Find the trail index whose position is ~ORBIT_DIST tiles from the player.
+  // trail[0] = player's current pos (dist≈0), trail[N] = N frames ago.
+  // We walk until we find the first point that is far enough back.
+  let target = mercenary.trail[mercenary.trail.length - 1]; // fallback: oldest
+  for (let i = 0; i < mercenary.trail.length; i++) {
+    if (Math.hypot(player.cx - mercenary.trail[i].cx,
+                   player.cy - mercenary.trail[i].cy) >= ORBIT_DIST) {
+      target = mercenary.trail[i];
+      break;
+    }
+  }
+
+  // Move merc toward the target trail point
+  const dx = target.cx - mercenary.cx;
+  const dy = target.cy - mercenary.cy;
   const dist = Math.hypot(dx, dy);
-  if (dist > 1.4) {
-    const spd = MERC_SPEED * Math.min(1 + (dist - 1.4) * 0.4, 2.8);
+  if (dist > 0.05) {
+    // Speed scales up with lag so merc catches up after teleports/doors
+    const spd = MERC_SPEED * Math.min(1 + dist * 0.55, 4.0);
     const nx = mercenary.cx + (dx / dist) * spd;
     const ny = mercenary.cy + (dy / dist) * spd;
     if (!isBlocked(nx, mercenary.cy)) mercenary.cx = nx;
     if (!isBlocked(mercenary.cx, ny)) mercenary.cy = ny;
+  }
+
+  // Safety net: if merc somehow falls very far behind, snap it to the player
+  if (Math.hypot(player.cx - mercenary.cx, player.cy - mercenary.cy) > 14) {
+    mercenary.cx = player.cx; mercenary.cy = player.cy;
+    mercenary.trail.length = 0; // clear stale trail after snap
   }
 
   const mercRange = MERC_RANGES[mercenary.upgrades.range];
