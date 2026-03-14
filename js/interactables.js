@@ -737,98 +737,203 @@ function drawMercUpgradePanel() {
   if (!mercUpgradeOpen || !mercenary.active) return;
 
   const W = canvas.width, H = canvas.height;
-  const panW = Math.round(W * 0.44), panH = Math.round(H * 0.52);
-  const panX = Math.round((W - panW) / 2), panY = Math.round((H - panH) / 2);
-  const pad = Math.round(panW * 0.04);
+  // Pixel-art panel: dimensions snap to integer pixels, NO rounded corners
+  const panW = Math.round(W * 0.42);
+  const panH = Math.round(H * 0.56);
+  const panX = Math.round((W - panW) / 2);
+  const panY = Math.round((H - panH) / 2);
+  const px1 = Math.round(Math.max(1, W * 0.0014)); // 1-2 px border
 
-  // Backdrop
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.imageSmoothingEnabled = false; // crisp pixel rendering
+
+  // ── Dim backdrop ──────────────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
   ctx.fillRect(0, 0, W, H);
 
-  // Panel bg
-  ctx.fillStyle = '#0d0a1a';
-  roundRect(ctx, panX, panY, panW, panH, 10, true, false);
-  ctx.strokeStyle = '#44aacc'; ctx.lineWidth = 2;
-  roundRect(ctx, panX, panY, panW, panH, 10, false, true);
+  // ── Panel shadow (offset solid rect) ─────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(panX + px1*4, panY + px1*4, panW, panH);
 
-  // Title
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.font = `bold ${Math.round(panH * 0.075)}px Segoe UI`;
-  ctx.fillStyle = '#44ddff'; ctx.shadowColor = '#00aadd'; ctx.shadowBlur = 12;
-  ctx.fillText('FAMILIAR UPGRADES', panX + panW/2, panY + pad * 0.6);
-  ctx.shadowBlur = 0;
+  // ── Panel body ────────────────────────────────────────────────────────────
+  ctx.fillStyle = '#0b0818';
+  ctx.fillRect(panX, panY, panW, panH);
 
-  const upgKeys = ['dmg', 'rate', 'range', 'hp'];
+  // ── Outer border: double-pixel teal ───────────────────────────────────────
+  ctx.fillStyle = '#00ccdd';
+  ctx.fillRect(panX,            panY,            panW, px1*2); // top
+  ctx.fillRect(panX,            panY+panH-px1*2, panW, px1*2); // bottom
+  ctx.fillRect(panX,            panY,            px1*2, panH); // left
+  ctx.fillRect(panX+panW-px1*2, panY,            px1*2, panH); // right
+
+  // ── Inner border: 1px dark inset ─────────────────────────────────────────
+  ctx.fillStyle = '#003344';
+  ctx.fillRect(panX+px1*2,          panY+px1*2,          panW-px1*4, px1);
+  ctx.fillRect(panX+px1*2,          panY+panH-px1*3,     panW-px1*4, px1);
+  ctx.fillRect(panX+px1*2,          panY+px1*2,          px1, panH-px1*4);
+  ctx.fillRect(panX+panW-px1*3,     panY+px1*2,          px1, panH-px1*4);
+
+  // ── Header strip ──────────────────────────────────────────────────────────
+  const hdrH = Math.round(panH * 0.17);
+  ctx.fillStyle = '#0d1a22';
+  ctx.fillRect(panX+px1*2, panY+px1*2, panW-px1*4, hdrH);
+  // header bottom divider: 2px teal + 1px dark
+  ctx.fillStyle = '#00ccdd';
+  ctx.fillRect(panX+px1*2, panY+px1*2+hdrH, panW-px1*4, px1*2);
+  ctx.fillStyle = '#003344';
+  ctx.fillRect(panX+px1*2, panY+px1*2+hdrH+px1*2, panW-px1*4, px1);
+
+  // ── Mini pixel familiar in header (12×12 pixel art, 3px per pixel) ───────
+  const sprSz = Math.round(panH * 0.026); // size of one "pixel" in the sprite
+  const sprX  = Math.round(panX + panW * 0.09);
+  const sprY  = Math.round(panY + px1*2 + hdrH/2);
+  function SP(gx, gy, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(sprX + gx*sprSz, sprY + gy*sprSz, sprSz, sprSz);
+  }
+  // horns
+  SP(-1,-4,'#aa30cc'); SP(1,-4,'#aa30cc');
+  // head
+  SP(-1,-3,'#eda0ff'); SP(0,-3,'#f0b0ff'); SP(1,-3,'#eda0ff');
+  // eyes
+  SP(-1,-2,'#f0b0ff'); SP(0,-2,'#f0b0ff'); SP(1,-2,'#f0b0ff');
+  SP(-1,-2,'#1a001a'); SP(1,-2,'#1a001a');
+  // body
+  SP(-1,-1,'#c060ee'); SP(0,-1,'#ffc0ff'); SP(1,-1,'#c060ee');
+  SP(-1, 0,'#9030cc'); SP(0, 0,'#9030cc'); SP(1, 0,'#9030cc');
+  // tail
+  SP(2,0,'#7020aa'); SP(3,0,'#9030cc');
+
+  // ── Title text ────────────────────────────────────────────────────────────
+  const titleSz = Math.round(hdrH * 0.38);
+  ctx.font = `900 ${titleSz}px "Courier New", monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // shadow
+  ctx.fillStyle = '#001122';
+  ctx.fillText('FAMILIAR UPGRADES', panX + panW/2 + px1, panY + px1*2 + hdrH/2 + px1);
+  // main
+  ctx.fillStyle = '#00eeff';
+  ctx.fillText('FAMILIAR UPGRADES', panX + panW/2, panY + px1*2 + hdrH/2);
+
+  // ── Upgrade rows ──────────────────────────────────────────────────────────
+  const upgKeys  = ['dmg', 'rate', 'range', 'hp'];
+  const upgIcons = ['⚔', '⚡', '◎', '❤'];
   const upgNames = ['DAMAGE', 'FIRE RATE', 'RANGE', 'HP'];
   const upgDescs = [
-    MERC_DMG_MULTS.map((m,i) => `${Math.round(MERC_BASE_DMG * m)} dmg`),
-    MERC_RATES.map(r => r + ' frames'),
-    MERC_RANGES.map(r => r + ' tiles'),
-    MERC_MAX_HPS.map(h => h + ' HP'),
+    MERC_DMG_MULTS.map(m => `${Math.round(MERC_BASE_DMG * m)} DMG`),
+    MERC_RATES.map(r  => `${r} FR`),
+    MERC_RANGES.map(r => `${r} TILES`),
+    MERC_MAX_HPS.map(h => `${h} HP`),
   ];
 
-  const rowH = Math.round((panH - pad * 3.5) / 4);
-  const startY = panY + Math.round(panH * 0.18);
+  const rowsTop  = panY + px1*2 + hdrH + px1*3 + Math.round(panH * 0.022);
+  const rowGap   = Math.round(panH * 0.018);
+  const rowH     = Math.round((panH - (rowsTop - panY) - Math.round(panH*0.1)) / 4 - rowGap);
+  const rowFont  = Math.round(rowH * 0.34);
 
   upgKeys.forEach((key, idx) => {
-    const level = mercenary.upgrades[key];
-    const maxLevel = MERC_UPG_COSTS[key].length; // 4 levels
-    const ry = startY + idx * (rowH + pad * 0.35);
-    const rx = panX + pad;
-    const rw = panW - pad * 2;
+    const level    = mercenary.upgrades[key];
+    const maxLevel = MERC_UPG_COSTS[key].length;
+    const ry  = rowsTop + idx * (rowH + rowGap);
+    const rx  = panX + Math.round(panW * 0.04);
+    const rw  = panW - Math.round(panW * 0.08);
+    const isMax = level >= maxLevel;
 
-    // Row bg
-    ctx.fillStyle = 'rgba(0,100,150,0.18)';
-    roundRect(ctx, rx, ry, rw, rowH, 6, true, false);
-    ctx.strokeStyle = 'rgba(0,180,220,0.25)'; ctx.lineWidth = 1;
-    roundRect(ctx, rx, ry, rw, rowH, 6, false, true);
+    // Row bg — darker stripe, pixel-sharp
+    ctx.fillStyle = idx % 2 === 0 ? '#0f1a24' : '#0a1520';
+    ctx.fillRect(rx, ry, rw, rowH);
 
-    // Number key hint
+    // Left accent bar (teal if any levels bought, dark otherwise)
+    ctx.fillStyle = level > 0 ? '#00bbcc' : '#224455';
+    ctx.fillRect(rx, ry, px1*2, rowH);
+
+    // Key hint box
+    const khW = Math.round(rowH * 0.82), khH = rowH - px1*2;
+    const khX = rx + px1*3;
+    const khY = ry + px1;
+    ctx.fillStyle = '#0d2233';
+    ctx.fillRect(khX, khY, khW, khH);
+    ctx.fillStyle = '#00aacc';
+    ctx.fillRect(khX, khY, khW, px1);
+    ctx.fillRect(khX, khY+khH-px1, khW, px1);
+    ctx.fillRect(khX, khY, px1, khH);
+    ctx.fillRect(khX+khW-px1, khY, px1, khH);
+    ctx.font = `900 ${Math.round(khH * 0.6)}px "Courier New", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#44ddff';
+    ctx.fillText(`${idx+1}`, khX + khW/2, khY + khH/2);
+
+    // Icon + name
+    const nameX = khX + khW + Math.round(rw * 0.04);
+    ctx.font = `900 ${rowFont}px "Courier New", monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = `bold ${Math.round(rowH * 0.38)}px Segoe UI`;
-    ctx.fillStyle = '#44aacc';
-    ctx.fillText(`[${idx + 1}]`, rx + pad * 0.4, ry + rowH / 2);
+    ctx.fillStyle = '#cceeff';
+    ctx.fillText(`${upgIcons[idx]} ${upgNames[idx]}`, nameX, ry + rowH/2);
 
-    // Upgrade name
-    ctx.fillStyle = '#eef4ff';
-    ctx.font = `bold ${Math.round(rowH * 0.36)}px Segoe UI`;
-    ctx.fillText(upgNames[idx], rx + pad * 1.6, ry + rowH / 2);
-
-    // Level pips
-    const pipW = Math.round(rowH * 0.22), pipH = Math.round(rowH * 0.22);
-    const pipX = rx + rw * 0.44;
+    // Level pips (pixel-art squares)
+    const pipSz  = Math.round(rowH * 0.24);
+    const pipGap = Math.round(pipSz * 0.45);
+    const pipsW  = 4 * pipSz + 3 * pipGap;
+    const pipX0  = rx + rw * 0.52 - pipsW / 2;
+    const pipY0  = ry + (rowH - pipSz) / 2;
     for (let p = 0; p < 4; p++) {
-      ctx.fillStyle = p < level ? '#00ddff' : 'rgba(255,255,255,0.12)';
-      ctx.fillRect(pipX + p * (pipW + 3), ry + (rowH - pipH) / 2, pipW, pipH);
+      const filled = p < level;
+      const px0 = Math.round(pipX0 + p * (pipSz + pipGap));
+      // pip border
+      ctx.fillStyle = filled ? '#009988' : '#223344';
+      ctx.fillRect(px0, Math.round(pipY0), pipSz, pipSz);
+      // pip fill (inset 1px)
+      ctx.fillStyle = filled ? '#00eebb' : '#0d1e28';
+      ctx.fillRect(px0+px1, Math.round(pipY0)+px1, pipSz-px1*2, pipSz-px1*2);
     }
 
-    // Current stat
-    ctx.textAlign = 'center';
-    ctx.font = `${Math.round(rowH * 0.30)}px Segoe UI`;
-    ctx.fillStyle = '#88eeff';
-    ctx.fillText(upgDescs[idx][level], rx + rw * 0.73, ry + rowH / 2);
+    // Current stat value
+    const statX = rx + rw * 0.72;
+    ctx.font = `bold ${Math.round(rowFont * 0.85)}px "Courier New", monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#55ffdd';
+    ctx.fillText(upgDescs[idx][level], statX, ry + rowH/2);
 
-    // Next level cost or MAX
-    ctx.textAlign = 'right';
-    if (level < maxLevel) {
-      const cost = MERC_UPG_COSTS[key][level];
-      const canAfford = player.money >= cost;
-      ctx.font = `bold ${Math.round(rowH * 0.33)}px Segoe UI`;
-      ctx.fillStyle = canAfford ? '#ffd700' : '#cc4444';
-      ctx.fillText(`$${cost}`, rx + rw - pad * 0.4, ry + rowH / 2);
-    } else {
-      ctx.font = `bold ${Math.round(rowH * 0.30)}px Segoe UI`;
+    // Cost / MAX
+    const costX = rx + rw - px1*4;
+    if (isMax) {
+      ctx.font = `900 ${Math.round(rowFont * 0.8)}px "Courier New", monospace`;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#44ff88';
-      ctx.fillText('MAX', rx + rw - pad * 0.4, ry + rowH / 2);
+      ctx.fillText('MAX', costX, ry + rowH/2);
+    } else {
+      const cost      = MERC_UPG_COSTS[key][level];
+      const canAfford = player.money >= cost;
+      // coin icon square
+      const coinSz = Math.round(rowH * 0.28);
+      const coinX  = Math.round(costX - coinSz);
+      const coinY  = Math.round(ry + (rowH - coinSz) / 2);
+      ctx.fillStyle = canAfford ? '#997700' : '#553333';
+      ctx.fillRect(coinX - coinSz - px1*2, coinY, coinSz, coinSz);
+      ctx.fillStyle = canAfford ? '#ffdd00' : '#aa5555';
+      ctx.fillRect(coinX - coinSz - px1*2 + px1, coinY + px1, coinSz - px1*2, coinSz - px1*2);
+      // price text
+      ctx.font = `900 ${Math.round(rowFont * 0.82)}px "Courier New", monospace`;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = canAfford ? '#ffd700' : '#cc4444';
+      ctx.fillText(`$${cost}`, coinX - coinSz - px1*4, ry + rowH/2);
     }
+
+    // Bottom separator (1px dark line)
+    ctx.fillStyle = '#112233';
+    ctx.fillRect(rx, ry + rowH, rw, px1);
   });
 
-  // Close hint
-  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.font = `${Math.round(panH * 0.045)}px Segoe UI`;
-  ctx.fillStyle = 'rgba(180,200,220,0.6)';
-  ctx.fillText('[E]  close', panX + panW / 2, panY + panH - pad * 0.5);
+  // ── Footer close hint ─────────────────────────────────────────────────────
+  const footY = panY + panH - Math.round(panH * 0.075);
+  ctx.fillStyle = '#071018';
+  ctx.fillRect(panX+px1*2, footY, panW-px1*4, panY+panH-px1*2-footY);
+  ctx.fillStyle = '#003344';
+  ctx.fillRect(panX+px1*2, footY, panW-px1*4, px1*2);
+  ctx.font = `bold ${Math.round(panH * 0.038)}px "Courier New", monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0,200,220,0.55)';
+  ctx.fillText('[E] CLOSE', panX + panW/2, footY + (panY+panH-px1*2-footY)/2);
 
   ctx.restore();
 }
