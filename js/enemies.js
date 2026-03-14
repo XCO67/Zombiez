@@ -128,7 +128,7 @@ function spawnSkeleton() {
 }
 
 function hitSkeleton(s, wkey, papMult=1) {
-  const {dmg:rawDmg,crit}=rollDamage(WEAPONS[wkey].baseDmg);
+  const {dmg:rawDmg,crit}=rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg=Math.round(rawDmg*papMult);
   s.hp-=dmg; s.hitFlash=7;
   const nc=papMult>1?`hsl(${(performance.now()/4)%360},100%,65%)`:crit?'#cc44ff':'#aaddff';
@@ -228,7 +228,7 @@ function spawnFlame(cx, cy) {
 }
 
 function hitDragon(d, wkey, papMult=1) {
-  const {dmg:rawDmg,crit} = rollDamage(WEAPONS[wkey].baseDmg);
+  const {dmg:rawDmg,crit} = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg=Math.round(rawDmg*papMult);
   d.hp -= dmg; d.hitFlash = 9;
   const nc=papMult>1?`hsl(${(performance.now()/4)%360},100%,65%)`:crit?'#cc44ff':'#ff6600';
@@ -386,7 +386,7 @@ function hitLavaZombie(z, wkey, papMult) {
     spawnDmgNum(z.cx*TW, z.cy*TH - TH*.5, 0, '#ff8800');
     return;
   }
-  const {dmg:rawDmg, crit} = rollDamage(WEAPONS[wkey].baseDmg);
+  const {dmg:rawDmg, crit} = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg = Math.round(rawDmg * papMult);
   z.hp -= dmg; z.hitFlash = 7;
   const nc = papMult > 1 ? `hsl(${(performance.now()/4)%360},100%,65%)` : crit ? '#cc44ff' : '#ff8800';
@@ -740,7 +740,7 @@ function triggerExplosion(e) {
 function hitExploder(e, wkey, papMult) {
   papMult = papMult || 1;
   if (e.exploded) return;
-  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg = Math.round(rawDmg * papMult);
   e.hp -= dmg; e.hitFlash = 7;
   spawnDmgNum(e.cx*TW, e.cy*TH - TH*.4, dmg, crit ? '#cc44ff' : '#ff6600');
@@ -881,7 +881,7 @@ function spawnPhantom() {
 function hitPhantom(ph, wkey, papMult) {
   papMult = papMult || 1;
   if (ph.invincTimer > 0) return;  // phasing — untouchable
-  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg = Math.round(rawDmg * papMult);
   ph.hp -= dmg; ph.hitFlash = 7;
   spawnDmgNum(ph.cx*TW, ph.cy*TH - TH*.4, dmg, crit ? '#cc44ff' : '#aaddff');

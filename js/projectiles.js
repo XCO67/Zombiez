@@ -12,9 +12,10 @@ function getFireRate() {
   // Each atk speed level reduces fire rate by 15%, minimum 40% of base
   return Math.max(Math.round(base * 0.4), Math.round(base * Math.pow(0.85, player.upgrades.atkSpeed)));
 }
-function rollDamage(baseDmg) {
+function rollDamage(baseDmg, scaled=true) {
   // Exponential damage scaling: each level ×1.3 (L1=×1.3, L5=×3.71)
-  const total = Math.round(baseDmg * Math.pow(1.3, player.upgrades.damage));
+  // Box weapons pass scaled=false so they always deal their listed baseDmg.
+  const total = scaled ? Math.round(baseDmg * Math.pow(1.3, player.upgrades.damage)) : baseDmg;
   const crit = Math.random() < player.upgrades.crit * 0.1;
   return { dmg: crit ? total*2 : total, crit };
 }
@@ -313,7 +314,7 @@ function fireWindWave(sx, sy, angle) {
     while (diff < -Math.PI) diff += Math.PI*2;
     if (Math.abs(diff) > WAVE_HALFANG) return;
 
-    const {dmg, crit} = rollDamage(WEAPONS.thundergun.baseDmg);
+    const {dmg, crit} = rollDamage(WEAPONS.thundergun.baseDmg, false);
     z.hp -= dmg; z.hitFlash = 10;
     spawnDmgNum(z.cx*TW, z.cy*TH - TH*.35, dmg, crit ? '#cc44ff' : '#60e8ff');
     // Strong knockback away from player
@@ -336,7 +337,7 @@ function fireWindWave(sx, sy, angle) {
     while(diff> Math.PI) diff-=Math.PI*2;
     while(diff<-Math.PI) diff+=Math.PI*2;
     if(Math.abs(diff)>WAVE_HALFANG) return;
-    const {dmg,crit}=rollDamage(WEAPONS.thundergun.baseDmg);
+    const {dmg,crit}=rollDamage(WEAPONS.thundergun.baseDmg,false);
     d.hp-=dmg; d.hitFlash=9;
     spawnDmgNum(d.cx*TW,d.cy*TH-TW*.7,dmg,crit?'#cc44ff':'#60e8ff');
     const nd=dist||1; d.vx=(dx/nd)*.7; d.vy=(dy/nd)*.7;
@@ -355,7 +356,7 @@ function fireWindWave(sx, sy, angle) {
     const zAng=Math.atan2(dy,dx); let diff=zAng-angle;
     while(diff> Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
     if(Math.abs(diff)>WAVE_HALFANG) return;
-    const {dmg,crit}=rollDamage(WEAPONS.thundergun.baseDmg);
+    const {dmg,crit}=rollDamage(WEAPONS.thundergun.baseDmg,false);
     s.hp-=dmg; s.hitFlash=7;
     spawnDmgNum(s.cx*TW,s.cy*TH-TH*.4,dmg,crit?'#cc44ff':'#60e8ff');
     const nd2=dist||1; s.vx=(dx/nd2)*.9; s.vy=(dy/nd2)*.9;
@@ -435,7 +436,7 @@ function fireWindWave(sx, sy, angle) {
 
 function hitZombie(z, wkey, px, py, papMult=1) {
   const w=WEAPONS[wkey];
-  const {dmg:rawDmg,crit}=rollDamage(w.baseDmg);
+  const {dmg:rawDmg,crit}=rollDamage(w.baseDmg, !BOX_POOL.includes(wkey));
   const dmg = Math.round(rawDmg * papMult);
   z.hp-=dmg; z.hitFlash=7;
   const numColor = papMult>1 ? `hsl(${(performance.now()/4)%360},100%,65%)` : (crit?'#cc44ff':'#ff4444');

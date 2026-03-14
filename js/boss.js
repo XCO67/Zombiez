@@ -149,7 +149,7 @@ function spawnBossDemon() {
 }
 
 function hitBoss(b, wkey, papMult = 1) {
-  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   // Damage cap: bosses have thick armour — no single hit does more than this
   const cap = 500 + game.round * 20;
   const dmg = Math.min(Math.round(rawDmg * papMult), cap);
@@ -515,7 +515,7 @@ function spawnSpiderBoss() {
 }
 
 function hitSpiderBoss(b, wkey, papMult = 1) {
-  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const cap = 700 + game.round * 25;
   const dmg = Math.min(Math.round(rawDmg * papMult), cap);
   b.hp -= dmg;
@@ -552,7 +552,7 @@ function hitSpiderBoss(b, wkey, papMult = 1) {
 }
 
 function hitSpiderMinion(m, wkey, papMult = 1) {
-  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg);
+  const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   const dmg = Math.round(rawDmg * papMult);
   m.hp -= dmg;
   m.hitFlash = 7;
