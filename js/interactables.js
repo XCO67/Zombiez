@@ -816,14 +816,13 @@ function drawMercUpgradePanel() {
   ctx.fillText('FAMILIAR UPGRADES', panX + panW/2, panY + px1*2 + hdrH/2);
 
   // ── Upgrade rows ──────────────────────────────────────────────────────────
-  const upgKeys  = ['dmg', 'rate', 'range', 'hp'];
-  const upgIcons = ['⚔', '⚡', '◎', '❤'];
-  const upgNames = ['DAMAGE', 'FIRE RATE', 'RANGE', 'HP'];
+  const upgKeys  = ['dmg', 'rate', 'range'];
+  const upgIcons = ['⚔', '⚡', '◎'];
+  const upgNames = ['DAMAGE', 'FIRE RATE', 'RANGE'];
   const upgDescs = [
     MERC_DMG_MULTS.map(m => `${Math.round(MERC_BASE_DMG * m)} DMG`),
     MERC_RATES.map(r  => `${r} FR`),
     MERC_RANGES.map(r => `${r} TILES`),
-    MERC_MAX_HPS.map(h => `${h} HP`),
   ];
 
   const rowsTop  = panY + px1*2 + hdrH + px1*3 + Math.round(panH * 0.022);

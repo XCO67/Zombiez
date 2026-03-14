@@ -55,31 +55,32 @@ document.addEventListener('keydown', e => {
     restartGame();
   }
   if (e.key.toLowerCase() === 'm' && game.state === 'game_over') goToMenu();
-  if (e.key.toLowerCase() === KEYBINDS.swapWeapon && game.state === 'playing' && !shopOpen) swapWeapon();
+  if (e.key.toLowerCase() === KEYBINDS.swapWeapon && (game.state === 'playing' || game.state === 'wave_clear') && !shopOpen) swapWeapon();
   if (e.key.toLowerCase() === KEYBINDS.infoCard && gameStarted && (game.state === 'playing' || game.state === 'wave_clear'))
     weaponInfoOpen = !weaponInfoOpen;
+  const _inPlay = (game.state === 'playing' || game.state === 'wave_clear') && !player.dead && !player.downed;
   // Dash ability
-  if (e.key.toLowerCase() === KEYBINDS.dash && game.state === 'playing' && !player.dead && !player.downed
+  if (e.key.toLowerCase() === KEYBINDS.dash && _inPlay
       && player.dashCooldown <= 0 && player.dashTimer <= 0) {
     player.dashTimer    = DASH_FRAMES;
     player.dashCooldown = DASH_COOLDOWN;
     player.dashTrail    = [];
   }
   // Fire Ring ability
-  if (e.key.toLowerCase() === KEYBINDS.fireRing && game.state === 'playing' && !player.dead && !player.downed
+  if (e.key.toLowerCase() === KEYBINDS.fireRing && _inPlay
       && player.fireCooldown <= 0 && player.fireRingTimer <= 0) {
     player.fireRingTimer = FIRE_RING_DURATION;
     player.fireCooldown  = FIRE_RING_COOLDOWN;
     player.fireRingAngle = 0;
   }
   // Barrier ability
-  if (e.key.toLowerCase() === KEYBINDS.barrier && game.state === 'playing' && !player.dead && !player.downed
+  if (e.key.toLowerCase() === KEYBINDS.barrier && _inPlay
       && player.barrierCooldown <= 0 && player.barrierTimer <= 0) {
     player.barrierTimer    = BARRIER_DURATION;
     player.barrierCooldown = BARRIER_COOLDOWN;
   }
   // Speed Boost ability
-  if (e.key.toLowerCase() === KEYBINDS.speedBoost && game.state === 'playing' && !player.dead && !player.downed
+  if (e.key.toLowerCase() === KEYBINDS.speedBoost && _inPlay
       && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
     player.speedBoostTimer    = SPEED_BOOST_DURATION;
     player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
@@ -194,7 +195,7 @@ document.addEventListener('keydown', e => {
   }
   // Buy merc upgrades while panel open
   if (mercUpgradeOpen) {
-    const upgKeys = ['dmg', 'rate', 'range', 'hp'];
+    const upgKeys = ['dmg', 'rate', 'range'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < upgKeys.length) {
       const key = upgKeys[idx];
@@ -205,13 +206,6 @@ document.addEventListener('keydown', e => {
         if (player.money >= cost) {
           player.money -= cost;
           mercenary.upgrades[key]++;
-          // Apply HP upgrade immediately — increase maxHp and heal the difference
-          if (key === 'hp') {
-            const newMax = MERC_MAX_HPS[mercenary.upgrades.hp];
-            const diff = newMax - mercenary.maxHp;
-            mercenary.maxHp = newMax;
-            mercenary.hp = Math.min(mercenary.hp + diff, newMax);
-          }
         }
       }
     }
