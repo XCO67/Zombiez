@@ -92,6 +92,7 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === KEYBINDS.interact) {
     if (shopOpen) { shopOpen=false; return; }
     if (perkShopOpen) { perkShopOpen=false; return; }
+    if (mercUpgradeOpen) { mercUpgradeOpen=false; return; }
     if (pistolUpgradeOpen) {
       // If upgrade is possible, buy it; always close the panel
       if (player.spreadOrbs > 0 && player.pistolSpread < 2 && player.money >= PISTOL_UPGRADE_COST) {
