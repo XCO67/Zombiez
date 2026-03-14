@@ -679,53 +679,176 @@ const MERC_CHEST_RADIUS = 2.0;
 
 function drawMercenaryVendor() {
   const px = MERC_CHEST_POS.cx * TW, py = MERC_CHEST_POS.cy * TH;
-  const sz = Math.min(TW, TH) * 0.58, tt = _tt;
-  const pulse = Math.sin(tt * 2.2) * 0.5 + 0.5;
-
-  // Outer glow — golden military theme
-  const gg = ctx.createRadialGradient(px, py, sz * 0.2, px, py, sz * 2.8);
-  gg.addColorStop(0, `rgba(255,160,40,${0.20 + pulse * 0.12})`);
-  gg.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, sz * 2.8, 0, Math.PI * 2); ctx.fill();
+  const sz = Math.min(TW, TH) * 0.62, tt = _tt;
+  const pulse  = Math.sin(tt * 2.4) * 0.5 + 0.5;
+  const pulse2 = Math.sin(tt * 1.1 + 1.2) * 0.5 + 0.5;
+  const spin   = tt * 1.4; // for orbiting particles
 
   ctx.save();
-  ctx.shadowColor = '#cc8820'; ctx.shadowBlur = 12 + pulse * 8;
 
-  // Body
-  ctx.fillStyle = '#1a1000';
-  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, true, false);
-  ctx.strokeStyle = `rgba(220,150,40,${0.55 + pulse * 0.35})`; ctx.lineWidth = 2;
-  roundRect(ctx, px - sz, py - sz * 0.7, sz * 2, sz * 1.4, sz * 0.12, false, true);
+  // ── Wide ambient ground glow — purple + magenta ──────────────────────────
+  const ag = ctx.createRadialGradient(px, py + sz * 0.2, 0, px, py, sz * 3.6);
+  ag.addColorStop(0,   `rgba(180,60,255,${0.28 + pulse * 0.14})`);
+  ag.addColorStop(0.4, `rgba(120,20,200,${0.14 + pulse2 * 0.08})`);
+  ag.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = ag;
+  ctx.beginPath(); ctx.arc(px, py, sz * 3.6, 0, Math.PI * 2); ctx.fill();
 
-  // Knight icon
+  // ── Ground shimmer ring ───────────────────────────────────────────────────
+  ctx.save();
+  ctx.globalAlpha = 0.18 + pulse * 0.12;
+  ctx.strokeStyle = '#cc44ff';
+  ctx.lineWidth = sz * 0.08;
+  ctx.beginPath(); ctx.ellipse(px, py + sz * 0.55, sz * 1.7, sz * 0.38, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.08 + pulse2 * 0.06;
+  ctx.lineWidth = sz * 0.04;
+  ctx.strokeStyle = '#ff88ff';
+  ctx.beginPath(); ctx.ellipse(px, py + sz * 0.55, sz * 2.1, sz * 0.46, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Orbiting rune particles ───────────────────────────────────────────────
+  for (let i = 0; i < 5; i++) {
+    const a  = spin + (i / 5) * Math.PI * 2;
+    const r  = sz * 1.35 + Math.sin(tt * 3 + i * 1.3) * sz * 0.18;
+    const ox = px + Math.cos(a) * r;
+    const oy = py + Math.sin(a) * r * 0.45;
+    const pAlpha = 0.55 + Math.sin(tt * 4 + i * 1.7) * 0.3;
+    const pSize  = sz * (0.14 + Math.sin(tt * 5 + i) * 0.06);
+    const rg = ctx.createRadialGradient(ox, oy, 0, ox, oy, pSize * 2.2);
+    rg.addColorStop(0, `rgba(220,120,255,${pAlpha})`);
+    rg.addColorStop(1, 'rgba(100,0,180,0)');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.arc(ox, oy, pSize * 2.2, 0, Math.PI * 2); ctx.fill();
+    // bright core
+    ctx.fillStyle = `rgba(255,200,255,${pAlpha * 0.9})`;
+    ctx.beginPath(); ctx.arc(ox, oy, pSize * 0.45, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── Chest shadow ──────────────────────────────────────────────────────────
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(px, py + sz * 0.75, sz * 1.05, sz * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── Chest body — deep arcane wood ─────────────────────────────────────────
+  ctx.shadowColor = '#9900ff'; ctx.shadowBlur = 18 + pulse * 14;
+
+  // Main body gradient
+  const bg = ctx.createLinearGradient(px - sz, py - sz * 0.62, px - sz, py + sz * 0.62);
+  bg.addColorStop(0,   '#2a0a3e');
+  bg.addColorStop(0.35,'#1a0828');
+  bg.addColorStop(1,   '#0d0416');
+  ctx.fillStyle = bg;
+  roundRect(ctx, px - sz, py - sz * 0.62, sz * 2, sz * 1.24, sz * 0.14, true, false);
+
+  // Lid — lighter top portion
+  const lidG = ctx.createLinearGradient(px - sz, py - sz * 0.62, px - sz, py - sz * 0.05);
+  lidG.addColorStop(0, '#3d1260');
+  lidG.addColorStop(1, '#220840');
+  ctx.fillStyle = lidG;
+  roundRect(ctx, px - sz, py - sz * 0.62, sz * 2, sz * 0.57, sz * 0.14, true, false);
+
+  // Lid/body divider stripe — glowing purple
   ctx.shadowBlur = 0;
-  ctx.font = `${Math.round(sz * 0.9)}px Segoe UI`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('⚔', px, py - sz * 0.06);
+  const divG = ctx.createLinearGradient(px - sz, 0, px + sz, 0);
+  divG.addColorStop(0,   'rgba(160,40,255,0)');
+  divG.addColorStop(0.2, `rgba(200,80,255,${0.7 + pulse * 0.3})`);
+  divG.addColorStop(0.5, `rgba(240,120,255,${0.9 + pulse * 0.1})`);
+  divG.addColorStop(0.8, `rgba(200,80,255,${0.7 + pulse * 0.3})`);
+  divG.addColorStop(1,   'rgba(160,40,255,0)');
+  ctx.fillStyle = divG;
+  ctx.fillRect(px - sz, py - sz * 0.08, sz * 2, sz * 0.09);
 
-  // Label
-  ctx.font = `bold ${Math.round(sz * 0.22)}px Segoe UI`;
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = `rgba(255,180,60,${0.75 + pulse * 0.2})`;
-  ctx.fillText('MERCENARY', px, py + sz * 0.72);
+  // ── Border glow ───────────────────────────────────────────────────────────
+  ctx.shadowColor = '#cc44ff'; ctx.shadowBlur = 10 + pulse * 8;
+  ctx.strokeStyle = `rgba(${Math.round(180 + pulse * 60)},60,255,${0.6 + pulse * 0.35})`;
+  ctx.lineWidth = 2;
+  roundRect(ctx, px - sz, py - sz * 0.62, sz * 2, sz * 1.24, sz * 0.14, false, true);
+
+  // ── Corner rivets ─────────────────────────────────────────────────────────
+  ctx.shadowBlur = 0;
+  const rivetPositions = [
+    [px - sz * 0.78, py - sz * 0.48],
+    [px + sz * 0.78, py - sz * 0.48],
+    [px - sz * 0.78, py + sz * 0.42],
+    [px + sz * 0.78, py + sz * 0.42],
+  ];
+  rivetPositions.forEach(([rx, ry]) => {
+    ctx.fillStyle = '#5500aa';
+    ctx.beginPath(); ctx.arc(rx, ry, sz * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(200,120,255,${0.8 + pulse * 0.2})`;
+    ctx.beginPath(); ctx.arc(rx - sz * 0.02, ry - sz * 0.02, sz * 0.04, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // ── Central arcane lock ───────────────────────────────────────────────────
+  // Lock body — glowing gem
+  const lockG = ctx.createRadialGradient(px, py + sz * 0.05, 0, px, py + sz * 0.05, sz * 0.32);
+  lockG.addColorStop(0,   `rgba(255,180,255,${0.9 + pulse * 0.1})`);
+  lockG.addColorStop(0.3, `rgba(200,60,255,${0.85})`);
+  lockG.addColorStop(0.7, `rgba(100,0,180,0.8)`);
+  lockG.addColorStop(1,   'rgba(50,0,100,0.5)');
+  ctx.shadowColor = '#ff88ff'; ctx.shadowBlur = 16 + pulse * 12;
+  ctx.fillStyle = lockG;
+  // Diamond shape for the gem
+  ctx.beginPath();
+  ctx.moveTo(px,           py - sz * 0.22);
+  ctx.lineTo(px + sz * 0.28, py + sz * 0.02);
+  ctx.lineTo(px,           py + sz * 0.28);
+  ctx.lineTo(px - sz * 0.28, py + sz * 0.02);
+  ctx.closePath();
+  ctx.fill();
+
+  // Gem inner highlight
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = `rgba(255,220,255,${0.5 + pulse * 0.35})`;
+  ctx.beginPath();
+  ctx.moveTo(px,           py - sz * 0.14);
+  ctx.lineTo(px + sz * 0.12, py);
+  ctx.lineTo(px,           py + sz * 0.05);
+  ctx.lineTo(px - sz * 0.12, py);
+  ctx.closePath();
+  ctx.fill();
+
+  // Gem border
+  ctx.strokeStyle = `rgba(255,150,255,${0.7 + pulse * 0.3})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(px,           py - sz * 0.22);
+  ctx.lineTo(px + sz * 0.28, py + sz * 0.02);
+  ctx.lineTo(px,           py + sz * 0.28);
+  ctx.lineTo(px - sz * 0.28, py + sz * 0.02);
+  ctx.closePath();
+  ctx.stroke();
+
+  // ── Label ─────────────────────────────────────────────────────────────────
+  ctx.shadowColor = '#cc00ff'; ctx.shadowBlur = 10 + pulse * 6;
+  ctx.font = `bold ${Math.round(sz * 0.21)}px 'Press Start 2P', monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = `rgba(220,140,255,${0.85 + pulse2 * 0.15})`;
+  ctx.fillText('FAMILIAR', px, py + sz * 0.72);
 
   ctx.restore();
 
-  // [E] prompt when near
+  // ── [E] prompt ────────────────────────────────────────────────────────────
   const dist = Math.hypot(player.cx - MERC_CHEST_POS.cx, player.cy - MERC_CHEST_POS.cy);
   if (dist < MERC_CHEST_RADIUS) {
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `bold ${Math.round(TH * 0.25)}px Segoe UI`;
     let label, col;
     if (mercenary.active) {
-      label = '[E] Upgrade Familiar'; col = '#44ddff';
+      label = '[E] Upgrade Familiar'; col = '#dd88ff';
     } else if (player.money >= MERC_COST) {
-      label = `[E] Hire Mercenary  $${MERC_COST}`; col = '#ffcc44';
+      label = `[E] Hire Familiar  $${MERC_COST}`; col = '#cc88ff';
     } else {
-      label = `[E] Hire Mercenary  $${MERC_COST}  — need more gold`; col = '#ff5555';
+      label = `[E] Hire Familiar  $${MERC_COST}  — need more gold`; col = '#ff5566';
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillText(label, px + 1, py - sz * 1.35 + 1);
-    ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.35);
+    ctx.shadowColor = '#660099'; ctx.shadowBlur = 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillText(label, px + 1, py - sz * 1.28 + 1);
+    ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.28);
     ctx.restore();
   }
 }
