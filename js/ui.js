@@ -18,19 +18,92 @@ function drawClickIndicator() {
   ctx.restore();
 }
 
-// ─── CUSTOM CURSOR (crosshair) ────────────────────────────────────────────────
+// ─── CUSTOM CURSOR (medieval crosshair) ───────────────────────────────────────
 function drawCursor() {
-  const x=mouse.x,y=mouse.y,arm=10,gap=4,thick=1.5;
-  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.9)';ctx.lineWidth=thick;ctx.lineCap='round';
-  ctx.shadowColor='rgba(100,200,255,0.8)';ctx.shadowBlur=4;
+  const x = Math.round(mouse.x), y = Math.round(mouse.y);
+  const pulse = Math.sin(_tt * 4.5) * 0.12 + 0.88;
+  const arm = 14, gap = 5;
+
+  ctx.save();
+
+  // ── Shadow pass (dark outline makes it visible on all backgrounds) ──────────
+  ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'square';
   ctx.beginPath();
-  ctx.moveTo(x-arm-gap,y);ctx.lineTo(x-gap,y);
-  ctx.moveTo(x+gap,y);ctx.lineTo(x+arm+gap,y);
-  ctx.moveTo(x,y-arm-gap);ctx.lineTo(x,y-gap);
-  ctx.moveTo(x,y+gap);ctx.lineTo(x,y+arm+gap);
+  ctx.moveTo(x, y - gap);    ctx.lineTo(x, y - arm);
+  ctx.moveTo(x, y + gap);    ctx.lineTo(x, y + arm);
+  ctx.moveTo(x - gap, y);    ctx.lineTo(x - arm, y);
+  ctx.moveTo(x + gap, y);    ctx.lineTo(x + arm, y);
   ctx.stroke();
-  ctx.strokeStyle='rgba(255,80,80,0.7)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.stroke();
+
+  // ── Gold arms ───────────────────────────────────────────────────────────────
+  ctx.strokeStyle = `rgba(200,155,38,${pulse})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - gap);    ctx.lineTo(x, y - arm);
+  ctx.moveTo(x, y + gap);    ctx.lineTo(x, y + arm);
+  ctx.moveTo(x - gap, y);    ctx.lineTo(x - arm, y);
+  ctx.moveTo(x + gap, y);    ctx.lineTo(x + arm, y);
+  ctx.stroke();
+
+  // ── Arrowhead tips (N/S/E/W) ────────────────────────────────────────────────
+  function tip(cx, cy, nx, ny) {
+    const px = -ny, py = nx, L = 5, W = 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.beginPath();
+    ctx.moveTo(cx + nx*L,    cy + ny*L);
+    ctx.lineTo(cx + px*(W+1), cy + py*(W+1));
+    ctx.lineTo(cx - px*(W+1), cy - py*(W+1));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(255,224,70,${pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(cx + nx*L,    cy + ny*L);
+    ctx.lineTo(cx + px*W,    cy + py*W);
+    ctx.lineTo(cx - px*W,    cy - py*W);
+    ctx.closePath(); ctx.fill();
+  }
+  tip(x, y - arm,  0, -1);
+  tip(x, y + arm,  0,  1);
+  tip(x - arm, y, -1,  0);
+  tip(x + arm, y,  1,  0);
+
+  // ── Inner ring ───────────────────────────────────────────────────────────────
+  ctx.strokeStyle = `rgba(200,155,38,${pulse * 0.5})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, gap - 1, 0, Math.PI * 2); ctx.stroke();
+
+  // ── Corner heraldic brackets ─────────────────────────────────────────────────
+  const cd = 9, cl = 4;
+  ctx.strokeStyle = `rgba(200,155,38,${pulse * 0.55})`;
+  ctx.lineWidth = 1.5;
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx, sy]) => {
+    ctx.beginPath();
+    ctx.moveTo(x + sx*cd,      y + sy*(cd - cl));
+    ctx.lineTo(x + sx*cd,      y + sy*cd);
+    ctx.lineTo(x + sx*(cd-cl), y + sy*cd);
+    ctx.stroke();
+  });
+
+  // ── Center diamond ───────────────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.beginPath();
+  ctx.moveTo(x,     y - 4);
+  ctx.lineTo(x + 4, y);
+  ctx.lineTo(x,     y + 4);
+  ctx.lineTo(x - 4, y);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = `rgba(220,30,30,${pulse})`;
+  ctx.beginPath();
+  ctx.moveTo(x,     y - 3);
+  ctx.lineTo(x + 3, y);
+  ctx.lineTo(x,     y + 3);
+  ctx.lineTo(x - 3, y);
+  ctx.closePath(); ctx.fill();
+  // bright glint
+  ctx.fillStyle = `rgba(255,140,140,${pulse})`;
+  ctx.fillRect(x - 1, y - 1, 2, 2);
+
   ctx.restore();
 }
 

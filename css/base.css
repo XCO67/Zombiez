@@ -1,4 +1,4 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { overflow: hidden; background: #0c0b12; cursor: none; }
     #menu, #menu * { cursor: default; }
-    canvas { display: block; }
+    canvas { display: block; cursor: none; }
