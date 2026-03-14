@@ -44,7 +44,7 @@ document.addEventListener('keydown', e => {
     if (game.state === 'playing' || game.state === 'wave_clear') {
       game._prevState = game.state;
       game.state = 'paused';
-      shopOpen = false; perkShopOpen = false; pistolUpgradeOpen = false; weaponInfoOpen = false;
+      shopOpen = false; perkShopOpen = false; pistolUpgradeOpen = false; weaponInfoOpen = false; mercUpgradeOpen = false;
       openPauseMenu();
       return;
     }
@@ -171,10 +171,15 @@ document.addEventListener('keydown', e => {
       }
       // Mercenary chest
       const distMerc = Math.hypot(player.cx - MERC_CHEST_POS.cx, player.cy - MERC_CHEST_POS.cy);
-      if (distMerc < MERC_CHEST_RADIUS && !player.upgrades.mercenary && player.money >= MERC_COST) {
-        player.money -= MERC_COST;
-        player.upgrades.mercenary = 1;
-        return;
+      if (distMerc < MERC_CHEST_RADIUS) {
+        if (mercenary.active) {
+          mercUpgradeOpen = !mercUpgradeOpen;
+          return;
+        } else if (!player.upgrades.mercenary && player.money >= MERC_COST) {
+          player.money -= MERC_COST;
+          player.upgrades.mercenary = 1;
+          return;
+        }
       }
       // Check doors
       for (const door of DOORS) {
@@ -186,6 +191,31 @@ document.addEventListener('keydown', e => {
         }
       }
     }
+  }
+  // Buy merc upgrades while panel open
+  if (mercUpgradeOpen) {
+    const upgKeys = ['dmg', 'rate', 'range', 'hp'];
+    const idx = parseInt(e.key) - 1;
+    if (idx >= 0 && idx < upgKeys.length) {
+      const key = upgKeys[idx];
+      const level = mercenary.upgrades[key];
+      const maxLevel = MERC_UPG_COSTS[key].length;
+      if (level < maxLevel) {
+        const cost = MERC_UPG_COSTS[key][level];
+        if (player.money >= cost) {
+          player.money -= cost;
+          mercenary.upgrades[key]++;
+          // Apply HP upgrade immediately — increase maxHp and heal the difference
+          if (key === 'hp') {
+            const newMax = MERC_MAX_HPS[mercenary.upgrades.hp];
+            const diff = newMax - mercenary.maxHp;
+            mercenary.maxHp = newMax;
+            mercenary.hp = Math.min(mercenary.hp + diff, newMax);
+          }
+        }
+      }
+    }
+    return;
   }
   // Buy items while shop open
   if (shopOpen) {

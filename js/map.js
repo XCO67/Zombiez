@@ -136,8 +136,11 @@ function applyMapData(data) {
   }
 }
 
-// Load active map on startup
-(async function loadActiveMap() {
+// Load active map on startup.
+// setTimeout(0) defers to the next event-loop tick, AFTER all <script> tags have
+// executed — this ensures shop.js / interactables.js have defined SHOP_POS,
+// MERC_CHEST_POS, etc. before applyMapData tries to update them.
+setTimeout(async function loadActiveMap() {
   try {
     const id = getActiveMapId();
     if (id === 'default') return; // use buildMap() result
@@ -145,4 +148,4 @@ function applyMapData(data) {
     if (m) { applyMapData(m); console.log('[Dead Surge] Loaded map:', m.name); }
     else { setActiveMapId('default'); }
   } catch(e) { console.warn('[Dead Surge] Map load failed:', e); }
-})();
+}, 0);

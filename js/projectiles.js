@@ -19,6 +19,65 @@ function rollDamage(baseDmg) {
   return { dmg: crit ? total*2 : total, crit };
 }
 
+// ─── MERC BULLETS — independent teal projectiles, bypass player damage scaling ─
+const mercBullets = [];
+
+function spawnMercBullet(sx, sy, angle, dmg) {
+  const spd = WEAPONS['pistol'].speed;
+  mercBullets.push({ x: sx, y: sy, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd, trail: [], life: 90, dmg });
+}
+
+function updateMercBullets() {
+  const HIT_R = TW * 0.4;
+  const isWall = (x,y) => { const r=y/TH|0,c=x/TW|0; return r<0||r>=MAP_H||c<0||c>=MAP_W||MAP[r]?.[c]===T.WALL||MAP[r]?.[c]===T.PILLAR; };
+  const allEnemies = [
+    ...ZOMBIES, ...SKELETONS, ...DRAGONS, ...LAVA_ZOMBIES,
+    ...EXPLODERS, ...PHANTOMS, ...BOSS_DEMONS, ...SPIDER_BOSSES, ...SPIDER_MINIONS,
+  ];
+  for (let i = mercBullets.length - 1; i >= 0; i--) {
+    const p = mercBullets[i];
+    p.trail.unshift({x:p.x, y:p.y}); if (p.trail.length > 6) p.trail.pop();
+    p.x += p.vx; p.y += p.vy; p.life--;
+    if (p.life <= 0 || isWall(p.x, p.y)) { mercBullets.splice(i, 1); continue; }
+    let hit = false;
+    for (const en of allEnemies) {
+      if (en.dead) continue;
+      const hitR = BOSS_DEMONS.includes(en) ? TW*1.6 : SPIDER_BOSSES.includes(en) ? TW*2.0 : HIT_R;
+      if (Math.hypot(p.x - en.cx*TW, p.y - en.cy*TH) < hitR) {
+        en.hp -= p.dmg; en.hitFlash = 7;
+        spawnDmgNum(en.cx*TW, en.cy*TH - TH*0.35, p.dmg, '#00eeff');
+        if (en.hp <= 0) {
+          en.dead = true; en.deathTimer = 25; game.kills++; game.score += 10;
+          const drop = 5 + Math.floor(Math.random() * game.round * 3 + 10);
+          spawnCoin(en.cx + (.5-Math.random())*.4, en.cy + (.5-Math.random())*.4, drop);
+          spawnPerk(en.cx, en.cy);
+        }
+        mercBullets.splice(i, 1); hit = true; break;
+      }
+    }
+    if (hit) continue;
+  }
+}
+
+function drawMercBullets() {
+  mercBullets.forEach(p => {
+    ctx.save();
+    p.trail.forEach((pos, i) => {
+      ctx.globalAlpha = (1 - i / p.trail.length) * 0.45;
+      ctx.fillStyle = '#00ccff';
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, TW*.07, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, TW*.24);
+    g.addColorStop(0, 'rgba(180,255,255,1)');
+    g.addColorStop(0.4, 'rgba(0,200,255,0.85)');
+    g.addColorStop(1, 'rgba(0,80,180,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, TW*.24, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, TW*.065, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
 function spawnBullet(sx,sy,angle,wkey) {
   const w=WEAPONS[wkey];
   const papped = player.packedWeapons.has(wkey);

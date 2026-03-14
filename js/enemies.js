@@ -1008,26 +1008,36 @@ function drawPhantom(ph) {
 // ─── MERCENARY ────────────────────────────────────────────────────────────────
 const MERC_COST      = 5000;
 const MERC_SPEED     = 0.030;
-const MERC_RANGE     = 9;
-const MERC_HP        = 300;
-const MERC_FIRE_RATE = 25;
+const MERC_BASE_DMG  = 8;
+const MERC_DMG_MULTS = [1, 1.5, 2.5, 4.0, 6.8];
+const MERC_RATES     = [70, 52, 38, 28, 20];  // frames between shots (per upgrade level)
+const MERC_RANGES    = [5, 6.5, 8, 10, 12];   // tile range (per upgrade level)
+const MERC_MAX_HPS   = [80, 160, 280, 450, 700];
+const MERC_UPG_COSTS = {
+  dmg:   [500, 1000, 1800, 2800],
+  rate:  [400,  800, 1400, 2200],
+  range: [300,  600, 1000, 1600],
+  hp:    [500, 1000, 1800, 2800],
+};
 
 const mercenary = {
   active: false,
   cx: PLAYER_START.cx, cy: PLAYER_START.cy,
-  hp: MERC_HP, maxHp: MERC_HP,
+  hp: MERC_MAX_HPS[0], maxHp: MERC_MAX_HPS[0],
   frame: 0, ft: 0,
   hitFlash: 0,
   shootTimer: 0,
+  upgrades: { dmg: 0, rate: 0, range: 0, hp: 0 },
 };
 
 function resetMercenary() {
   mercenary.active = false;
   mercenary.cx = PLAYER_START.cx;
   mercenary.cy = PLAYER_START.cy;
-  mercenary.hp = MERC_HP;
+  mercenary.hp = MERC_MAX_HPS[0]; mercenary.maxHp = MERC_MAX_HPS[0];
   mercenary.frame = 0; mercenary.ft = 0;
   mercenary.hitFlash = 0; mercenary.shootTimer = 0;
+  mercenary.upgrades = { dmg: 0, rate: 0, range: 0, hp: 0 };
 }
 
 function updateMercenary() {
@@ -1037,7 +1047,8 @@ function updateMercenary() {
     mercenary.active = true;
     mercenary.cx = player.cx;
     mercenary.cy = player.cy;
-    mercenary.hp = MERC_HP;
+    const maxHp = MERC_MAX_HPS[mercenary.upgrades.hp];
+    mercenary.hp = maxHp; mercenary.maxHp = maxHp;
   }
 
   const dx = player.cx - mercenary.cx;
@@ -1051,7 +1062,8 @@ function updateMercenary() {
     if (!isBlocked(mercenary.cx, ny)) mercenary.cy = ny;
   }
 
-  let nearestDist = MERC_RANGE;
+  const mercRange = MERC_RANGES[mercenary.upgrades.range];
+  let nearestDist = mercRange;
   let nearestTarget = null;
   const allEnemies = [
     ...ZOMBIES, ...SKELETONS, ...DRAGONS,
@@ -1070,8 +1082,9 @@ function updateMercenary() {
       nearestTarget.cy - mercenary.cy,
       nearestTarget.cx - mercenary.cx
     );
-    spawnBullet(mercenary.cx * TW, mercenary.cy * TH, angle, 'pistol');
-    mercenary.shootTimer = MERC_FIRE_RATE;
+    const dmg = Math.round(MERC_BASE_DMG * MERC_DMG_MULTS[mercenary.upgrades.dmg]);
+    spawnMercBullet(mercenary.cx * TW, mercenary.cy * TH, angle, dmg);
+    mercenary.shootTimer = MERC_RATES[mercenary.upgrades.rate];
   }
 
   mercenary.ft += 1 / 60;

@@ -718,7 +718,7 @@ function drawMercenaryVendor() {
     ctx.font = `${Math.round(TH * 0.26)}px Segoe UI`;
     let label, col;
     if (mercenary.active) {
-      label = 'Mercenary active!'; col = '#88ccff';
+      label = '[E] Upgrade Familiar'; col = '#44ddff';
     } else if (player.money >= MERC_COST) {
       label = `[E] Hire Mercenary  $${MERC_COST}`; col = '#ffcc44';
     } else {
@@ -728,4 +728,107 @@ function drawMercenaryVendor() {
     ctx.fillStyle = col; ctx.fillText(label, px, py - sz * 1.35);
     ctx.restore();
   }
+}
+
+// ─── MERCENARY UPGRADE PANEL ──────────────────────────────────────────────────
+let mercUpgradeOpen = false;
+
+function drawMercUpgradePanel() {
+  if (!mercUpgradeOpen || !mercenary.active) return;
+
+  const W = canvas.width, H = canvas.height;
+  const panW = Math.round(W * 0.44), panH = Math.round(H * 0.52);
+  const panX = Math.round((W - panW) / 2), panY = Math.round((H - panH) / 2);
+  const pad = Math.round(panW * 0.04);
+
+  // Backdrop
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Panel bg
+  ctx.fillStyle = '#0d0a1a';
+  roundRect(ctx, panX, panY, panW, panH, 10, true, false);
+  ctx.strokeStyle = '#44aacc'; ctx.lineWidth = 2;
+  roundRect(ctx, panX, panY, panW, panH, 10, false, true);
+
+  // Title
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = `bold ${Math.round(panH * 0.075)}px Segoe UI`;
+  ctx.fillStyle = '#44ddff'; ctx.shadowColor = '#00aadd'; ctx.shadowBlur = 12;
+  ctx.fillText('FAMILIAR UPGRADES', panX + panW/2, panY + pad * 0.6);
+  ctx.shadowBlur = 0;
+
+  const upgKeys = ['dmg', 'rate', 'range', 'hp'];
+  const upgNames = ['DAMAGE', 'FIRE RATE', 'RANGE', 'HP'];
+  const upgDescs = [
+    MERC_DMG_MULTS.map((m,i) => `${Math.round(MERC_BASE_DMG * m)} dmg`),
+    MERC_RATES.map(r => r + ' frames'),
+    MERC_RANGES.map(r => r + ' tiles'),
+    MERC_MAX_HPS.map(h => h + ' HP'),
+  ];
+
+  const rowH = Math.round((panH - pad * 3.5) / 4);
+  const startY = panY + Math.round(panH * 0.18);
+
+  upgKeys.forEach((key, idx) => {
+    const level = mercenary.upgrades[key];
+    const maxLevel = MERC_UPG_COSTS[key].length; // 4 levels
+    const ry = startY + idx * (rowH + pad * 0.35);
+    const rx = panX + pad;
+    const rw = panW - pad * 2;
+
+    // Row bg
+    ctx.fillStyle = 'rgba(0,100,150,0.18)';
+    roundRect(ctx, rx, ry, rw, rowH, 6, true, false);
+    ctx.strokeStyle = 'rgba(0,180,220,0.25)'; ctx.lineWidth = 1;
+    roundRect(ctx, rx, ry, rw, rowH, 6, false, true);
+
+    // Number key hint
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.round(rowH * 0.38)}px Segoe UI`;
+    ctx.fillStyle = '#44aacc';
+    ctx.fillText(`[${idx + 1}]`, rx + pad * 0.4, ry + rowH / 2);
+
+    // Upgrade name
+    ctx.fillStyle = '#eef4ff';
+    ctx.font = `bold ${Math.round(rowH * 0.36)}px Segoe UI`;
+    ctx.fillText(upgNames[idx], rx + pad * 1.6, ry + rowH / 2);
+
+    // Level pips
+    const pipW = Math.round(rowH * 0.22), pipH = Math.round(rowH * 0.22);
+    const pipX = rx + rw * 0.44;
+    for (let p = 0; p < 4; p++) {
+      ctx.fillStyle = p < level ? '#00ddff' : 'rgba(255,255,255,0.12)';
+      ctx.fillRect(pipX + p * (pipW + 3), ry + (rowH - pipH) / 2, pipW, pipH);
+    }
+
+    // Current stat
+    ctx.textAlign = 'center';
+    ctx.font = `${Math.round(rowH * 0.30)}px Segoe UI`;
+    ctx.fillStyle = '#88eeff';
+    ctx.fillText(upgDescs[idx][level], rx + rw * 0.73, ry + rowH / 2);
+
+    // Next level cost or MAX
+    ctx.textAlign = 'right';
+    if (level < maxLevel) {
+      const cost = MERC_UPG_COSTS[key][level];
+      const canAfford = player.money >= cost;
+      ctx.font = `bold ${Math.round(rowH * 0.33)}px Segoe UI`;
+      ctx.fillStyle = canAfford ? '#ffd700' : '#cc4444';
+      ctx.fillText(`$${cost}`, rx + rw - pad * 0.4, ry + rowH / 2);
+    } else {
+      ctx.font = `bold ${Math.round(rowH * 0.30)}px Segoe UI`;
+      ctx.fillStyle = '#44ff88';
+      ctx.fillText('MAX', rx + rw - pad * 0.4, ry + rowH / 2);
+    }
+  });
+
+  // Close hint
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.font = `${Math.round(panH * 0.045)}px Segoe UI`;
+  ctx.fillStyle = 'rgba(180,200,220,0.6)';
+  ctx.fillText('[E]  close', panX + panW / 2, panY + panH - pad * 0.5);
+
+  ctx.restore();
 }

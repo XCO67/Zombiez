@@ -76,6 +76,7 @@ function _runGameLogic() {
     updateExploders();
     updatePhantoms();
     updateMercenary();
+    updateMercBullets();
     updateProjectiles();
     updateDmgNums();
     updateCoins();
@@ -187,6 +188,7 @@ function render(now) {
   drawCoins();
   drawPerks();
   drawEffects();
+  drawMercBullets();
   drawProjectiles();
   drawBossShots();
   drawSpiderWebShots();
@@ -217,6 +219,7 @@ function render(now) {
   drawMinimap();
   drawShopUI();
   drawPerkShopUI();
+  drawMercUpgradePanel();
   drawPistolUpgradePanel();
   drawDownedHUD();
   drawCursor();
