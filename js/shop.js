@@ -36,7 +36,7 @@ const PERK_SHOP_ITEMS = [
     desc: l => `${LIFESTEAL_HP[l]}→${LIFESTEAL_HP[l+1]} HP healed per kill`,
     price: l => (l+1)*250, maxLevel:5 },
   { key:'moveSpeed', name:'MOVE SPEED', icon:'👟', color:'#44ffaa',
-    desc: l => `+${l*12}% speed  →  +${(l+1)*12}% speed  (max +60%)`,
+    desc: l => `+${l*20}% speed  →  +${(l+1)*20}% speed  (max +100%)`,
     price: l => (l+1)*200, maxLevel:5 },
   { key:'hpRegen',   name:'HP REGEN',   icon:'❤', color:'#ff4d6d',
     desc: l => `${[0,2,5,8,11,15][l]} hp/s  →  ${[0,2,5,8,11,15][l+1]} hp/s  (after 5s no dmg)`,

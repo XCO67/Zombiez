@@ -803,7 +803,7 @@ function drawHUD() {
         { key:'magnet',    icon:'🧲', label:'MAGNET',  col:'#60ccff', val: l => `R${MAGNET_RADII[l]}` },
         { key:'shield',    icon:'🛡', label:'SHIELD',  col:'#4499ff', val: l => `${SHIELD_MAXHP[l]}HP`  },
         { key:'lifesteal', icon:'🩸', label:'STEAL',   col:'#ff4466', val: l => `${LIFESTEAL_HP[l]}HP`  },
-        { key:'moveSpeed', icon:'👟', label:'SPEED',   col:'#44ffaa', val: l => `+${l*12}%`           },
+        { key:'moveSpeed', icon:'👟', label:'SPEED',   col:'#44ffaa', val: l => `+${l*20}%`           },
         { key:'hpRegen',   icon:'❤', label:'REGEN',   col:'#ff4d6d', val: l => `${[0,2,5,8,11,15][l]}/s` },
       ];
       PERM_DEFS.forEach(pd => {
