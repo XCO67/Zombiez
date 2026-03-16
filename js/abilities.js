@@ -381,104 +381,143 @@ function drawMonkeyBombs() {
   if (!monkeyBombs.length) return;
   const now = performance.now();
   monkeyBombs.forEach(b => {
-    const inFlight = b.travelTimer > 0;
-    const groundPx = b.cx * TW;
-    const groundPy = b.cy * TH;
-    let px = groundPx;
-    let py = groundPy;
-    const sz = TW * 0.58;
+    const inFlight  = b.travelTimer > 0;
+    const groundPx  = b.cx * TW;
+    const groundPy  = b.cy * TH;
 
+    // Visual centre (arc up while thrown, bob when landed)
+    let vcx = Math.round(groundPx);
+    let vcy = Math.round(groundPy);
     if (inFlight) {
       const arcT = 1 - b.travelTimer / b.travelFrames;
-      py -= Math.sin(arcT * Math.PI) * TH * 2.5;
+      vcy -= Math.round(Math.sin(arcT * Math.PI) * TH * 2.5);
     } else {
-      py += Math.sin(b.bobAngle) * 2.5;
+      vcy += Math.round(Math.sin(b.bobAngle) * 3);
     }
 
+    const ps   = Math.max(2, Math.round(TW / 9)); // 1 "pixel" in screen pixels
+    const sprW = 14 * ps;
+    const sprH = 12 * ps;
+    const ox   = vcx - Math.round(sprW / 2); // sprite top-left
+    const oy   = vcy - Math.round(sprH / 2);
+
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-    // Ground shadow (shrinks while airborne)
-    const shadowShrink = inFlight
-      ? Math.max(0.25, 1 - Math.sin((1 - b.travelTimer / b.travelFrames) * Math.PI) * 0.8)
+    // Flat pixel shadow on ground
+    const sh = inFlight
+      ? Math.max(0.2, 1 - Math.sin((1 - b.travelTimer / b.travelFrames) * Math.PI) * 0.85)
       : 1;
-    ctx.globalAlpha = 0.28 * shadowShrink;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(groundPx, groundPy + sz * 0.62, sz * 0.52 * shadowShrink, sz * 0.14 * shadowShrink, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.fillRect(
+      Math.round(groundPx - sprW * 0.42 * sh), Math.round(groundPy + sprH * 0.38),
+      Math.round(sprW * 0.84 * sh), Math.round(ps * 2)
+    );
 
-    // Danger pulse when low on time
+    // Binary danger flash (blinks faster as timer runs out)
     if (!inFlight) {
       const frac = b.timer / b.maxTimer;
       if (frac < 0.45) {
-        const pulse = Math.abs(Math.sin(now / (75 * frac + 18)));
-        ctx.globalAlpha = pulse * 0.42;
-        ctx.fillStyle = '#ff2200';
-        ctx.beginPath(); ctx.arc(px, py, sz * 1.35, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
+        const blinkRate = Math.round(120 * frac + 15);
+        if (Math.floor(now / blinkRate) % 2 === 0) {
+          ctx.fillStyle = '#ff2200';
+          ctx.globalAlpha = 0.38;
+          ctx.fillRect(ox - ps * 2, oy - ps * 2, sprW + ps * 4, sprH + ps * 4);
+          ctx.globalAlpha = 1;
+        }
       }
     }
 
-    // Body
-    ctx.fillStyle = '#2a5c18';
-    ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
-    const bodyGrad = ctx.createRadialGradient(px - sz * .28, py - sz * .28, 0, px, py, sz);
-    bodyGrad.addColorStop(0, 'rgba(90,170,45,0.45)');
-    bodyGrad.addColorStop(1, 'rgba(0,0,0,0.28)');
-    ctx.fillStyle = bodyGrad;
-    ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
-
-    // Ears
-    ctx.fillStyle = '#1d4010';
-    ctx.beginPath(); ctx.ellipse(px - sz * .9, py, sz * .30, sz * .25, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px + sz * .9, py, sz * .30, sz * .25, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#c48050';
-    ctx.beginPath(); ctx.ellipse(px - sz * .9, py, sz * .15, sz * .12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px + sz * .9, py, sz * .15, sz * .12, 0, 0, Math.PI * 2); ctx.fill();
-
-    // Face patch
-    ctx.fillStyle = '#c8905a';
-    ctx.beginPath(); ctx.ellipse(px, py + sz * .06, sz * .60, sz * .68, 0, 0, Math.PI * 2); ctx.fill();
-
-    // Eyes (whites)
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.ellipse(px - sz * .25, py - sz * .16, sz * .155, sz * .175, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px + sz * .25, py - sz * .16, sz * .155, sz * .175, 0, 0, Math.PI * 2); ctx.fill();
-    // Pupils (go red near explosion)
+    // ── Pixel art colours ───────────────────────────────────────
+    const DK = '#0c1808'; // dark outline
+    const BG = '#2a7518'; // body green
+    const HG = '#3da820'; // highlight green
+    const TN = '#d49060'; // tan face patch
+    const DT = '#9a5f2a'; // dark tan (mouth shadow)
+    const EW = '#f2f0f0'; // eye white
     const eyeFrac = (!inFlight && b.timer) ? b.timer / b.maxTimer : 1;
-    ctx.fillStyle = eyeFrac < 0.25 ? '#ff0000' : '#1a0000';
-    ctx.beginPath(); ctx.arc(px - sz * .21, py - sz * .13, sz * .082, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(px + sz * .21, py - sz * .13, sz * .082, 0, Math.PI * 2); ctx.fill();
+    const PU = eyeFrac < 0.25 ? '#ee1111' : '#080808'; // pupil (red when low)
+    const EI = '#e8aa78'; // ear inner pink
+    const BR = '#1a3a0c'; // ear outer / body shadow
 
-    // Grin
-    ctx.strokeStyle = '#6b3010'; ctx.lineWidth = sz * .08; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(px, py + sz * .17, sz * .27, 0.15, Math.PI - 0.15); ctx.stroke();
+    // helper — fill one sprite "pixel"
+    const d = (col, row, col_) => {
+      ctx.fillStyle = col_;
+      ctx.fillRect(ox + col * ps, oy + row * ps, ps, ps);
+    };
 
-    // Fuse
-    const fw = Math.sin(now / 70) * 4;
-    ctx.strokeStyle = '#7a5a18'; ctx.lineWidth = sz * .07;
-    ctx.beginPath();
-    ctx.moveTo(px + sz * .08, py - sz * .92);
-    ctx.quadraticCurveTo(px + sz * .34 + fw, py - sz * 1.33, px + sz * .18 + fw, py - sz * 1.62);
-    ctx.stroke();
-    // Spark at fuse tip
-    const spX = px + sz * .18 + fw, spY = py - sz * 1.62;
-    const spR = sz * (.13 + Math.sin(now / 35) * .04);
-    const sg = ctx.createRadialGradient(spX, spY, 0, spX, spY, spR * 2.2);
-    sg.addColorStop(0,    'rgba(255,255,200,1)');
-    sg.addColorStop(0.35, 'rgba(255,160,0,0.9)');
-    sg.addColorStop(1,    'rgba(255,50,0,0)');
-    ctx.fillStyle = sg;
-    ctx.beginPath(); ctx.arc(spX, spY, spR * 2.2, 0, Math.PI * 2); ctx.fill();
+    // Row 0 — top outline
+    for (let c = 2; c <= 11; c++) d(c, 0, DK);
+    // Row 1 — head top
+    d(1,1,DK);
+    for (let c = 2; c <= 11; c++) d(c, 1, (c===4||c===9) ? HG : BG);
+    d(12,1,DK);
+    // Row 2 — head with ear bases
+    d(0,2,DK); d(1,2,BR);
+    for (let c = 2; c <= 11; c++) d(c, 2, BG);
+    d(12,2,BR); d(13,2,DK);
+    // Row 3 — ears + start of face patch
+    d(0,3,DK); d(1,3,EI); d(2,3,BG);
+    for (let c = 3; c <= 10; c++) d(c, 3, TN);
+    d(11,3,BG); d(12,3,EI); d(13,3,DK);
+    // Row 4 — ears + eyes (upper whites)
+    d(0,4,DK); d(1,4,EI); d(2,4,BG);
+    d(3,4,TN); d(4,4,EW); d(5,4,EW); d(6,4,TN); d(7,4,TN); d(8,4,EW); d(9,4,EW); d(10,4,TN);
+    d(11,4,BG); d(12,4,EI); d(13,4,DK);
+    // Row 5 — ears + pupils
+    d(0,5,DK); d(1,5,BR); d(2,5,BG);
+    d(3,5,TN); d(4,5,EW); d(5,5,PU); d(6,5,TN); d(7,5,TN); d(8,5,EW); d(9,5,PU); d(10,5,TN);
+    d(11,5,BG); d(12,5,BR); d(13,5,DK);
+    // Row 6 — below eyes
+    d(0,6,DK); d(1,6,DK); d(2,6,BG);
+    for (let c = 3; c <= 10; c++) d(c, 6, TN);
+    d(11,6,BG); d(12,6,DK); d(13,6,DK);
+    // Row 7 — grin upper (dark corners)
+    d(1,7,DK); d(2,7,BG);
+    d(3,7,TN); d(4,7,DT); d(5,7,TN); d(6,7,TN); d(7,7,TN); d(8,7,TN); d(9,7,DT); d(10,7,TN);
+    d(11,7,BG); d(12,7,DK);
+    // Row 8 — grin lower (mouth curve)
+    d(1,8,DK); d(2,8,BG);
+    d(3,8,TN); d(4,8,TN); d(5,8,DT); d(6,8,DT); d(7,8,DT); d(8,8,DT); d(9,8,TN); d(10,8,TN);
+    d(11,8,BG); d(12,8,DK);
+    // Row 9 — lower head
+    d(1,9,DK);
+    for (let c = 2; c <= 11; c++) d(c, 9, BG);
+    d(12,9,DK);
+    // Row 10 — chin
+    d(2,10,DK);
+    for (let c = 3; c <= 10; c++) d(c, 10, BG);
+    d(11,10,DK);
+    // Row 11 — bottom outline
+    for (let c = 3; c <= 10; c++) d(c, 11, DK);
 
-    // Timer bar (landed only)
+    // ── Pixelated zigzag fuse above head ────────────────────────
+    // Fuse base exits from top-centre of head (col 7)
+    const fc = 7;
+    d(fc,   -1, '#7a5820');
+    d(fc+1, -2, '#7a5820');
+    d(fc,   -3, '#7a5820');
+    d(fc+1, -4, '#7a5820');
+    // Spark alternates every 120 ms for flicker
+    const spk = Math.floor(now / 120) % 2;
+    if (spk === 0) {
+      d(fc+1, -5, '#ffee44');
+      d(fc+2, -5, '#ff9900');
+      d(fc+1, -6, '#ff5500');
+    } else {
+      d(fc+2, -5, '#ffee44');
+      d(fc+1, -5, '#ff9900');
+      d(fc+2, -4, '#ff5500');
+    }
+
+    // ── Timer bar (landed only) ──────────────────────────────────
     if (!inFlight) {
       const frac = b.timer / b.maxTimer;
-      const bw = sz * 2.2, bx = px - bw / 2, bby = py - sz * 1.15;
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx - 1, bby - 1, bw + 2, 6);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(ox, oy - ps * 2, sprW, ps);
       const col = frac > 0.5 ? '#44ff88' : frac > 0.25 ? '#ffcc00' : '#ff3300';
-      ctx.fillStyle = col; ctx.fillRect(bx, bby, bw * frac, 4);
+      ctx.fillStyle = col;
+      ctx.fillRect(ox, oy - ps * 2, Math.round(sprW * frac), ps);
     }
 
     ctx.restore();
