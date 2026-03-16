@@ -304,7 +304,7 @@ function drawFireRing() {
 
 // ── Monkey Bomb ────────────────────────────────────────────────────────────────
 const MONKEY_BOMB_COOLDOWN = 1800; // 30 s at 60 fps
-const MONKEY_BOMB_DURATION = 300;  // 5 s active
+const MONKEY_BOMB_DURATION = 420;  // 7 s active
 const MONKEY_BOMB_TRAVEL   = 22;   // frames to reach target
 const MONKEY_BOMB_RADIUS   = 5.0;  // explosion radius in tiles
 const MONKEY_BOMB_DMG      = 300;  // max damage at centre
@@ -414,17 +414,29 @@ function drawMonkeyBombs() {
       Math.round(sprW * 0.84 * sh), Math.round(ps * 2)
     );
 
-    // Binary danger flash (blinks faster as timer runs out)
+    // Pulsing danger rings — expand outward, speed up as timer runs out
     if (!inFlight) {
       const frac = b.timer / b.maxTimer;
-      if (frac < 0.45) {
-        const blinkRate = Math.round(120 * frac + 15);
-        if (Math.floor(now / blinkRate) % 2 === 0) {
-          ctx.fillStyle = '#ff2200';
-          ctx.globalAlpha = 0.38;
-          ctx.fillRect(ox - ps * 2, oy - ps * 2, sprW + ps * 4, sprH + ps * 4);
-          ctx.globalAlpha = 1;
+      if (frac < 0.55) {
+        const pulse = (now % 800) / 800; // 0→1 loop
+        const danger = 1 - frac / 0.55;  // 0→1 as time runs out
+        const baseR = sprW * 0.6;
+        const col = frac < 0.2 ? '#ff2200' : frac < 0.4 ? '#ff7700' : '#ffaa00';
+        ctx.save();
+        // Two offset rings so there's always one visible
+        for (let ri = 0; ri < 2; ri++) {
+          const rp = (pulse + ri * 0.5) % 1;         // each ring offset by 0.5
+          const r  = baseR + rp * sprW * 1.4;         // expand outward
+          const a  = (1 - rp) * (0.45 + danger * 0.35); // fade as it grows
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = Math.max(1, ps * (1.5 - rp));
+          ctx.beginPath();
+          ctx.arc(vcx, vcy, r, 0, Math.PI * 2);
+          ctx.stroke();
         }
+        ctx.globalAlpha = 1;
+        ctx.restore();
       }
     }
 

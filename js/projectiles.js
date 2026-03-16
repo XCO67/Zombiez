@@ -7,6 +7,7 @@ let laserBeam = null;
 let laserWasMouseDown = false;
 
 function getW() { return WEAPONS[player.weaponKey]; }
+function getPapMult(wkey) { return WEAPONS[wkey]?.papMult || 3; }
 function getFireRate() {
   const base = getW().fireRate;
   // Each atk speed level reduces fire rate by 15%, minimum 40% of base
@@ -156,7 +157,7 @@ function fireLaser(sx, sy, angle) {
   const wkey = 'lasergun';
   const papped = player.packedWeapons.has(wkey);
   const doublePapped = player.doublePapWeapons.has(wkey);
-  const pm = papped ? 3 : 1;
+  const pm = papped ? getPapMult(wkey) : 1;
   const maxDist = (MAP_W + MAP_H) * TW;
   const hitR = TW * 0.55;
 
@@ -476,7 +477,7 @@ function updateProjectiles() {
     for(let zi=0;zi<ZOMBIES.length;zi++){
       const z=ZOMBIES[zi]; if(z.dead) continue;
       if(Math.hypot(p.x-z.cx*TW,p.y-z.cy*TH)<TW*w.hitR){
-        hitZombie(z,p.wkey,p.x,p.y, p.papped?3:1);
+        hitZombie(z,p.wkey,p.x,p.y, p.papped?getPapMult(p.wkey):1);
         hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
@@ -486,7 +487,7 @@ function updateProjectiles() {
     for(let di=0;di<DRAGONS.length;di++){
       const d=DRAGONS[di]; if(d.dead) continue;
       if(Math.hypot(p.x-d.cx*TW,p.y-d.cy*TH)<TW*(w.hitR+0.3)){
-        hitDragon(d,p.wkey,p.papped?3:1); hitAny=true;
+        hitDragon(d,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -495,7 +496,7 @@ function updateProjectiles() {
     for(let si=0;si<SKELETONS.length;si++){
       const s=SKELETONS[si]; if(s.dead) continue;
       if(Math.hypot(p.x-s.cx*TW,p.y-s.cy*TH)<TW*w.hitR){
-        hitSkeleton(s,p.wkey,p.papped?3:1);
+        hitSkeleton(s,p.wkey,p.papped?getPapMult(p.wkey):1);
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -504,7 +505,7 @@ function updateProjectiles() {
     for(let bi=0;bi<BOSS_DEMONS.length;bi++){
       const b=BOSS_DEMONS[bi]; if(b.dead) continue;
       if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*1.6){
-        hitBoss(b,p.wkey,p.papped?3:1); hitAny=true;
+        hitBoss(b,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -513,7 +514,7 @@ function updateProjectiles() {
     for(let bi=0;bi<SPIDER_BOSSES.length;bi++){
       const b=SPIDER_BOSSES[bi]; if(b.dead) continue;
       if(Math.hypot(p.x-b.cx*TW,p.y-b.cy*TH)<TW*2.0){
-        hitSpiderBoss(b,p.wkey,p.papped?3:1); hitAny=true;
+        hitSpiderBoss(b,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -522,7 +523,7 @@ function updateProjectiles() {
     for(let mi=0;mi<SPIDER_MINIONS.length;mi++){
       const m=SPIDER_MINIONS[mi]; if(m.dead) continue;
       if(Math.hypot(p.x-m.cx*TW,p.y-m.cy*TH)<TW*w.hitR){
-        hitSpiderMinion(m,p.wkey,p.papped?3:1); hitAny=true;
+        hitSpiderMinion(m,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -531,7 +532,7 @@ function updateProjectiles() {
     for(let li=0;li<LAVA_ZOMBIES.length;li++){
       const lz=LAVA_ZOMBIES[li]; if(lz.dead) continue;
       if(Math.hypot(p.x-lz.cx*TW,p.y-lz.cy*TH)<TW*w.hitR){
-        hitLavaZombie(lz,p.wkey,p.papped?3:1); hitAny=true;
+        hitLavaZombie(lz,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -540,7 +541,7 @@ function updateProjectiles() {
     for(let ei=0;ei<EXPLODERS.length;ei++){
       const ex=EXPLODERS[ei]; if(ex.dead) continue;
       if(Math.hypot(p.x-ex.cx*TW,p.y-ex.cy*TH)<TW*w.hitR){
-        hitExploder(ex,p.wkey,p.papped?3:1); hitAny=true;
+        hitExploder(ex,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
@@ -549,7 +550,7 @@ function updateProjectiles() {
     for(let phi=0;phi<PHANTOMS.length;phi++){
       const ph=PHANTOMS[phi]; if(ph.dead) continue;
       if(Math.hypot(p.x-ph.cx*TW,p.y-ph.cy*TH)<TW*w.hitR){
-        hitPhantom(ph,p.wkey,p.papped?3:1); hitAny=true;
+        hitPhantom(ph,p.wkey,p.papped?getPapMult(p.wkey):1); hitAny=true;
         if(!w.pierce){ projectiles.splice(i,1); break; }
       }
     }
