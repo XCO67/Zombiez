@@ -21,7 +21,7 @@ let weaponInfoOpen = false;
 const PERK_VENDOR_POS = { cx:24.5, cy:18 };
 const PERK_VENDOR_RADIUS = 2.0;
 const SHIELD_MAXHP = [0, 15,  25,  40,  55,  70 ];
-const SHIELD_DELAY = [0, 120, 90, 60, 30, 0]; // frames before recharge
+const SHIELD_DELAY = [0, 420, 390, 360, 330, 300]; // frames before recharge
 const SHIELD_RATE  = [0, 4,   6,   8,   10,  13 ]; // HP regen per second
 const LIFESTEAL_HP = [0, 1,   2,   3,   4,   5  ];
 const MAGNET_RADII = [8, 10,  12,  14,  16,  18 ]; // index 0 = base (temp perk), 1-5 = bought levels

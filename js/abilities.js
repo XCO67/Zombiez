@@ -79,7 +79,7 @@ function updateFireRing() {
 }
 
 // ── Barrier ───────────────────────────────────────────────────────────────────
-const BARRIER_COOLDOWN = 2100; // 35 s at 60 fps
+const BARRIER_COOLDOWN = 1800; // 30 s at 60 fps
 const BARRIER_DURATION = 360;  // 6 s active
 
 function updateBarrier() {
