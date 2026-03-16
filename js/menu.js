@@ -280,6 +280,13 @@ async function refreshLeaderboard() {
   const rows = [...realOnly, ...FAKE_LB]
     .sort((a, b) => b.round - a.round || b.score - a.score || b.kills - a.kills);
 
+  // Update king widget
+  const king = rows[0];
+  if (king) {
+    document.getElementById('kingName').textContent  = king.username || king.name || '—';
+    document.getElementById('kingStats').textContent = `ROUND ${king.round}  ·  ${Number(king.kills).toLocaleString()} KILLS`;
+  }
+
   if (!rows.length) { el.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>'; return; }
   const med = ['gold','silver','bronze'];
   el.innerHTML = `<table class="lb-tbl">
@@ -443,4 +450,5 @@ document.addEventListener('keydown', e => {
   if (sv !== null) { document.getElementById('volSlider').value=sv; setMasterVol(sv); }
   menuBgLoop();
   updateKeybindUI(); // show saved keybinds on first open
+  refreshLeaderboard(); // populate king widget on load
 })();
