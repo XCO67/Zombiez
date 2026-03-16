@@ -1,4 +1,29 @@
 
+// ─── SEPARATION HELPER ────────────────────────────────────────────────────────
+// Pushes `e` away from nearby members of `others` so enemies don't stack.
+// radius: min desired distance (tiles), force: push strength per frame.
+function applySeparation(e, others, radius, force) {
+  let sx = 0, sy = 0;
+  for (let i = 0; i < others.length; i++) {
+    const o = others[i];
+    if (o === e || o.dead) continue;
+    const dx = e.cx - o.cx, dy = e.cy - o.cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0 && dist < radius) {
+      const push = (radius - dist) / radius;
+      sx += (dx / dist) * push;
+      sy += (dy / dist) * push;
+    }
+  }
+  if (sx || sy) {
+    const len = Math.hypot(sx, sy) || 1;
+    const nx = e.cx + (sx / len) * force;
+    const ny = e.cy + (sy / len) * force;
+    if (!isBlocked(nx, e.cy)) e.cx = nx;
+    if (!isBlocked(e.cx, ny)) e.cy = ny;
+  }
+}
+
 // ─── ZOMBIES ──────────────────────────────────────────────────────────────────
 function getSpawnTiles() {
   const pts = [];
@@ -160,6 +185,7 @@ function updateSkeletons() {
     const tgt=nearestPlayerTo(s.cx,s.cy);
     const dx=tgt.cx-s.cx,dy=tgt.cy-s.cy,dist=Math.hypot(dx,dy);
     if(dist>0.4){s.cx+=(dx/dist)*spd;s.cy+=(dy/dist)*spd;}
+    applySeparation(s, SKELETONS, 0.75, 0.012);
     // Contact: steal money + tiny HP hit
     if(dist<0.62&&tgt.hurtTimer<=0&&!tgt.dead&&!tgt.downed&&game.state==='playing'){
       const stolen=Math.min(player.money,SKEL_STEAL);
@@ -460,6 +486,7 @@ function updateLavaZombies() {
       }
       const spd = LAVA_SPEED + game.round * 0.0006;
       if (dist > 0.4) { z.cx += (dx/dist)*spd; z.cy += (dy/dist)*spd; }
+      applySeparation(z, LAVA_ZOMBIES, 0.90, 0.012);
       const lavaContactDmg = LAVA_CONTACT_DMG + Math.floor(game.round / 4) * 3;
       if (dist < 0.65 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
         applyDamage(tgt, lavaContactDmg);
@@ -773,6 +800,7 @@ function updateExploders() {
     const dx = tgt.cx - e.cx, dy = tgt.cy - e.cy, dist = Math.hypot(dx, dy) || 1;
     const spd = EXPLODER_SPEED + game.round * 0.001;
     if (dist > 0.4) { e.cx += (dx/dist)*spd; e.cy += (dy/dist)*spd; }
+    applySeparation(e, EXPLODERS, 0.80, 0.014);
     if (dist < EXPLODER_TRIGGER_DIST && !tgt.dead && !tgt.downed && game.state === 'playing') {
       triggerExplosion(e);
     }
@@ -917,6 +945,15 @@ function updatePhantoms() {
     const dx = tgt.cx - ph.cx, dy = tgt.cy - ph.cy, dist = Math.hypot(dx, dy) || 1;
     const spd = PHANTOM_SPEED + game.round * 0.0007;
     if (dist > 0.35) { ph.cx += (dx/dist)*spd; ph.cy += (dy/dist)*spd; }
+    // Phantoms phase through walls so apply separation without wall checks
+    let psx = 0, psy = 0;
+    for (let i = 0; i < PHANTOMS.length; i++) {
+      const o = PHANTOMS[i];
+      if (o === ph || o.dead) continue;
+      const pdx = ph.cx - o.cx, pdy = ph.cy - o.cy, pd = Math.hypot(pdx, pdy);
+      if (pd > 0 && pd < 0.75) { const pp = (0.75 - pd) / 0.75; psx += (pdx/pd)*pp; psy += (pdy/pd)*pp; }
+    }
+    if (psx || psy) { const pl = Math.hypot(psx,psy)||1; ph.cx += (psx/pl)*0.013; ph.cy += (psy/pl)*0.013; }
     // Contact: damage player then teleport away
     if (dist < 0.6 && tgt.hurtTimer <= 0 && !tgt.dead && !tgt.downed && game.state === 'playing') {
       const dmg = 15 + Math.floor(game.round / 3) * 3;
