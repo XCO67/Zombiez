@@ -121,7 +121,7 @@ function _snapAlpha(pc, w, h) {
 const BOSS_DEMONS = [];
 const BOSS_SHOTS  = [];
 
-const BOSS_BASE_HP        = 7000;
+const BOSS_BASE_HP        = 15000;
 const BOSS_SHOT_SPEED     = 4.8;
 const BOSS_SHOT_DMG       = 35;
 const BOSS_SHOOT_INTERVAL = 70;  // frames between waves
@@ -139,7 +139,7 @@ function getBossSpawnTiles() {
 function spawnBossDemon() {
   const pts = getBossSpawnTiles();
   const sp  = pts[0];
-  const hp  = BOSS_BASE_HP + game.round * 300;
+  const hp  = BOSS_BASE_HP + game.round * 800;
   return {
     cx: sp.cx, cy: sp.cy,
     hp, maxHp: hp,
@@ -151,7 +151,7 @@ function spawnBossDemon() {
 function hitBoss(b, wkey, papMult = 1) {
   const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
   // Damage cap: bosses have thick armour — no single hit does more than this
-  const cap = 500 + game.round * 20;
+  const cap = 800 + game.round * 40;
   const dmg = Math.min(Math.round(rawDmg * papMult), cap);
   b.hp -= dmg;
   b.hitFlash = 9;
@@ -479,7 +479,7 @@ const SPIDER_WEB_SHOTS = [];
 const SPIDER_MINIONS   = [];
 let   secondSpiderDropped = false;
 
-const SPIDER_BASE_HP        = 14000;
+const SPIDER_BASE_HP        = 22000;
 const SPIDER_SHOT_SPEED     = 3.2;
 const SPIDER_WEB_SHOT_DMG   = 25;
 const SPIDER_SHOOT_INTERVAL = 65;
@@ -501,13 +501,12 @@ function getSpiderSpawnTiles() {
 function spawnSpiderBoss() {
   const pts = getSpiderSpawnTiles();
   const sp = pts[Math.floor(Math.random() * pts.length)];
-  const hp = SPIDER_BASE_HP + game.round * 300;
+  const hp = SPIDER_BASE_HP + game.round * 800;
   return {
     cx: sp.cx, cy: sp.cy,
     hp, maxHp: hp,
     dead: false, deathTimer: 0, hitFlash: 0,
     shootTimer: 30, shootPhase: 0,
-    minionTimer: 0,
     chargeTimer: 60, chargeActive: false, chargeDuration: 0,
     chargeDx: 0, chargeDy: 0,
     enraged: false,
@@ -516,7 +515,7 @@ function spawnSpiderBoss() {
 
 function hitSpiderBoss(b, wkey, papMult = 1) {
   const { dmg: rawDmg, crit } = rollDamage(WEAPONS[wkey].baseDmg, !BOX_POOL.includes(wkey));
-  const cap = 700 + game.round * 25;
+  const cap = 900 + game.round * 45;
   const dmg = Math.min(Math.round(rawDmg * papMult), cap);
   b.hp -= dmg;
   b.hitFlash = 9;
@@ -638,23 +637,6 @@ function updateSpiderBosses() {
       b.shootPhase = (b.shootPhase + 1) % shotCount;
     }
 
-    // ── Spiderling spawns ─────────────────────────────────────────────────────
-    b.minionTimer++;
-    const mInterval = b.enraged ? Math.round(SPIDER_MINION_INTERVAL * 0.55) : SPIDER_MINION_INTERVAL;
-    if (b.minionTimer >= mInterval) {
-      b.minionTimer = 0;
-      const count = b.enraged ? 6 : 3;
-      for (let i = 0; i < count; i++) {
-        const hp = 80 + game.round * 12;
-        SPIDER_MINIONS.push({
-          cx: b.cx + (Math.random() - 0.5) * 2.5,
-          cy: b.cy + (Math.random() - 0.5) * 2.5,
-          hp, maxHp: hp,
-          dead: false, deathTimer: 0, hitFlash: 0,
-          frame: Math.random() * 4 | 0, ft: 0,
-        });
-      }
-    }
   });
   for (let i = SPIDER_BOSSES.length - 1; i >= 0; i--) {
     if (SPIDER_BOSSES[i].dead && SPIDER_BOSSES[i].deathTimer <= 0) SPIDER_BOSSES.splice(i, 1);
