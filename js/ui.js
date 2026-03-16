@@ -635,7 +635,7 @@ function drawHUD() {
     const moneyW = 100;
     const ABIL_SW   = 70;  // each ability slot width
     const ABIL_GAP  = 6;   // gap between slots
-    const abilSecW  = ABIL_SW * 4 + ABIL_GAP * 3; // 292px total
+    const abilSecW  = ABIL_SW * 5 + ABIL_GAP * 4; // 5 ability slots
     const statAreaW = W - wepEndX - moneyW - abilSecW - ipd * 7;
     const statTileW = Math.min(76, Math.floor((statAreaW - stats.length * 4) / stats.length));
     const statStartX = wepEndX + 4;
@@ -772,6 +772,14 @@ function drawHUD() {
     const spdFrac   = spdReady ? 1 : 1 - player.speedBoostCooldown / SPEED_BOOST_COOLDOWN;
     drawAbilSlot(spdSlotX, '⚡', 'FAST!', Math.ceil(player.speedBoostCooldown/60)+'s', '[6]',
       spdReady, spdActive, spdFrac, '#cc44ff', '#ee99ff', '#9933cc', 'rgba(160,40,220,0.8)');
+
+    // Monkey Bomb
+    const mBombSlotX = abilX + (ABIL_SW + ABIL_GAP) * 4;
+    const mBombReady  = player.monkeyBombCooldown <= 0 && monkeyBombs.length === 0;
+    const mBombActive = monkeyBombs.length > 0;
+    const mBombFrac   = mBombReady ? 1 : mBombActive ? 1 : 1 - player.monkeyBombCooldown / MONKEY_BOMB_COOLDOWN;
+    drawAbilSlot(mBombSlotX, '🐒', 'THROWN!', Math.ceil(player.monkeyBombCooldown/60)+'s', '[7]',
+      mBombReady, mBombActive, mBombFrac, '#ffaa00', '#ffdd55', '#cc8800', 'rgba(200,140,20,0.8)');
 
     vDiv(abilX + abilSecW + ipd + 2);
 

@@ -301,3 +301,186 @@ function drawFireRing() {
 
   ctx.restore();
 }
+
+// ── Monkey Bomb ────────────────────────────────────────────────────────────────
+const MONKEY_BOMB_COOLDOWN = 1800; // 30 s at 60 fps
+const MONKEY_BOMB_DURATION = 300;  // 5 s active
+const MONKEY_BOMB_TRAVEL   = 22;   // frames to reach target
+const MONKEY_BOMB_RADIUS   = 5.0;  // explosion radius in tiles
+const MONKEY_BOMB_DMG      = 300;  // max damage at centre
+const monkeyBombs          = [];
+
+// Returns nearest active bomb as a bait target (with dummy player-like props),
+// or falls back to the nearest real player. Used in enemy update functions.
+function getBaitOrPlayer(cx, cy) {
+  if (monkeyBombs.length > 0 && monkeyBombs[0].travelTimer <= 0) {
+    const b = monkeyBombs[0];
+    return { cx: b.cx, cy: b.cy, hurtTimer: Infinity, dead: false, downed: false, hp: Infinity };
+  }
+  return nearestPlayerTo(cx, cy);
+}
+
+function throwMonkeyBomb() {
+  const angle = Math.atan2((mouse.y + camY) - player.cy * TH, (mouse.x + camX) - player.cx * TW);
+  const range  = 8; // tiles
+  const tx = Math.max(0.5, Math.min(MAP_W - 0.5, player.cx + Math.cos(angle) * range));
+  const ty = Math.max(0.5, Math.min(MAP_H - 0.5, player.cy + Math.sin(angle) * range));
+  monkeyBombs.push({
+    startCx: player.cx, startCy: player.cy,
+    cx: player.cx, cy: player.cy,
+    targetCx: tx, targetCy: ty,
+    travelTimer: MONKEY_BOMB_TRAVEL, travelFrames: MONKEY_BOMB_TRAVEL,
+    timer: MONKEY_BOMB_DURATION, maxTimer: MONKEY_BOMB_DURATION,
+    bobAngle: 0,
+  });
+  player.monkeyBombCooldown = MONKEY_BOMB_COOLDOWN;
+}
+
+function _explodeMonkeyBomb(b) {
+  spawnEffect('explosion', b.cx * TW, b.cy * TH, { radius: MONKEY_BOMB_RADIUS * TW * 0.9 });
+  spawnEffect('explosion', b.cx * TW, b.cy * TH, { radius: MONKEY_BOMB_RADIUS * TW * 0.5 });
+  const allEnemies = [
+    ...ZOMBIES, ...SKELETONS, ...DRAGONS, ...LAVA_ZOMBIES,
+    ...EXPLODERS, ...PHANTOMS, ...BOSS_DEMONS, ...SPIDER_BOSSES, ...SPIDER_MINIONS,
+  ];
+  for (const en of allEnemies) {
+    if (en.dead) continue;
+    const dist = Math.hypot(en.cx - b.cx, en.cy - b.cy);
+    if (dist >= MONKEY_BOMB_RADIUS) continue;
+    const falloff = Math.max(0.3, 1 - dist / MONKEY_BOMB_RADIUS);
+    const dmg = Math.round(MONKEY_BOMB_DMG * falloff);
+    en.hp -= dmg; en.hitFlash = 12;
+    spawnDmgNum(en.cx * TW, en.cy * TH - TH * 0.4, dmg, '#ffcc00');
+    if (en.hp <= 0 && !en.dead) {
+      en.dead = true; en.deathTimer = 25;
+      game.kills++; game.score += 20;
+      spawnCoin(en.cx + (Math.random()-.5)*.4, en.cy + (Math.random()-.5)*.4, 20 + game.round * 4);
+      spawnPerk(en.cx, en.cy);
+    }
+  }
+}
+
+function updateMonkeyBombs() {
+  if (player.monkeyBombCooldown > 0) player.monkeyBombCooldown--;
+  for (let i = monkeyBombs.length - 1; i >= 0; i--) {
+    const b = monkeyBombs[i];
+    b.bobAngle += 0.10;
+    if (b.travelTimer > 0) {
+      b.travelTimer--;
+      const t = 1 - b.travelTimer / b.travelFrames;
+      b.cx = b.startCx + (b.targetCx - b.startCx) * t;
+      b.cy = b.startCy + (b.targetCy - b.startCy) * t;
+    } else {
+      b.timer--;
+      if (b.timer <= 0) { _explodeMonkeyBomb(b); monkeyBombs.splice(i, 1); }
+    }
+  }
+}
+
+function drawMonkeyBombs() {
+  if (!monkeyBombs.length) return;
+  const now = performance.now();
+  monkeyBombs.forEach(b => {
+    const inFlight = b.travelTimer > 0;
+    const groundPx = b.cx * TW;
+    const groundPy = b.cy * TH;
+    let px = groundPx;
+    let py = groundPy;
+    const sz = TW * 0.58;
+
+    if (inFlight) {
+      const arcT = 1 - b.travelTimer / b.travelFrames;
+      py -= Math.sin(arcT * Math.PI) * TH * 2.5;
+    } else {
+      py += Math.sin(b.bobAngle) * 2.5;
+    }
+
+    ctx.save();
+
+    // Ground shadow (shrinks while airborne)
+    const shadowShrink = inFlight
+      ? Math.max(0.25, 1 - Math.sin((1 - b.travelTimer / b.travelFrames) * Math.PI) * 0.8)
+      : 1;
+    ctx.globalAlpha = 0.28 * shadowShrink;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(groundPx, groundPy + sz * 0.62, sz * 0.52 * shadowShrink, sz * 0.14 * shadowShrink, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Danger pulse when low on time
+    if (!inFlight) {
+      const frac = b.timer / b.maxTimer;
+      if (frac < 0.45) {
+        const pulse = Math.abs(Math.sin(now / (75 * frac + 18)));
+        ctx.globalAlpha = pulse * 0.42;
+        ctx.fillStyle = '#ff2200';
+        ctx.beginPath(); ctx.arc(px, py, sz * 1.35, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Body
+    ctx.fillStyle = '#2a5c18';
+    ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
+    const bodyGrad = ctx.createRadialGradient(px - sz * .28, py - sz * .28, 0, px, py, sz);
+    bodyGrad.addColorStop(0, 'rgba(90,170,45,0.45)');
+    bodyGrad.addColorStop(1, 'rgba(0,0,0,0.28)');
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
+
+    // Ears
+    ctx.fillStyle = '#1d4010';
+    ctx.beginPath(); ctx.ellipse(px - sz * .9, py, sz * .30, sz * .25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + sz * .9, py, sz * .30, sz * .25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c48050';
+    ctx.beginPath(); ctx.ellipse(px - sz * .9, py, sz * .15, sz * .12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + sz * .9, py, sz * .15, sz * .12, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Face patch
+    ctx.fillStyle = '#c8905a';
+    ctx.beginPath(); ctx.ellipse(px, py + sz * .06, sz * .60, sz * .68, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Eyes (whites)
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(px - sz * .25, py - sz * .16, sz * .155, sz * .175, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + sz * .25, py - sz * .16, sz * .155, sz * .175, 0, 0, Math.PI * 2); ctx.fill();
+    // Pupils (go red near explosion)
+    const eyeFrac = (!inFlight && b.timer) ? b.timer / b.maxTimer : 1;
+    ctx.fillStyle = eyeFrac < 0.25 ? '#ff0000' : '#1a0000';
+    ctx.beginPath(); ctx.arc(px - sz * .21, py - sz * .13, sz * .082, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + sz * .21, py - sz * .13, sz * .082, 0, Math.PI * 2); ctx.fill();
+
+    // Grin
+    ctx.strokeStyle = '#6b3010'; ctx.lineWidth = sz * .08; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(px, py + sz * .17, sz * .27, 0.15, Math.PI - 0.15); ctx.stroke();
+
+    // Fuse
+    const fw = Math.sin(now / 70) * 4;
+    ctx.strokeStyle = '#7a5a18'; ctx.lineWidth = sz * .07;
+    ctx.beginPath();
+    ctx.moveTo(px + sz * .08, py - sz * .92);
+    ctx.quadraticCurveTo(px + sz * .34 + fw, py - sz * 1.33, px + sz * .18 + fw, py - sz * 1.62);
+    ctx.stroke();
+    // Spark at fuse tip
+    const spX = px + sz * .18 + fw, spY = py - sz * 1.62;
+    const spR = sz * (.13 + Math.sin(now / 35) * .04);
+    const sg = ctx.createRadialGradient(spX, spY, 0, spX, spY, spR * 2.2);
+    sg.addColorStop(0,    'rgba(255,255,200,1)');
+    sg.addColorStop(0.35, 'rgba(255,160,0,0.9)');
+    sg.addColorStop(1,    'rgba(255,50,0,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(spX, spY, spR * 2.2, 0, Math.PI * 2); ctx.fill();
+
+    // Timer bar (landed only)
+    if (!inFlight) {
+      const frac = b.timer / b.maxTimer;
+      const bw = sz * 2.2, bx = px - bw / 2, bby = py - sz * 1.15;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx - 1, bby - 1, bw + 2, 6);
+      const col = frac > 0.5 ? '#44ff88' : frac > 0.25 ? '#ffcc00' : '#ff3300';
+      ctx.fillStyle = col; ctx.fillRect(bx, bby, bw * frac, 4);
+    }
+
+    ctx.restore();
+  });
+}

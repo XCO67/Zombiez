@@ -70,7 +70,7 @@ function updateZombies() {
       if(Math.abs(z.vy)<0.005) z.vy=0;
     }
     const spd = ZOMBIE_SPEED + game.round*0.0009; // scale speed with round
-    const tgt=nearestPlayerTo(z.cx,z.cy);
+    const tgt=getBaitOrPlayer(z.cx,z.cy);
     const dx=tgt.cx-z.cx,dy=tgt.cy-z.cy,dist=Math.hypot(dx,dy);
     // Spread: aim for a point slightly offset from the player so zombies fan out
     let tx=tgt.cx, ty=tgt.cy;
@@ -182,7 +182,7 @@ function updateSkeletons() {
       if(Math.abs(s.vx)<0.005)s.vx=0;if(Math.abs(s.vy)<0.005)s.vy=0;
     }
     const spd=SKEL_SPEED+game.round*0.001;
-    const tgt=nearestPlayerTo(s.cx,s.cy);
+    const tgt=getBaitOrPlayer(s.cx,s.cy);
     const dx=tgt.cx-s.cx,dy=tgt.cy-s.cy,dist=Math.hypot(dx,dy);
     if(dist>0.4){s.cx+=(dx/dist)*spd;s.cy+=(dy/dist)*spd;}
     applySeparation(s, SKELETONS, 0.75, 0.012);
@@ -462,7 +462,7 @@ function updateLavaZombies() {
       if (Math.abs(z.vx) < 0.005) z.vx = 0;
       if (Math.abs(z.vy) < 0.005) z.vy = 0;
     }
-    const tgt = nearestPlayerTo(z.cx, z.cy);
+    const tgt = getBaitOrPlayer(z.cx, z.cy);
     const dx = tgt.cx - z.cx, dy = tgt.cy - z.cy, dist = Math.hypot(dx, dy);
 
     if (z.state === 'charging') {
@@ -796,7 +796,7 @@ function updateExploders() {
       if (Math.abs(e.vx) < 0.005) e.vx = 0;
       if (Math.abs(e.vy) < 0.005) e.vy = 0;
     }
-    const tgt = nearestPlayerTo(e.cx, e.cy);
+    const tgt = getBaitOrPlayer(e.cx, e.cy);
     const dx = tgt.cx - e.cx, dy = tgt.cy - e.cy, dist = Math.hypot(dx, dy) || 1;
     const spd = EXPLODER_SPEED + game.round * 0.001;
     if (dist > 0.4) { e.cx += (dx/dist)*spd; e.cy += (dy/dist)*spd; }
@@ -941,7 +941,7 @@ function updatePhantoms() {
       }
     }
     // Moves through walls (no isBlocked)
-    const tgt = nearestPlayerTo(ph.cx, ph.cy);
+    const tgt = getBaitOrPlayer(ph.cx, ph.cy);
     const dx = tgt.cx - ph.cx, dy = tgt.cy - ph.cy, dist = Math.hypot(dx, dy) || 1;
     const spd = PHANTOM_SPEED + game.round * 0.0007;
     if (dist > 0.35) { ph.cx += (dx/dist)*spd; ph.cy += (dy/dist)*spd; }

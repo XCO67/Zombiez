@@ -2,13 +2,14 @@
 // ─── KEYBINDS ─────────────────────────────────────────────────────────────────
 // Defaults — stored as e.key.toLowerCase() values (' ' = Space)
 const DEFAULT_KEYBINDS = {
-  dash:       ' ',
-  fireRing:   '4',
-  barrier:    '5',
-  speedBoost: '6',
-  swapWeapon: 'q',
-  interact:   'e',
-  infoCard:   'i',
+  dash:        ' ',
+  fireRing:    '4',
+  barrier:     '5',
+  speedBoost:  '6',
+  monkeyBomb:  '7',
+  swapWeapon:  'q',
+  interact:    'e',
+  infoCard:    'i',
 };
 let KEYBINDS = { ...DEFAULT_KEYBINDS };
 (function loadKeybinds() {
@@ -84,6 +85,11 @@ document.addEventListener('keydown', e => {
       && player.speedBoostCooldown <= 0 && player.speedBoostTimer <= 0) {
     player.speedBoostTimer    = SPEED_BOOST_DURATION;
     player.speedBoostCooldown = SPEED_BOOST_COOLDOWN;
+  }
+  // Monkey Bomb ability
+  if (e.key.toLowerCase() === KEYBINDS.monkeyBomb && _inPlay
+      && player.monkeyBombCooldown <= 0 && monkeyBombs.length === 0) {
+    throwMonkeyBomb();
   }
   // WASD cancels click-to-move
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))

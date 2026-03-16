@@ -83,6 +83,7 @@ function _runGameLogic() {
     updatePerks();
     updateBox();
     updateEffects();
+    updateMonkeyBombs();
     updateWave();
   } else {
     updateCamera();
@@ -185,6 +186,7 @@ function render(now) {
   drawMercenaryVendor();
   drawGoldButtons();
   drawMysteryBox();
+  drawMonkeyBombs();
   drawCoins();
   drawPerks();
   drawEffects();

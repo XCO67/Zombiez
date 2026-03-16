@@ -43,4 +43,5 @@ const player = {
   speedBoostCooldown: 0, // frames remaining on speed boost cooldown (900 = 15s)
   speedBoostTimer: 0,    // frames remaining of active speed boost (360 = 6s)
   speedBoostTrail: [],   // [{cx,cy,facing,frame,a}] purple shadow positions
+  monkeyBombCooldown: 0, // frames remaining on monkey bomb cooldown (1800 = 30s)
 };
